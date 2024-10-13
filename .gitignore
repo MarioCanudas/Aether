@@ -162,10 +162,10 @@ cython_debug/
 #.idea/
 
 # Ignore everything in the documents folder
-documents/*
+Aether_v1/documents/*
 
 # Allow the inputs/test_files/ folder
-!documents/inputs/test_files/*
+!Aether_v1/documents/inputs/test_files/*
 
 # Ignore the virtual environment
 Aether_project/

@@ -16,7 +16,20 @@ class TransactionExtractor(ABC):
         self.month_patterns = month_patterns
 
     @abstractmethod
-    def extract_transactions(self, lines: List[str], month: str) -> List[Dict[str, str]]:
+    def extract_month_from_pdf(self, lines: List[str]) -> List[str]:
+        """
+        This method should be implemented by any subclass.
+        It is responsible for scanning the PDF lines and extracting
+        the month abbreviation (e.g., 'ENE' for January, 'FEB' for February)
+        from the content.
+
+        :param lines: A list of strings representing the lines of the PDF text.
+        :return: The detected month abbreviation as a string.
+        """
+        pass
+
+    @abstractmethod
+    def extract_transactions(self, lines: List[str]) -> List[Dict[str, str]]:
         """Extracts transactions from the provided lines based on the specified month."""
         pass
 
