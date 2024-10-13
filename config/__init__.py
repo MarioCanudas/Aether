@@ -1,0 +1,12 @@
+# config/__init__.py
+
+from .settings import (
+    PROJECT_ROOT,
+    DOCUMENTS_FOLDER,
+    INPUTS_FOLDER,
+    OUTPUTS_FOLDER,
+    DEFAULT_BANK,
+    MONTH_PATTERNS
+)
+
+__all__ = ['PROJECT_ROOT', 'DOCUMENTS_FOLDER', 'INPUTS_FOLDER', 'OUTPUTS_FOLDER', 'DEFAULT_BANK', 'MONTH_PATTERNS']
