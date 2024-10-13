@@ -4,22 +4,27 @@ from typing import List, Dict
 import pandas as pd
 
 class NuBankTransactionExtractor(TransactionExtractor):
-    def extract_transactions(self, lines: List[str], month: str) -> List[Dict[str, str]]:
+    def extract_transactions(self, lines: List[str], months: List[str]) -> List[Dict[str, str]]:
         transactions = []
         current_transaction = {}
 
-        month_pattern = self.month_patterns.get(month.lower(), month)
+        # Compile regex patterns for each month
+        month_regexes = [re.compile(rf'\s*(\d{{2}} {self.month_patterns[month.lower()]})') for month in months]
 
         for line in lines:
-            # Check for a date with the specified month, indicating the start of a transaction
-            date_match = re.match(rf'\s*(\d{{2}} {month_pattern})', line)
-            if date_match:
-                if current_transaction:
-                    transactions.append(current_transaction)
-                    current_transaction = {}
+            # Check if the line contains a date with any of the specified months
+            for month_regex in month_regexes:
+                date_match = month_regex.match(line)
+                if date_match:
+                    if current_transaction:
+                        transactions.append(current_transaction)
+                        current_transaction = {}
 
-                current_transaction['Date'] = date_match.group(1)
-            elif current_transaction:
+                    current_transaction['Date'] = date_match.group(1)
+                    break  # Found the date, no need to check other month patterns
+
+            if current_transaction:
+                # Continue building the current transaction
                 if 'Category' not in current_transaction:
                     current_transaction['Category'] = line.strip()
                 elif 'Description' not in current_transaction:

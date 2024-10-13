@@ -11,7 +11,9 @@ OUTPUTS_FOLDER = os.path.join(DOCUMENTS_FOLDER, 'outputs')
 # Other config variables
 DEFAULT_BANK = 'Nu'
 MONTH_PATTERNS = {
-    'may': 'may',
-    'june': 'jun',
-    'july': 'jul'
+    'january': 'ENE',
+    'february': 'FEB',
+    'may': 'MAY',
+    'june': 'JUN',
+    'july': 'JUL'
 }
