@@ -62,3 +62,4 @@ class NuBankTransactionProcessor(TransactionProcessor):
             lines = page.split('\n')
             transactions += self.extractor.extract_transactions(lines)
         return pd.DataFrame(transactions)
+
