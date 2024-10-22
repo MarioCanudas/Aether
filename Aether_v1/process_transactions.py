@@ -19,7 +19,7 @@ if __name__ == "__main__":
     transactions_df = processor.process_transactions()
 
     # Detect months from the PDF and generate the dynamic output file name
-    detected_months = processor.extractor.extract_month_from_pdf(processor.reader.extract_text_by_page()[0].split('\n'))
+    detected_months = processor.extractor.extract_month_from_pdf(processor.reader.extract_text_by_page())[0].split('\n')
     month_str = "_".join(sorted(set(detected_months)))  # Combine unique months into a string
 
     # Generate output file name dynamically based on detected months
