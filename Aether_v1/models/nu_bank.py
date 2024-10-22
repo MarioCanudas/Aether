@@ -40,7 +40,9 @@ class NuBankTransactionExtractor(TransactionExtractor):
 
             if current_transaction:
                 # Continue building the current transaction
-                if 'Category' not in current_transaction:
+                if re.match(r"\d{2}\s[A-Z]{3}", line.strip()):
+                    pass
+                elif 'Category' not in current_transaction:
                     current_transaction['Category'] = line.strip()
                 elif 'Description' not in current_transaction:
                     current_transaction['Description'] = line.strip()
