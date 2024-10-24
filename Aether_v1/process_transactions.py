@@ -1,21 +1,25 @@
 import os
-from models import NuBankTransactionExtractor, NuBankTransactionProcessor, PDFReader
-from config import INPUTS_FOLDER, OUTPUTS_FOLDER, DEFAULT_BANK, MONTH_PATTERNS
+from models import NuBankCreditTransactionExtractor, NuBankCreditTransactionProcessor, NuBankDebitTransactionExtractor, NuBankDebitTransactionProcessor, PDFReader
+from config import INPUTS_FOLDER, OUTPUTS_FOLDER, DEFAULT_BANK, DEFAULT_STATEMENT_TYPE, MONTH_PATTERNS
 
-def get_bank_processor(bank_name, pdf_path, month_patterns):
-    if bank_name == 'Nu':
-        extractor = NuBankTransactionExtractor(month_patterns)
-        return NuBankTransactionProcessor(PDFReader(pdf_path), extractor)
+def get_bank_processor(bank_name, statement_type, pdf_path, month_patterns):
+    if bank_name == 'Nu' and statement_type == 'credit':
+        extractor = NuBankCreditTransactionExtractor(month_patterns)
+        return NuBankCreditTransactionProcessor(PDFReader(pdf_path), extractor)
+    elif bank_name == 'Nu' and statement_type == 'debit':
+        extractor = NuBankDebitTransactionExtractor(month_patterns)
+        return NuBankDebitTransactionProcessor(PDFReader(pdf_path), extractor)
     else:
         raise ValueError(f"Unsupported bank: {bank_name}")
 
 if __name__ == "__main__":
     # Example usage with dynamic paths from the config
-    bank_name = DEFAULT_BANK
+    bank_name = DEFAULT_BANK 
+    statement_type = DEFAULT_STATEMENT_TYPE 
     input_file = os.path.join(INPUTS_FOLDER, 'test_files/nu_bank_statement.pdf')
 
     # Process the transactions
-    processor = get_bank_processor(bank_name, input_file, MONTH_PATTERNS)
+    processor = get_bank_processor(bank_name, statement_type, input_file, MONTH_PATTERNS)
     transactions_df = processor.process_transactions()
 
     # Detect months from the PDF and generate the dynamic output file name

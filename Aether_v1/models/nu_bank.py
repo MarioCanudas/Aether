@@ -3,7 +3,7 @@ from core import TransactionProcessor, TransactionExtractor
 from typing import List, Dict
 import pandas as pd
 
-class NuBankTransactionExtractor(TransactionExtractor):
+class NuBankCreditTransactionExtractor(TransactionExtractor):
     def extract_month_from_pdf(self, lines: List[str]) -> List[str]:
         """ Implements the month extraction logic for NuBank, detecting multiple months """
         detected_months = []
@@ -54,7 +54,7 @@ class NuBankTransactionExtractor(TransactionExtractor):
 
         return transactions
 
-class NuBankTransactionProcessor(TransactionProcessor):
+class NuBankCreditTransactionProcessor(TransactionProcessor):
     def process_transactions(self) -> pd.DataFrame:
         pages = self.reader.extract_text_by_page()
         transactions = []

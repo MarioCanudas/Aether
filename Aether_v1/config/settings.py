@@ -10,10 +10,16 @@ OUTPUTS_FOLDER = os.path.join(DOCUMENTS_FOLDER, 'outputs')
 
 # Other config variables
 DEFAULT_BANK = 'Nu'
+DEFAULT_STATEMENT_TYPE = 'credit'
 MONTH_PATTERNS = {
     'january': 'ENE',
     'february': 'FEB',
     'may': 'MAY',
     'june': 'JUN',
-    'july': 'JUL'
+    'july': 'JUL',
+    'august': 'AUG',
+    'september': 'SEP',
+    'october': 'OCT',
+    'november': 'NOV',
+    'december': 'DEC'
 }
