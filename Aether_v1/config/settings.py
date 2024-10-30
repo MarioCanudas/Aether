@@ -17,7 +17,7 @@ MONTH_PATTERNS = {
     'may': 'MAY',
     'june': 'JUN',
     'july': 'JUL',
-    'august': 'AUG',
+    'august': 'AGO',
     'september': 'SEP',
     'october': 'OCT',
     'november': 'NOV',
