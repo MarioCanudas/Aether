@@ -9,7 +9,7 @@ class NuBankDebitTransactionExtractor(TransactionExtractor):
         detected_months = []
         for line in lines:
             for month in self.month_patterns.values():
-                if month in line and month not in detected_months:
+                if re.search(rf'\b{month}\b', line) and month not in detected_months:
                     detected_months.append(month)
         return detected_months
         
@@ -25,13 +25,13 @@ class NuBankDebitTransactionExtractor(TransactionExtractor):
                 for line in lines:
                     if 'Periodo:' in line.strip():
                         first_day = line.strip().split(' ')[2].strip()
-                        detected_month = line.strip().split(' ')[5].strip().capitalize()
+                        detected_month = line.strip().split(' ')[5].strip().upper()
                     elif 'Saldo inicial' == line.strip():
-                        initial_amount = lines[lines.index(line) + 1].strip()
+                        initial_amount = float(lines[lines.index(line) + 1].strip().replace(',', '').replace('$', ''))
                         initial_balance = {'Date': f'{first_day} {detected_month}', 'Description': 'Saldo inicial', 'Amount': initial_amount}
                         transactions.append(initial_balance)
                     elif 'Dinero generado este mes' == line.strip():
-                        generate_amount = lines[lines.index(line) + 1].strip()
+                        generate_amount = float(lines[lines.index(line) + 1].strip().replace(',', '').replace('$', ''))
                         generate_balance = {'Date': f'{first_day} {detected_month}', 'Description': 'Dinero generado este mes', 'Amount': generate_amount}
                         transactions.append(generate_balance)
                         break
@@ -62,7 +62,7 @@ class NuBankDebitTransactionExtractor(TransactionExtractor):
                 elif 'Description' not in current_transaction:
                     current_transaction['Description'] = re.sub(r'\s+', ' ', line.strip())
                 elif 'Amount' not in current_transaction and re.match(r'[+-]?\$[\d,]+\.\d{2}', line.strip()):
-                    current_transaction['Amount'] = line.strip()
+                    current_transaction['Amount'] = float(line.strip().replace(',','').replace('$', ''))
         
         if current_transaction:
             transactions.append(current_transaction)

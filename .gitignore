@@ -174,3 +174,6 @@ Aether_project/
 # Optional: if you want to include only certain types of files inside test_files
 # !documents/inputs/test_files/*.pdf
 # !documents/inputs/test_files/*.txt
+
+# Experimental files
+experimental/*

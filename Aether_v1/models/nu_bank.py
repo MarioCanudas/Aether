@@ -10,7 +10,7 @@ class NuBankCreditTransactionExtractor(TransactionExtractor):
         for line in lines:
             # Search for month names or abbreviations in the text
             for month in self.month_patterns.values():
-                if month in line and month not in detected_months:
+                if re.search(rf'\b{month}\b', line) and month not in detected_months:
                     detected_months.append(month)
         return detected_months
 
@@ -47,7 +47,7 @@ class NuBankCreditTransactionExtractor(TransactionExtractor):
                 elif 'Description' not in current_transaction:
                     current_transaction['Description'] = line.strip()
                 elif 'Amount' not in current_transaction and re.match(r'\$[\d,]+\.\d{2}', line.strip()):
-                    current_transaction['Amount'] = line.strip()
+                    current_transaction['Amount'] = float(line.strip().replace(',', '').replace('$', ''))
 
         if current_transaction:
             transactions.append(current_transaction)
