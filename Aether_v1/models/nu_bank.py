@@ -58,8 +58,13 @@ class NuBankCreditTransactionProcessor(TransactionProcessor):
     def process_transactions(self) -> pd.DataFrame:
         pages = self.reader.extract_text_by_page()
         transactions = []
+        detected_months = []
         for page in pages:
             lines = page.split('\n')
+            detected_months += self.extractor.extract_month_from_pdf(lines)
             transactions += self.extractor.extract_transactions(lines)
+        
+        self.month_abbreviations = sorted(set(detected_months))
+            
         return pd.DataFrame(transactions)
 

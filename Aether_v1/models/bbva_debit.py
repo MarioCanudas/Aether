@@ -20,6 +20,8 @@ class BBVADebitTransactionExtractor(TransactionExtractor):
         
         month_regexes = [re.compile(rf'\s*(\d{{2}}/{month})') for month in detected_months]
         
+        lines = lines[:-2] # Delate footer
+        
         for line in lines:
             if line.strip() == '':
                 lines.pop(lines.index(line))
@@ -52,6 +54,13 @@ class BBVADebitTransactionExtractor(TransactionExtractor):
                     current_transaction['Description'] = line.strip()
                 elif 'Amount' not in current_transaction and re.match(r'^\d{1,3}(,\d{3})*\.\d{2}$', line.strip()):
                     current_transaction['Amount'] = float(line.strip().replace(',',''))
+                elif 'Description' and 'Amount' in current_transaction and not re.match(r'^-?\d{1,3}(,\d{3})*\.\d{2}$', line.strip()):
+                    if ' / ' in current_transaction['Description']:
+                        pass
+                    elif 'RFC' in line.strip() or 'Referencia' in line.strip():
+                        pass
+                    else:
+                        current_transaction['Description'] += ' / ' + line.strip()
         
         if current_transaction:
             transactions.append(current_transaction)
@@ -65,8 +74,10 @@ class BBVADebitTransactionProcessor(TransactionProcessor):
         detected_months = []
         for page in pages:
             detected_months += self.extractor.extract_month_from_pdf(page.split('\n'))
-        detected_months = sorted(set(detected_months))
+        self.month_abbreviations = sorted(set(detected_months))
+        
         for page in pages:
             lines = page.split('\n')
-            transactions += self.extractor.extract_transactions(lines, detected_months)
+            transactions += self.extractor.extract_transactions(lines, self.month_abbreviations)
+            
         return pd.DataFrame(transactions)
