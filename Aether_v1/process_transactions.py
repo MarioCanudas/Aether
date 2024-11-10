@@ -1,13 +1,12 @@
 import os
-from models import (NuBankCreditTransactionExtractor, 
-    NuBankCreditTransactionProcessor, 
-    NuBankDebitTransactionExtractor, 
-    NuBankDebitTransactionProcessor, 
-    BBVADebitTransactionExtractor,
-    BBVADebitTransactionProcessor,
+from models import (
+    NuBankCreditTransactionExtractor, NuBankCreditTransactionProcessor, 
+    NuBankDebitTransactionExtractor, NuBankDebitTransactionProcessor, 
+    BBVADebitTransactionExtractor, BBVADebitTransactionProcessor,
+    BBVACreditTransactionExtractor, BBVACreditTransactionProcessor,
     PDFReader
     )
-from config import INPUTS_FOLDER, OUTPUTS_FOLDER, DEFAULT_BANK, DEFAULT_STATEMENT_TYPE, MONTH_PATTERNS
+from config import INPUTS_FOLDER, OUTPUTS_FOLDER, DEFAULT_BANK, DEFAULT_STATEMENT_TYPE, MONTH_PATTERNS, NUMERIC_MONTH_PATTERNS
 
 def get_bank_processor(bank_name, statement_type, pdf_path, month_patterns):
     if bank_name == 'Nu' and statement_type == 'credit':
@@ -19,22 +18,23 @@ def get_bank_processor(bank_name, statement_type, pdf_path, month_patterns):
     elif bank_name == 'BBVA' and statement_type == 'debit':
         extractor = BBVADebitTransactionExtractor(month_patterns)
         return BBVADebitTransactionProcessor(PDFReader(pdf_path), extractor)
+    elif bank_name == 'BBVA' and statement_type == 'credit':
+        extractor = BBVACreditTransactionExtractor(month_patterns)
+        return BBVACreditTransactionProcessor(PDFReader(pdf_path), extractor)
     else:
         raise ValueError(f"Unsupported bank: {bank_name}")
 
 if __name__ == "__main__":
     # Example usage with dynamic paths from the config
-    bank_name = DEFAULT_BANK
-    statement_type = DEFAULT_STATEMENT_TYPE
-    input_file = os.path.join(INPUTS_FOLDER, 'test_files/nu_bank_statement.pdf')
+    bank_name = 'BBVA'
+    statement_type = 'debit'
+    input_file = os.path.join(INPUTS_FOLDER, 'test_files/bbva_debit_statement.pdf')
 
     # Process the transactions
-    processor = get_bank_processor(bank_name, statement_type, input_file, MONTH_PATTERNS)
+    processor = get_bank_processor(bank_name, statement_type, input_file, NUMERIC_MONTH_PATTERNS)
     transactions_df = processor.process_transactions()
 
-    # Detect months from the PDF and generate the dynamic output file name
-    detected_months = processor.extractor.extract_month_from_pdf(processor.reader.extract_text_by_page())
-    month_str = "_".join(sorted(set(detected_months)))  # Combine unique months into a string
+    month_str = "_".join(sorted(set(processor.month_abbreviations)))  # Combine unique months into a string
 
     # Generate output file name dynamically based on detected months
     output_file = os.path.join(OUTPUTS_FOLDER, f'transactions_{bank_name}_{statement_type}_{month_str}.csv')

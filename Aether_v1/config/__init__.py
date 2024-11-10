@@ -7,7 +7,8 @@ from .settings import (
     OUTPUTS_FOLDER,
     DEFAULT_BANK,
     DEFAULT_STATEMENT_TYPE,
-    MONTH_PATTERNS
+    MONTH_PATTERNS,
+    NUMERIC_MONTH_PATTERNS
 )
 
 __all__ = [
@@ -17,5 +18,6 @@ __all__ = [
     'OUTPUTS_FOLDER', 
     'DEFAULT_BANK', 
     'DEFAULT_STATEMENT_TYPE',
-    'MONTH_PATTERNS'
+    'MONTH_PATTERNS',
+    'NUMERIC_MONTH_PATTERNS'
     ]
