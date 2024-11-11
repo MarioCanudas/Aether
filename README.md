@@ -29,6 +29,15 @@ The project is organized into several folders, each with a specific responsibili
 │   ├── /inputs           # Input files (e.g., PDF statements)
 │   │   └── /test_files   # Test files (e.g., nu_bank_statement.pdf)
 │   └── /outputs          # Output folder where CSV files will be saved
+├── /frontend             # Streamlit front end for the app
+│   ├── /assets           # Static files, such as images
+│   ├── /functions        # Utility functions for Streamlit pages
+│   └── /views            # Separate folder for each page
+│       ├── data.py       # Data export page
+│       ├── expenses_analysis.py # Expenses analysis page
+│       ├── home.py       # Home page (file upload, initial analysis)
+│       ├── income_analysis.py # Income analysis page
+│       └── app.py        # Main Streamlit app setup
 ├── /models               # Models for transaction extraction per bank
 ├── /scripts              # Executable scripts (e.g., to process transactions)
 ├── /utils                # Utility functions used across the project
@@ -56,13 +65,21 @@ Follow these steps to process the bank statement and generate a CSV file with th
 The project processes a NuBank statement (nu_bank_statement.pdf), which is located in the /documents/inputs/test_files/ folder. It extracts transactions for January (ENE) and February (FEB).
 
 ### 2. Run the Script
-To process the PDF and generate the CSV, run the process_transactions.py script: 
+To process the PDF and generate the CSV, run the process_transactions.py script:
 
 python3 process_transactions.py
 This will extract the transactions and generate the output in CSV format.
 
 ### 3. Output
 Once the script is executed, a CSV file containing the extracted transactions will be saved in the /documents/outputs/ folder. The CSV will include details such as the date, category, description, and amount of each transaction.
+
+### 4. streamlit
+Run the Streamlit App: Navigate to the frontend directory and start the app:
+
+```python
+streamlit run app.py
+```
+Access the App: After starting, open your web browser and go to the URL provided by Streamlit (usually http://localhost:8501).
 
 ## Example Output
 The generated CSV file will have the following structure:
