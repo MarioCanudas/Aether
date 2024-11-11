@@ -1,7 +1,7 @@
 import os
 from models import (
-    NuBankCreditTransactionExtractor, NuBankCreditTransactionProcessor, 
-    NuBankDebitTransactionExtractor, NuBankDebitTransactionProcessor, 
+    NuBankCreditTransactionExtractor, NuBankCreditTransactionProcessor,
+    NuBankDebitTransactionExtractor, NuBankDebitTransactionProcessor,
     BBVADebitTransactionExtractor, BBVADebitTransactionProcessor,
     BBVACreditTransactionExtractor, BBVACreditTransactionProcessor,
     PDFReader
@@ -28,7 +28,7 @@ if __name__ == "__main__":
     # Example usage with dynamic paths from the config
     bank_name = 'BBVA'
     statement_type = 'debit'
-    input_file = os.path.join(INPUTS_FOLDER, 'test_files/bbva_debit_statement.pdf')
+    input_file = os.path.join(INPUTS_FOLDER, 'test_files/file.pdf')
 
     # Process the transactions
     processor = get_bank_processor(bank_name, statement_type, input_file, NUMERIC_MONTH_PATTERNS)
