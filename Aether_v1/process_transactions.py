@@ -4,6 +4,7 @@ from models import (
     NuBankDebitTransactionExtractor, NuBankDebitTransactionProcessor,
     BBVADebitTransactionExtractor, BBVADebitTransactionProcessor,
     BBVACreditTransactionExtractor, BBVACreditTransactionProcessor,
+    CitibanamexCreditTransactionExtractor, CitibanamexCreditTransactionProcessor,
     PDFReader
     )
 from config import INPUTS_FOLDER, OUTPUTS_FOLDER, DEFAULT_BANK, DEFAULT_STATEMENT_TYPE, MONTH_PATTERNS, NUMERIC_MONTH_PATTERNS
@@ -21,14 +22,17 @@ def get_bank_processor(bank_name, statement_type, pdf_path, month_patterns):
     elif bank_name == 'BBVA' and statement_type == 'credit':
         extractor = BBVACreditTransactionExtractor(month_patterns)
         return BBVACreditTransactionProcessor(PDFReader(pdf_path), extractor)
+    elif bank_name == 'Citibanamex' and statement_type == 'credit':
+        extractor = CitibanamexCreditTransactionExtractor(month_patterns)
+        return CitibanamexCreditTransactionProcessor(PDFReader(pdf_path), extractor)
     else:
         raise ValueError(f"Unsupported bank: {bank_name}")
 
 if __name__ == "__main__":
     # Example usage with dynamic paths from the config
-    bank_name = 'BBVA'
-    statement_type = 'debit'
-    input_file = os.path.join(INPUTS_FOLDER, 'test_files/file.pdf')
+    bank_name = 'Citibanamex'
+    statement_type = DEFAULT_STATEMENT_TYPE
+    input_file = os.path.join(INPUTS_FOLDER, 'test_files/citibanamex_credit_statement.pdf')
 
     # Process the transactions
     processor = get_bank_processor(bank_name, statement_type, input_file, NUMERIC_MONTH_PATTERNS)
