@@ -7,6 +7,8 @@ from models import (
     CitibanamexCreditTransactionExtractor, CitibanamexCreditTransactionProcessor,
     PDFReader
     )
+import streamlit as st
+
 
 def get_bank_processor(bank_name, statement_type, pdf_path, month_patterns):
     """
@@ -28,6 +30,7 @@ def get_bank_processor(bank_name, statement_type, pdf_path, month_patterns):
         extractor = NuBankDebitTransactionExtractor(month_patterns)
         return NuBankDebitTransactionProcessor(PDFReader(pdf_path), extractor)
     elif bank_name == 'BBVA' and statement_type == 'credit':
+        st.info(f"Detected bank for {pdf_path}: BBVA - credit")
         extractor = BBVACreditTransactionExtractor(month_patterns)
         return BBVACreditTransactionProcessor(PDFReader(pdf_path), extractor)
     elif bank_name == 'BBVA' and statement_type == 'debit':
