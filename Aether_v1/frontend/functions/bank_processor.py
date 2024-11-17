@@ -1,9 +1,12 @@
 
-from models.nu_bank import NuBankCreditTransactionExtractor, NuBankCreditTransactionProcessor
-from models.nu_bank_debit import NuBankDebitTransactionExtractor, NuBankDebitTransactionProcessor
-from models.bbva_credit import BBVACreditTransactionExtractor, BBVACreditTransactionProcessor
-from models.bbva_debit import BBVADebitTransactionExtractor, BBVADebitTransactionProcessor
-from models import PDFReader
+from models import (
+    NuBankCreditTransactionExtractor, NuBankCreditTransactionProcessor,
+    NuBankDebitTransactionExtractor, NuBankDebitTransactionProcessor,
+    BBVADebitTransactionExtractor, BBVADebitTransactionProcessor,
+    BBVACreditTransactionExtractor, BBVACreditTransactionProcessor,
+    CitibanamexCreditTransactionExtractor, CitibanamexCreditTransactionProcessor,
+    PDFReader
+    )
 
 def get_bank_processor(bank_name, statement_type, pdf_path, month_patterns):
     """
