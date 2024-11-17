@@ -33,5 +33,8 @@ def get_bank_processor(bank_name, statement_type, pdf_path, month_patterns):
     elif bank_name == 'BBVA' and statement_type == 'debit':
         extractor = BBVADebitTransactionExtractor(month_patterns)
         return BBVADebitTransactionProcessor(PDFReader(pdf_path), extractor)
+    elif bank_name == 'Citibanamex' and statement_type == 'credit':
+        extractor = CitibanamexCreditTransactionExtractor(month_patterns)
+        return CitibanamexCreditTransactionProcessor(PDFReader(pdf_path), extractor)
     else:
         raise ValueError(f"Unsupported bank or statement type: {bank_name} - {statement_type}")

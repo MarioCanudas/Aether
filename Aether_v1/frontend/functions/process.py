@@ -4,6 +4,8 @@ import pdfplumber
 import pandas as pd
 from functions.pattern import pattern
 from io import BytesIO
+import fitz
+
 
 # Create a mapping for Spanish month abbreviations
 month_map = {
@@ -160,3 +162,40 @@ def process_pdf_bytes(uploaded_file):
     processed_data = update_saldo_anterior(processed_data)
 
     return processed_data
+
+
+def identify_pdf(pdf_path):
+    """
+    Identifies the bank and account type from the given PDF.
+
+    Parameters:
+    - pdf_path (str): Path to the PDF file.
+
+    Returns:
+    - dict: A dictionary containing 'bank' and 'account_type'.
+    """
+    with fitz.open(pdf_path) as doc:
+        text = ""
+        for page in doc:
+            text += page.get_text()
+
+    # Initialize result
+    result = {"bank": "Unknown", "account_type": "Unknown"}
+
+    # Bank identification
+    if "Nu México Financiera" in text and "Nu" in text:
+        result["bank"] = "Nu"
+    elif "BBVA México" in text or "Línea BBVA" in text:
+        result["bank"] = "BBVA"
+    elif "CITIBANAMEX" in text or "COSTCO CITIBANAMEX" in text:
+        result["bank"] = "Citibanamex"
+    elif "Banco Mercantil del Norte" in text:
+        result["bank"] = "Banorte"
+
+    # Account type identification
+    if "Tarjeta de Crédito" in text or "Límite de Crédito" in text or "Pago para no generar intereses" in text:
+        result["account_type"] = "credit"
+    elif "Cuenta Enlace Personal" in text or "retiros" in text or "Saldo disponible" in text:
+        result["account_type"] = "debit"
+
+    return result
