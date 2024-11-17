@@ -10,10 +10,6 @@ from models import (
 from config import INPUTS_FOLDER, OUTPUTS_FOLDER, DEFAULT_BANK, DEFAULT_STATEMENT_TYPE, MONTH_PATTERNS, NUMERIC_MONTH_PATTERNS
 
 import os
-from .nu_bank import NuBankCreditTransactionExtractor, NuBankCreditTransactionProcessor
-from .nu_bank_debit import NuBankDebitTransactionExtractor, NuBankDebitTransactionProcessor
-from .bbva_credit import BBVACreditTransactionExtractor, BBVACreditTransactionProcessor
-from .bbva_debit import BBVADebitTransactionExtractor, BBVADebitTransactionProcessor
 
 def get_bank_processor(bank_name, statement_type, pdf_path, month_patterns):
     """
