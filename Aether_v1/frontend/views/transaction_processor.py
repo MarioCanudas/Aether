@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 from functions.bank_processor import get_bank_processor
+from functions.process import identify_pdf
 import os
 
 def show_transaction_processor():
@@ -19,6 +20,14 @@ def show_transaction_processor():
 
         # Define month patterns as required by your processors (customize as needed)
         month_patterns = {"january": "ENE", "february": "FEB", "march": "MAR", "april": "ABR"}  # Example patterns
+        try:
+            # Identify bank from PDF
+            bank_info = identify_pdf(temp_file_path)
+            bank_name = bank_info["bank"]
+            statement_type = bank_info["account_type"]
+            st.info(f"Detected bank: {bank_name}")
+        except Exception as e:
+            st.error(f"Error identifying bank: {e}")
 
         # Process the file
         try:
