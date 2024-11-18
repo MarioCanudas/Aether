@@ -2,6 +2,8 @@ import re
 from core import TransactionProcessor, TransactionExtractor
 from typing import List, Dict
 import pandas as pd
+from datetime import datetime
+
 
 class NuBankCreditTransactionExtractor(TransactionExtractor):
     def extract_month_from_pdf(self, lines: List[str]) -> List[str]:
@@ -18,6 +20,7 @@ class NuBankCreditTransactionExtractor(TransactionExtractor):
         transactions = []
         current_transaction = {}
 
+        self.year = self.year or self.detect_year_from_pdf(lines)
         # Detect all months from the PDF content
         detected_months = self.extract_month_from_pdf(lines)
         if not detected_months:
@@ -26,17 +29,30 @@ class NuBankCreditTransactionExtractor(TransactionExtractor):
         # Compile regex patterns for all detected months
         month_regexes = [re.compile(rf'\s*(\d{{2}} {month})') for month in detected_months]
 
+        reverse_month_patterns = {v: k for k, v in self.month_patterns.items()}
+
         for line in lines:
             # Check if the line contains a date with any of the detected months
             for month_regex in month_regexes:
                 date_match = month_regex.match(line)
+
                 if date_match:
                     if current_transaction:
                         transactions.append(current_transaction)
                         current_transaction = {}
 
-                    current_transaction['Date'] = date_match.group(1)
-                    break  # Stop checking once a match is found for a month
+                    date_parts = date_match.group(1).split(' ')
+                    if '' in date_parts:
+                        date_parts.remove('')
+
+                    day = date_parts[0].zfill(2)
+                    month_abbreviation = date_parts[1].upper()
+                    month = reverse_month_patterns.get(month_abbreviation)
+                    if not month:
+                        raise ValueError(f"Could not find month mapping for abbreviation: {month_abbreviation}")
+
+                    current_transaction['Date'] = f"{self.year}-{datetime.strptime(month, '%B').month:02}-{day}"
+                    break
 
             if current_transaction:
                 # Continue building the current transaction
@@ -53,6 +69,7 @@ class NuBankCreditTransactionExtractor(TransactionExtractor):
             transactions.append(current_transaction)
 
         return transactions
+
 
 class NuBankCreditTransactionProcessor(TransactionProcessor):
     def process_transactions(self) -> pd.DataFrame:

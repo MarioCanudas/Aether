@@ -8,6 +8,7 @@ from models import (
     PDFReader
     )
 
+
 def get_bank_processor(bank_name, statement_type, pdf_path, month_patterns):
     """
     Returns the appropriate processor based on the bank name and statement type.

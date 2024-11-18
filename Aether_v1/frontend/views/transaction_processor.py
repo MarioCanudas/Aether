@@ -3,48 +3,58 @@ import pandas as pd
 from functions.bank_processor import get_bank_processor
 from functions.process import identify_pdf
 import os
+from config import MONTH_PATTERNS, NUMERIC_MONTH_PATTERNS
 
 def show_transaction_processor():
     st.title("Transaction Processor")
 
-    # User inputs for selecting bank and statement type
-    bank_name = st.selectbox("Select Bank", ["Nu", "BBVA"])
-    statement_type = st.selectbox("Select Statement Type", ["credit", "debit"])
-    uploaded_file = st.file_uploader("Upload Bank Statement PDF", type="pdf")
+    # Initialize session state for storing transactions
+    if 'all_transactions' not in st.session_state:
+        st.session_state.all_transactions = []
 
-    if uploaded_file is not None:
-        # Save uploaded file to a temporary path for processing
-        temp_file_path = os.path.join("frontend", "temp_uploaded.pdf")
-        with open(temp_file_path, "wb") as f:
-            f.write(uploaded_file.getbuffer())
+    # Allow multiple file uploads
+    uploaded_files = st.file_uploader("Upload Bank Statement PDF(s)", type="pdf", accept_multiple_files=True)
+    if uploaded_files:
+        for uploaded_file in uploaded_files:
+            # Check if file was already processed (using name as identifier)
+            if any(uploaded_file.name == df['filename'].iloc[0] for df in st.session_state.all_transactions if not df.empty):
+                continue
+            # Save uploaded file to a temporary path for processing
+            temp_file_path = os.path.join("frontend", f"temp_uploaded_{uploaded_file.name}")
+            with open(temp_file_path, "wb") as f:
+                f.write(uploaded_file.getbuffer())
 
-        # Define month patterns as required by your processors (customize as needed)
-        month_patterns = {"january": "ENE", "february": "FEB", "march": "MAR", "april": "ABR"}  # Example patterns
-        try:
-            # Identify bank from PDF
-            bank_info = identify_pdf(temp_file_path)
-            bank_name = bank_info["bank"]
-            statement_type = bank_info["account_type"]
-            st.info(f"Detected bank: {bank_name}")
-        except Exception as e:
-            st.error(f"Error identifying bank: {e}")
+            try:
+                # Identify bank from PDF
+                bank_info = identify_pdf(temp_file_path)
+                bank_name = bank_info["bank"]
+                statement_type = bank_info["account_type"]
+                st.info(f"Detected bank for {uploaded_file.name}: {bank_name} - {statement_type}")
 
-        # Process the file
-        try:
-            processor = get_bank_processor(bank_name, statement_type, temp_file_path, month_patterns)
-            transactions_df = processor.process_transactions()  # Get transactions as a DataFrame
+                month_patterns = NUMERIC_MONTH_PATTERNS if bank_name == 'BBVA' and statement_type == 'credit' else MONTH_PATTERNS
+                processor = get_bank_processor(bank_name, statement_type, temp_file_path, month_patterns)
+                transactions_df = processor.process_transactions()
+                transactions_df['filename'] = uploaded_file.name
+                st.session_state.all_transactions.append(transactions_df)
 
-            # Display the DataFrame in Streamlit
+            except ValueError as e:
+                st.error(f"Error processing {uploaded_file.name}: {e}")
+            except Exception as e:
+                st.error(f"An unexpected error processing {uploaded_file.name}: {e}")
+
+            # Clean up temporary file
+            if os.path.exists(temp_file_path):
+                os.remove(temp_file_path)
+
+        if st.session_state.all_transactions:
+            # Combine all DataFrames
+            combined_df = pd.concat(st.session_state.all_transactions, ignore_index=True)
+
+            # Display the combined DataFrame
             st.subheader("Extracted Transactions")
-            st.dataframe(transactions_df)
+            st.dataframe(combined_df)
 
-        except ValueError as e:
-            st.error(f"Error: {e}")
-        except Exception as e:
-            st.error(f"An unexpected error occurred: {e}")
-
-        # Optionally, delete the temporary file after processing (to avoid clutter)
-        if os.path.exists(temp_file_path):
-            os.remove(temp_file_path)
-    else:
-        st.info("Please upload a PDF file to process transactions.")
+    # Add a clear button
+    if st.button("Clear All Transactions"):
+        st.session_state.all_transactions = []
+        st.rerun()
