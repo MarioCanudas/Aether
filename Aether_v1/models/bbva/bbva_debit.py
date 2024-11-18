@@ -24,7 +24,6 @@ class BBVADebitTransactionExtractor(TransactionExtractor):
         month_regexes = [re.compile(rf'\s*(\d{{2}}/{month})') for month in detected_months]
         reverse_month_patterns = {v: k for k, v in self.month_patterns.items()}
         abono_patterns = ["pago de nomina", "venta fondos", "spei recibido", "depósito"]
-        hint=0
         lines = lines[:-2] # Delate footer
         for line in lines:
             if line.strip() == '':
@@ -62,9 +61,6 @@ class BBVADebitTransactionExtractor(TransactionExtractor):
 
                         current_transaction['Date'] = f"{self.year}-{datetime.strptime(month, '%B').month:02}-{day}"
                         break  # Stop checking once a match is found for a month
-            if 'VENTA FONDOS' in line:
-                print(line, current_transaction)
-                hint=1
             if current_transaction:
                 if re.match(r'\d{2}/[A-Z]{3}', line.strip()):
                     pass
@@ -151,12 +147,10 @@ class BBVADebitTransactionProcessor(TransactionProcessor):
                 # If running sum matches the balance, continue
                 if abs(running_sum - target_balance) <= 1e-2:
                     continue
-                print(running_sum)
                 adjustment_range = df.loc[:i].index[
                                 (df.loc[:i, "Balance"].isna()) &
                                 (df.loc[:i, "Description"].str.contains("pago cuenta", case=False, na=False))
                             ].tolist() + [i]
-                print(adjustment_range)
                 # Test all combinations of sign changes
                 for r in range(1, len(adjustment_range) + 1):
                     for combination in combinations(adjustment_range, r):

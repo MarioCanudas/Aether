@@ -21,7 +21,6 @@ class NuBankCreditTransactionExtractor(TransactionExtractor):
         current_transaction = {}
 
         self.year = self.year or self.detect_year_from_pdf(lines)
-        print(self.year)
         # Detect all months from the PDF content
         detected_months = self.extract_month_from_pdf(lines)
         if not detected_months:

@@ -35,7 +35,6 @@ class BBVACreditTransactionExtractor(TransactionExtractor):
 
         # Detect months in the document
         detected_months = self.extract_month_from_pdf(cleaned_lines)
-        print(detected_months)
         if not detected_months:
             return []  # No valid months detected, return empty
 
@@ -87,12 +86,10 @@ class BBVACreditTransactionProcessor(TransactionProcessor):
         pages = self.reader.extract_text_by_page()
         transactions = []
         detected_months = []
-        print(pages)
         for page in pages:
             lines = page.split('\n')
             detected_months += self.extractor.extract_month_from_pdf(lines)
             transactions += self.extractor.extract_transactions(lines)
-        print(transactions)
         self.month_abbreviations = []
         for month in sorted(set(detected_months)):
             self.month_abbreviations.append(month[1])
