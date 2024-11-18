@@ -1,3 +1,4 @@
+from datetime import datetime
 import re
 from core import TransactionProcessor, TransactionExtractor
 from typing import List, Dict
@@ -22,19 +23,21 @@ class NuBankDebitTransactionExtractor(TransactionExtractor):
 
         # Detect all months from the PDF content
         detected_months = self.extract_month_from_pdf(lines)
+        reverse_month_patterns = {v: k for k, v in self.month_patterns.items()}
+
         if not detected_months:
             if '1 de' in lines[-2]:
                 for line in lines:
                     if 'Periodo:' in line.strip():
                         first_day = line.strip().split(' ')[2].strip()
-                        detected_month = line.strip().split(' ')[5].strip().upper()
+                        detected_month = reverse_month_patterns.get(line.strip().split(' ')[5].strip().upper())
                     elif 'Saldo inicial' == line.strip():
                         initial_amount = float(lines[lines.index(line) + 1].strip().replace(',', '').replace('$', ''))
-                        initial_balance = {'Date': f'{first_day} {detected_month}', 'Description': 'Saldo inicial', 'Amount': initial_amount}
+                        initial_balance = {'Date': f"{self.year}-{datetime.strptime(detected_month, '%B').month:02}-{first_day}", 'Description': 'Saldo inicial', 'Amount': initial_amount}
                         transactions.append(initial_balance)
                     elif 'Dinero generado este mes' == line.strip():
                         generate_amount = float(lines[lines.index(line) + 1].strip().replace(',', '').replace('$', ''))
-                        generate_balance = {'Date': f'{first_day} {detected_month}', 'Description': 'Dinero generado este mes', 'Amount': generate_amount}
+                        generate_balance = {'Date': f"{self.year}-{datetime.strptime(detected_month, '%B').month:02}-{first_day}", 'Description': 'Dinero generado este mes', 'Amount': generate_amount}
                         transactions.append(generate_balance)
                         break
             return transactions
@@ -54,7 +57,17 @@ class NuBankDebitTransactionExtractor(TransactionExtractor):
                         transactions.append(current_transaction)
                         current_transaction = {}
 
-                    current_transaction['Date'] = date_match.group(1).replace('/', ' ').replace(' ', '-')
+                    date_parts = date_match.group(1).split(' ')
+                    if '' in date_parts:
+                        date_parts.remove('')
+                    day = date_parts[0].zfill(2)
+                    month_abbreviation = date_parts[1].upper()
+                    month = reverse_month_patterns.get(month_abbreviation)
+                    if not month:
+                        raise ValueError(f"Could not find month mapping for abbreviation: {month_abbreviation}")
+
+                    current_transaction['Date'] = f"{self.year}-{datetime.strptime(month, '%B').month:02}-{day}"
+
                     break  # Stop checking once a match is found for a month
 
             if current_transaction:

@@ -5,6 +5,7 @@ import pandas as pd
 from functions.pattern import pattern
 from io import BytesIO
 import fitz
+from typing import Dict
 
 
 # Create a mapping for Spanish month abbreviations
@@ -164,7 +165,7 @@ def process_pdf_bytes(uploaded_file):
     return processed_data
 
 
-def identify_pdf(pdf_path):
+def identify_pdf(pdf_path: str) -> Dict[str, str]:
     """
     Identifies the bank and account type from the given PDF.
 
@@ -193,9 +194,24 @@ def identify_pdf(pdf_path):
         result["bank"] = "Banorte"
 
     # Account type identification
-    if "Tarjeta de Crédito" in text or "Límite de Crédito" in text or "Pago para no generar intereses" in text:
+    debit_keywords = [
+        "Cuenta Enlace Personal",
+        "retiros",
+        "Saldo disponible",
+        "Libretón Básico Cuenta Digital",
+        "Depósito en Cajita"
+    ]
+    credit_keywords = [
+        "Tarjeta de Crédito",
+        "Límite de Crédito",
+        "Pago para no generar intereses",
+        "Intereses Generados"
+    ]
+
+    # Check for account type keywords
+    if any(keyword in text for keyword in credit_keywords):
         result["account_type"] = "credit"
-    elif "Cuenta Enlace Personal" in text or "retiros" in text or "Saldo disponible" in text:
+    elif any(keyword in text for keyword in debit_keywords):
         result["account_type"] = "debit"
 
     return result
