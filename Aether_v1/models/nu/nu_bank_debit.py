@@ -78,6 +78,10 @@ class NuBankDebitTransactionExtractor(TransactionExtractor):
                     current_transaction['Description'] = re.sub(r'\s+', ' ', line.strip())
                 elif 'Amount' not in current_transaction and re.match(r'[+-]?\$[\d,]+\.\d{2}', line.strip()):
                     current_transaction['Amount'] = float(line.strip().replace(',','').replace('$', ''))
+                    if current_transaction['Amount'] < 0:
+                        current_transaction['Type'] = 'Cargo'
+                    else:
+                        current_transaction['Type'] = 'Abono'
 
         if current_transaction:
             transactions.append(current_transaction)

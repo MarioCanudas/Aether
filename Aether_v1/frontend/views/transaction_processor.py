@@ -34,6 +34,8 @@ def show_transaction_processor():
                 month_patterns = NUMERIC_MONTH_PATTERNS if bank_name == 'BBVA' and statement_type == 'credit' else MONTH_PATTERNS
                 processor = get_bank_processor(bank_name, statement_type, temp_file_path, month_patterns)
                 transactions_df = processor.process_transactions()
+                transactions_df['bank'] = bank_name
+                transactions_df['statement_type'] = statement_type
                 transactions_df['filename'] = uploaded_file.name
                 st.session_state.all_transactions.append(transactions_df)
 

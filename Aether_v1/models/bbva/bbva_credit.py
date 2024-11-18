@@ -65,6 +65,10 @@ class BBVACreditTransactionExtractor(TransactionExtractor):
                     current_transaction['Amount'] = (
                         float(line.replace(',', '').replace('-', '')) * (-1 if '-' in line else 1)
                     )
+                    if current_transaction['Amount'] < 0:
+                        current_transaction['Type'] = 'Abono'
+                    else:
+                        current_transaction['Type'] = 'Cargo'
                 else:
                     # If it's additional description text, append it
                     current_transaction['Description'] += f" / {line}"

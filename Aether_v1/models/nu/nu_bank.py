@@ -62,8 +62,15 @@ class NuBankCreditTransactionExtractor(TransactionExtractor):
                     current_transaction['Category'] = line.strip()
                 elif 'Description' not in current_transaction:
                     current_transaction['Description'] = line.strip()
-                elif 'Amount' not in current_transaction and re.match(r'\$[\d,]+\.\d{2}', line.strip()):
-                    current_transaction['Amount'] = float(line.strip().replace(',', '').replace('$', ''))
+                elif 'Amount' not in current_transaction and re.match(r'^-?\s?\$?\d{1,3}(,\d{3})*\.\d{2}$', line.strip()):
+                    current_transaction['Amount'] = (
+                        float(line.strip().replace(',', '').replace('$', '').replace('-', '')) * (-1 if '-' in line else 1)
+                        )
+                    if current_transaction['Amount'] < 0:
+                        current_transaction['Type'] = 'Abono'
+                    else:
+                        current_transaction['Type'] = 'Cargo'
+
 
         if current_transaction:
             transactions.append(current_transaction)

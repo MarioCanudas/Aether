@@ -60,8 +60,16 @@ class CitibanamexCreditTransactionExtractor(TransactionExtractor):
                     pass
                 elif 'Description' not in current_transaction:
                     current_transaction['Description'] = re.sub(r'\s{2,}.*', '', line.strip()) # Description /
-                elif 'Amount' not in current_transaction and re.match(r'^-?\d{1,3}(,\d{3})*\.\d{2}$', line.strip()):
-                    current_transaction['Amount'] = float(line.strip().replace(',',''))
+                elif 'Amount' not in current_transaction and re.match(r'^(-?\s?\$?\d{1,3}(,\d{3})*\.\d{2})$|^(\$?\d{1,3}(,\d{3})*\.\d{2}\s?-\s?)$', line.strip()):
+                    print('ahora')
+                    print(float(line.replace(',', '').replace('-', '')) * (-1 if '-' in line else 1))
+                    current_transaction['Amount'] = (
+                        float(line.replace(',', '').replace('-', '')) * (-1 if '-' in line else 1)
+                    )
+                    if current_transaction['Amount'] < 0:
+                        current_transaction['Type'] = 'Abono'
+                    else:
+                        current_transaction['Type'] = 'Cargo'
 
         if current_transaction:
             transactions.append(current_transaction)

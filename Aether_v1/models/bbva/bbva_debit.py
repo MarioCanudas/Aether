@@ -27,7 +27,7 @@ class BBVADebitTransactionExtractor(TransactionExtractor):
         lines = lines[:-2] # Delate footer
         for line in lines:
             if line.strip() == '':
-                lines.pop(lines.index(line))
+                continue
 
             if re.search(r'\d{2}/[A-Z]{3}', line.strip()):
                 index = lines.index(line)+1
