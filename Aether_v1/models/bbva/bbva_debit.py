@@ -44,7 +44,7 @@ class BBVADebitTransactionExtractor(TransactionExtractor):
                         current_transaction = {}
 
                     if 'Date' not in current_transaction:
-                        current_transaction['Date'] = line.strip().replace('/', ' ')
+                        current_transaction['Date'] = line.strip().replace('/', ' ').replace(' ', '-')
                     break  # Stop checking once a match is found for a month
 
             if current_transaction:

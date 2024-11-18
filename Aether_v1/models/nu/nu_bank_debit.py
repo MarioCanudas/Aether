@@ -18,6 +18,8 @@ class NuBankDebitTransactionExtractor(TransactionExtractor):
         transactions = []
         current_transaction = {}
 
+        self.year = self.year or self.detect_year_from_pdf(lines)
+
         # Detect all months from the PDF content
         detected_months = self.extract_month_from_pdf(lines)
         if not detected_months:
@@ -52,7 +54,7 @@ class NuBankDebitTransactionExtractor(TransactionExtractor):
                         transactions.append(current_transaction)
                         current_transaction = {}
 
-                    current_transaction['Date'] = date_match.group(1)
+                    current_transaction['Date'] = date_match.group(1).replace('/', ' ').replace(' ', '-')
                     break  # Stop checking once a match is found for a month
 
             if current_transaction:
