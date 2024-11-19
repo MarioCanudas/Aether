@@ -23,14 +23,14 @@ MONTH_PATTERNS = {
     'september': 'SEP',
     'october': 'OCT',
     'november': 'NOV',
-    'december': 'DEC'
+    'december': 'DIC'
 }
 NUMERIC_MONTH_PATTERNS = {
     '01': 'ENE',
     '02': 'FEB',
     '03': 'MAR',
     '04': 'ABR',
-    '05': 'MAI',
+    '05': 'MAY',
     '06': 'JUN',
     '07': 'JUL',
     '08': 'AGO',
