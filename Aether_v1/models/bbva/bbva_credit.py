@@ -35,7 +35,6 @@ class BBVACreditTransactionExtractor(TransactionExtractor):
 
         # Detect months in the document
         detected_months = self.extract_month_from_pdf(cleaned_lines)
-        print(detected_months)
         if not detected_months:
             return []  # No valid months detected, return empty
 
