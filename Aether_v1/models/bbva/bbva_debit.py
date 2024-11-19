@@ -1,124 +1,110 @@
-from datetime import datetime
 import re
 import pandas as pd
 from utils.helper_functions import get_min_month
 from core import TransactionProcessor, TransactionExtractor
-from typing import List, Dict
+from typing import List, Dict, Tuple
 from itertools import combinations
 
 class BBVADebitTransactionExtractor(TransactionExtractor):
-    def extract_month_from_pdf(self, lines: List[str]) -> List[str]:
+    def extract_month_from_pdf(self, words: List[Tuple[float, str]]) -> List[str]:
         '''Implements the month extraction logic for BBVA's debit cards statements, detecting multiple months'''
         detected_months = []
-        for line in lines:
+        for word in words:
             for month in self.month_patterns.values():
-                if re.search(rf'\b{month}\b', line) and month not in detected_months:
+                if re.search(rf'\b{month}\b', word[1]) and month not in detected_months:
                     detected_months.append(month)
         return detected_months
 
-    def extract_transactions(self, lines: List[str], detected_months: List[str]) -> List[Dict[str, str]]:
+    def extract_transactions(self, page: List[Tuple[float, str]], detected_months: List[str], year: int) -> List[Dict[str, str]]:
         '''Extracts transactions from the lines of a BBVA debit card statement'''
         transactions = []
+        period_dates = []
         current_transaction = {}
-        self.year = self.year or self.detect_year_from_pdf(lines)
+        
         month_regexes = [re.compile(rf'\s*(\d{{2}}/{month})') for month in detected_months]
-        reverse_month_patterns = {v: k for k, v in self.month_patterns.items()}
-        abono_patterns = ["pago de nomina", "venta fondos", "spei recibido", "depósito"]
-        lines = lines[:-2] # Delate footer
-        for line in lines:
-            if line.strip() == '':
-                continue
 
-            if re.search(r'\d{2}/[A-Z]{3}', line.strip()):
-                index = lines.index(line)+1
-                if re.search(r'\d{2}/[A-Z]{3}', lines[index].strip()):
-                    lines.pop(index)
-
-            if line.strip() == 'Periodo':
-                first_day = lines[lines.index(line)+1].split('/')[0].split(' ')[1]
-            elif line.strip() == 'Saldo Anterior':
-                initial_amount = float(lines[lines.index(line) + 1].strip().replace(',',''))
-                earliest_month = reverse_month_patterns.get(get_min_month(detected_months))
-                initial_balance = {'Date': f"{self.year}-{datetime.strptime(earliest_month, '%B').month:02}-{first_day}", 'Description': 'Saldo inicial', 'Amount': initial_amount, 'Balance': initial_amount}
-                transactions.append(initial_balance)
-
+        for word in page:
+            x, text = word
+            
+            if text == 'Periodo' and page[page.index(word) + 1][1] == 'DEL':
+                initial_date = page[page.index(word) + 2][1].split('/')
+                period_dates.append(f'{initial_date[2]}-{initial_date[1]}-{initial_date[0]}')
+                final_date = page[page.index(word) + 4][1].split('/')
+                period_dates.append(f'{final_date[2]}-{final_date[1]}-{final_date[0]}')
+            elif text == 'Saldo':
+                if period_dates:
+                    if page[page.index(word) + 1][1] == 'Anterior':
+                        initial_amount = float(page[page.index(word) + 2][1].replace(',',''))
+                        initial_balance = {'Date': period_dates[0], 'Description': 'Saldo inicial', 'Type': 'Saldo inicial', 'Amount': initial_amount}
+                        transactions.append(initial_balance)
+                    elif page[page.index(word) + 1][1] == 'Final':
+                        final_amount = float(page[page.index(word) + 2][1].replace(',',''))
+                        final_balance = {'Date': period_dates[1], 'Description': 'Saldo final', 'Type': 'Saldo final', 'Amount': final_amount}
+                        transactions.append(final_balance)
+            
             for month_regex in month_regexes:
-                date_match = month_regex.match(line)
+                date_match = month_regex.match(text)
                 if date_match:
+                    page.pop(page.index(word) + 1)
                     if current_transaction:
-                        self.classify_and_append_transaction(current_transaction, transactions, abono_patterns)
+                        transactions.append(current_transaction)
                         current_transaction = {}
 
-                    if 'Date' not in current_transaction:
-                        date_parts = date_match.group(1).split('/')
-                        if '' in date_parts:
-                            date_parts.remove('')
-                        day = date_parts[0].zfill(2)
-                        month_abbreviation = date_parts[1].upper()
-                        month = reverse_month_patterns.get(month_abbreviation)
-                        if not month:
-                            raise ValueError(f"Could not find month mapping for abbreviation: {month_abbreviation}")
+                    day, month = date_match.group(1).split('/')
+                    
+                    for i in self.month_patterns.items():
+                        number, abbreviation = i
+                        if abbreviation == month:
+                            month = number
+                            break
+                        
+                    current_transaction['Date'] = f'{year}-{month}-{day}'
+                    current_transaction['Description'] = ''
+                    break
 
-                        current_transaction['Date'] = f"{self.year}-{datetime.strptime(month, '%B').month:02}-{day}"
-                        break  # Stop checking once a match is found for a month
             if current_transaction:
-                if re.match(r'\d{2}/[A-Z]{3}', line.strip()):
+                if re.match(r'\d{2}/[A-Z]{3}', text):
                     pass
-                elif 'Description' not in current_transaction:
-                    current_transaction['Description'] = line.strip()
-                elif 'Amount' not in current_transaction and re.match(r'^\d{1,3}(,\d{3})*\.\d{2}$', line.strip()):
-                    current_transaction['Amount'] = float(line.strip().replace(',',''))
-                elif 'Balance' not in current_transaction and 'Amount' in current_transaction and re.match(r'^\d{1,3}(,\d{3})*\.\d{2}$', line.strip()):
-                    current_transaction['Balance'] = float(line.strip().replace(',',''))
-                elif 'Description' and 'Amount' in current_transaction and not re.match(r'^-?\d{1,3}(,\d{3})*\.\d{2}$', line.strip()):
-                    if ' / ' in current_transaction['Description']:
-                        pass
-                    elif 'RFC' in line.strip() or 'Referencia' in line.strip():
-                        pass
+                elif 'Amount' not in current_transaction and re.match(r'^\d{1,3}(,\d{3})*\.\d{2}$', text):
+                    if 380 < x < 400:
+                        current_transaction['Type'] = 'Cargo'
+                        current_transaction['Amount'] = float(text.replace(',',''))*-1
+                    elif 400 < x < 440:
+                        current_transaction['Type'] = 'Abono'
+                        current_transaction['Amount'] = float(text.replace(',',''))
                     else:
-                        current_transaction['Description'] += ' / ' + line.strip()
+                        pass
+        
+                else:
+                    if re.match(r'^-?\d{1,3}(,\d{3})*\.\d{2}$', text):
+                        pass
+                    elif len(current_transaction['Description']) < 50:
+                        current_transaction['Description'] += text + ' '
 
         if current_transaction:
-            self.classify_and_append_transaction(current_transaction, transactions, abono_patterns)
-
+            transactions.append(current_transaction)
 
         return transactions
 
-    def classify_and_append_transaction(self, current_transaction: Dict[str, str], transactions: List[Dict[str, str]], abono_patterns: List[str]) -> None:
-        """
-        Classifies a transaction as 'Cargo' or 'Abono' based on patterns and appends it to the transactions list.
-
-        Parameters:
-        - current_transaction (Dict[str, str]): The current transaction being processed.
-        - transactions (List[Dict[str, str]]): The list of all transactions.
-        - abono_patterns (List[str]): List of patterns indicating Abonos (income).
-        - cargo_patterns (List[str]): List of patterns indicating Cargos (expenses).
-        """
-        if current_transaction and 'Amount' in current_transaction and 'Description' in current_transaction:
-            description = current_transaction['Description'].lower()
-            if any(pattern in description for pattern in abono_patterns):
-                current_transaction['Type'] = 'Abono'
-            else:
-                current_transaction['Type'] = 'Cargo'
-                current_transaction['Amount'] = -current_transaction['Amount']
-            transactions.append(current_transaction)
-
-
 class BBVADebitTransactionProcessor(TransactionProcessor):
     def process_transactions(self) -> pd.DataFrame:
-        pages = self.reader.extract_text_by_page()
+        pages = self.reader.extract_words_with_coordinates()
         transactions = []
         detected_months = []
         for page in pages:
-            detected_months += self.extractor.extract_month_from_pdf(page.split('\n'))
+            detected_months += self.extractor.extract_month_from_pdf(page)
+            for word in page:
+                date = re.search(r"(\d{2})/(\d{2})/(\d{4})", word[1])
+                if date:
+                    self.year = int(date.group(3))
+                    break
         self.month_abbreviations = sorted(set(detected_months))
 
         for page in pages:
-            lines = page.split('\n')
-            transactions += self.extractor.extract_transactions(lines, self.month_abbreviations)
+            transactions += self.extractor.extract_transactions(page, self.month_abbreviations, self.year)
 
-        return self.check_balance_consistency(pd.DataFrame(transactions))
-
+        return pd.DataFrame(transactions)
+    
     def check_balance_consistency(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         Checks and adjusts the consistency of balances in transaction data.
