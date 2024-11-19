@@ -44,9 +44,9 @@ def get_bank_processor(bank_name, statement_type, pdf_path, month_patterns):
 
 if __name__ == "__main__":
     # Example usage with dynamic paths from the config
-    bank_name = 'Citibanamex'
-    statement_type = DEFAULT_STATEMENT_TYPE
-    input_file = os.path.join(INPUTS_FOLDER, 'test_files/citibanamex_credit_statement.pdf')
+    bank_name = 'BBVA'
+    statement_type = 'debit'
+    input_file = os.path.join(INPUTS_FOLDER, 'test_files/bbva_debit_statement.pdf')
 
     # Process the transactions
     try:
