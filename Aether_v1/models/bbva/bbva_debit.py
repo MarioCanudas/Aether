@@ -1,3 +1,4 @@
+from datetime import datetime
 import re
 import pandas as pd
 from utils.helper_functions import get_min_month
@@ -20,45 +21,59 @@ class BBVADebitTransactionExtractor(TransactionExtractor):
         transactions = []
         period_dates = []
         current_transaction = {}
-        
+
         month_regexes = [re.compile(rf'\s*(\d{{2}}/{month})') for month in detected_months]
 
-        for word in page:
-            x, text = word
-            
-            if text == 'Periodo' and page[page.index(word) + 1][1] == 'DEL':
-                initial_date = page[page.index(word) + 2][1].split('/')
-                period_dates.append(f'{initial_date[2]}-{initial_date[1]}-{initial_date[0]}')
-                final_date = page[page.index(word) + 4][1].split('/')
-                period_dates.append(f'{final_date[2]}-{final_date[1]}-{final_date[0]}')
-            elif text == 'Saldo':
-                if period_dates:
-                    if page[page.index(word) + 1][1] == 'Anterior':
-                        initial_amount = float(page[page.index(word) + 2][1].replace(',',''))
-                        initial_balance = {'Date': period_dates[0], 'Description': 'Saldo inicial', 'Type': 'Saldo inicial', 'Amount': initial_amount}
-                        transactions.append(initial_balance)
-                    elif page[page.index(word) + 1][1] == 'Final':
-                        final_amount = float(page[page.index(word) + 2][1].replace(',',''))
-                        final_balance = {'Date': period_dates[1], 'Description': 'Saldo final', 'Type': 'Saldo final', 'Amount': final_amount}
-                        transactions.append(final_balance)
-            
+        for i, (x,text) in enumerate(page):
+            if text == 'Periodo' and page[i+ 1][1] == 'DEL':
+                initial_date = page[i+ 2][1].split('/')
+                period_dates.append(f"{initial_date[2]}-{datetime.strptime(initial_date[1], '%m').month:02}-{initial_date[0]}")
+                final_date = page[i+ 4][1].split('/')
+                period_dates.append(f"{final_date[2]}-{datetime.strptime(initial_date[1], '%m').month:02}-{final_date[0]}")
+            if text == 'Saldo':
+                if i + 1 < len(page):
+                    next_word = page[i + 1][1]
+
+                    # Check for "Saldo Anterior" (Initial Balance)
+                    if next_word == 'Anterior':
+                        if i + 2 < len(page) and page[i + 2][1].replace(',', '').replace('.', '').isdigit():
+                            initial_amount = float(page[i + 2][1].replace(',', ''))
+                            transactions.append({
+                                'Date': period_dates[0],  # Start of the period
+                                'Description': 'Saldo inicial',
+                                'Type': 'Saldo inicial',
+                                'Amount': initial_amount
+                            })
+
+                    # Check for "Saldo Final" (Final Balance)
+                    # elif next_word == 'Final':
+                    #     if i + 2 < len(page) and page[i + 2][1].replace(',', '').replace('.', '').isdigit():
+                    #         final_amount = float(page[i + 2][1].replace(',', ''))
+                    #         transactions.append({
+                    #             'Date': period_dates[1],  # End of the period
+                    #             'Description': 'Saldo final',
+                    #             'Type': 'Saldo final',
+                    #             'Amount': final_amount
+                    #         })
+
+
             for month_regex in month_regexes:
                 date_match = month_regex.match(text)
                 if date_match:
-                    page.pop(page.index(word) + 1)
+                    page.pop(i + 1)
                     if current_transaction:
                         transactions.append(current_transaction)
                         current_transaction = {}
 
                     day, month = date_match.group(1).split('/')
-                    
+
                     for i in self.month_patterns.items():
                         number, abbreviation = i
                         if abbreviation == month:
                             month = number
                             break
-                        
-                    current_transaction['Date'] = f'{year}-{month}-{day}'
+
+                    current_transaction['Date'] = f"{year}-{datetime.strptime(month, '%B').month:02}-{day}"
                     current_transaction['Description'] = ''
                     break
 
@@ -66,15 +81,20 @@ class BBVADebitTransactionExtractor(TransactionExtractor):
                 if re.match(r'\d{2}/[A-Z]{3}', text):
                     pass
                 elif 'Amount' not in current_transaction and re.match(r'^\d{1,3}(,\d{3})*\.\d{2}$', text):
-                    if 380 < x < 400:
+                    if 360 < x < 400:
                         current_transaction['Type'] = 'Cargo'
                         current_transaction['Amount'] = float(text.replace(',',''))*-1
-                    elif 400 < x < 440:
+                    elif 400 < x < 450:
                         current_transaction['Type'] = 'Abono'
                         current_transaction['Amount'] = float(text.replace(',',''))
                     else:
                         pass
-        
+                elif 'Amount' in current_transaction and 'Balance' not in current_transaction and re.match(r'^\d{1,3}(,\d{3})*\.\d{2}$', text):
+                    if x > 450:
+                        current_transaction['Balance'] = float(text.replace(',',''))
+                    else:
+                        pass
+
                 else:
                     if re.match(r'^-?\d{1,3}(,\d{3})*\.\d{2}$', text):
                         pass
@@ -102,9 +122,9 @@ class BBVADebitTransactionProcessor(TransactionProcessor):
 
         for page in pages:
             transactions += self.extractor.extract_transactions(page, self.month_abbreviations, self.year)
+        transactions_data = self.check_balance_consistency(pd.DataFrame(transactions))
+        return transactions_data
 
-        return pd.DataFrame(transactions)
-    
     def check_balance_consistency(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         Checks and adjusts the consistency of balances in transaction data.
