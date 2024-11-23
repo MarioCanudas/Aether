@@ -64,9 +64,9 @@ class NuBankCreditTransactionExtractor(TransactionExtractor):
                     current_transaction['Description'] = line.strip()
                 elif 'Amount' not in current_transaction and re.match(r'^-?\s?\$?\d{1,3}(,\d{3})*\.\d{2}$', line.strip()):
                     current_transaction['Amount'] = (
-                        float(line.strip().replace(',', '').replace('$', '').replace('-', '')) * (-1 if '-' in line else 1)
+                        float(line.strip().replace(',', '').replace('$', '').replace('-', '')) * (1 if '-' in line else -1)
                         )
-                    if current_transaction['Amount'] < 0:
+                    if current_transaction['Amount'] > 0:
                         current_transaction['Type'] = 'Abono'
                     else:
                         current_transaction['Type'] = 'Cargo'
@@ -83,7 +83,7 @@ class NuBankCreditTransactionProcessor(TransactionProcessor):
         pages = self.reader.extract_text_by_page()
         transactions = []
         detected_months = []
-        for page in pages:
+        for page in pages[1:]:
             lines = page.split('\n')
             detected_months += self.extractor.extract_month_from_pdf(lines)
             transactions += self.extractor.extract_transactions(lines)

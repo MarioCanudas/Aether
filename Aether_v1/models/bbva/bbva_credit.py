@@ -11,7 +11,7 @@ class BBVACreditTransactionExtractor(TransactionExtractor):
             if line.strip() == 'Fecha de Corte' or line.strip() == 'Fecha Límite de Pago':
                 lines.pop(lines.index(line) + 1)
 
-            for number, abbreviation in self.month_patterns.items(): # Should be NUMERIC_MONTH_PATTERN
+            for number, abbreviation in self.month_patterns.items():
                 if re.fullmatch(rf'\b\d{{2}}/{number}/\d{{2}}\b', line.strip()):
                     detected_months.append((number, abbreviation))
 
@@ -63,9 +63,9 @@ class BBVACreditTransactionExtractor(TransactionExtractor):
                     current_transaction['Description'] = line
                 elif 'Amount' not in current_transaction and re.match(r'^\d{1,3}(,\d{3})*\.\d{2}-?$', line):
                     current_transaction['Amount'] = (
-                        float(line.replace(',', '').replace('-', '')) * (-1 if '-' in line else 1)
+                        float(line.replace(',', '').replace('-', '')) * (1 if '-' in line else -1)
                     )
-                    if current_transaction['Amount'] < 0:
+                    if current_transaction['Amount'] > 0:
                         current_transaction['Type'] = 'Abono'
                     else:
                         current_transaction['Type'] = 'Cargo'
