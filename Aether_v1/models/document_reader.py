@@ -8,7 +8,7 @@ class PDFReader(DocumentReader):
         with fitz.open(self.file_path) as doc:
             return [page.get_text() for page in doc]
 
-    def extract_words_with_coordinates(self) -> List[List[Tuple[float, str]]]:
+    def extract_words_with_coordinates(self) -> List[List[Tuple[float, float, str]]]:
         words_from_page = []
         extracted_words = []
         with fitz.open(self.file_path) as doc:
