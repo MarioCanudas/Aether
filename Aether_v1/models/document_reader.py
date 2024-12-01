@@ -15,8 +15,7 @@ class PDFReader(DocumentReader):
             for page in doc:
                 words = page.get_text('words')
                 for word in words:
-                    x, _, _, _, text, _, _, _ = word
-                    words_from_page.append((x,text))
+                    words_from_page.append((word[0], word[1], word[4])) # (x initial coordinate, y initial coordinate, text)
                 extracted_words.append(words_from_page)
                 words_from_page = []
                     
