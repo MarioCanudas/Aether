@@ -5,6 +5,7 @@ from .bbva import BBVACreditTransactionExtractor, BBVACreditTransactionProcessor
 from .nu import NuBankCreditTransactionExtractor, NuBankCreditTransactionProcessor, NuBankDebitTransactionExtractor, NuBankDebitTransactionProcessor
 from .citibanamex import CitibanamexCreditTransactionExtractor, CitibanamexCreditTransactionProcessor
 from .amex import AmexCreditTransactionExtractor, AmexCreditTransactionProcessor
+from .banorte import BanorteCreditTransactionExtractor, BanorteCreditTransactionProcessor
 
 __all__ = [
     'PDFReader',
@@ -13,5 +14,6 @@ __all__ = [
     'BBVACreditTransactionExtractor', 'BBVACreditTransactionProcessor',
     'BBVADebitTransactionExtractor', 'BBVADebitTransactionProcessor',
     'CitibanamexCreditTransactionExtractor', 'CitibanamexCreditTransactionProcessor',
-    'AmexCreditTransactionExtractor', 'AmexCreditTransactionProcessor'
+    'AmexCreditTransactionExtractor', 'AmexCreditTransactionProcessor',
+    'BanorteCreditTransactionExtractor', 'BanorteCreditTransactionProcessor'
 ]

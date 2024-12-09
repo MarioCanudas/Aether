@@ -6,6 +6,7 @@ from models import (
     BBVACreditTransactionExtractor, BBVACreditTransactionProcessor,
     CitibanamexCreditTransactionExtractor, CitibanamexCreditTransactionProcessor,
     AmexCreditTransactionExtractor, AmexCreditTransactionProcessor,
+    BanorteCreditTransactionExtractor, BanorteCreditTransactionProcessor,
     PDFReader
     )
 from config import INPUTS_FOLDER, OUTPUTS_FOLDER, DEFAULT_BANK, DEFAULT_STATEMENT_TYPE, MONTH_PATTERNS_ENG, MONTH_PATTERNS_SPA, NUMERIC_MONTH_PATTERNS
@@ -43,18 +44,21 @@ def get_bank_processor(bank_name, statement_type, pdf_path, month_patterns):
     elif bank_name == 'Amex' and statement_type == 'credit':
         extractor = AmexCreditTransactionExtractor(month_patterns)
         return AmexCreditTransactionProcessor(PDFReader(pdf_path), extractor)
+    elif bank_name == 'Banorte' and statement_type == 'credit':
+        extractor = BanorteCreditTransactionExtractor(month_patterns)
+        return BanorteCreditTransactionProcessor(PDFReader(pdf_path), extractor)
     else:
         raise ValueError(f"Unsupported bank or statement type: {bank_name} - {statement_type}")
 
 if __name__ == "__main__":
     # Example usage with dynamic paths from the config
-    bank_name = 'Amex'
+    bank_name = 'Banorte'
     statement_type = DEFAULT_STATEMENT_TYPE
-    input_file = os.path.join(INPUTS_FOLDER, 'test_files/amex_credit_statement.pdf')
+    input_file = os.path.join(INPUTS_FOLDER, 'test_files/banorte_credit_statement.pdf')
 
     # Process the transactions
     try:
-        processor = get_bank_processor(bank_name, statement_type, input_file, MONTH_PATTERNS_SPA)
+        processor = get_bank_processor(bank_name, statement_type, input_file, NUMERIC_MONTH_PATTERNS)
         transactions_df = processor.process_transactions()
 
         # Extract unique months from the processor for file naming
