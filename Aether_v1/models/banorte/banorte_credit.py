@@ -4,7 +4,7 @@ from typing import List, Dict, Tuple
 import re
 
 class BanorteCreditTransactionExtractor(TransactionExtractor):
-    def classify_words_from_page(self, pages: List[Tuple[float, float, str]], years: List[int]) -> Dict[str, List[str]]:
+    def classify_words_from_page(self, pages: List[Tuple[float, float, str]], years: List[int], months: List[str]) -> Dict[str, List[str]]:
         classified_words = {'dates': [], 'descriptions': [], 'amounts': []}
     
         for i, page in enumerate(pages):
@@ -16,7 +16,15 @@ class BanorteCreditTransactionExtractor(TransactionExtractor):
                     if match:
                         if len(years) == 1:
                             year = years[0]
-                            date = f'{year}-{match.group(2)}-{match.group(1)}'
+                            if 'ENE' in months or 'DIC' in months:
+                                if match.group(2) == '01':
+                                    date = f'{year}-{match.group(2)}-{match.group(1)}'
+                                elif match.group(2) == '12':
+                                    date = f'{int(year) - 1}-{match.group(2)}-{match.group(1)}'
+                                else:
+                                    date = f'{year}-{match.group(2)}-{match.group(1)}'
+                            else:
+                                date = f'{year}-{match.group(2)}-{match.group(1)}'
                         elif len(years) == 2: # This should be just for the Dic - Jan period
                             year1, year2 = years
                             
@@ -88,9 +96,9 @@ class BanorteCreditTransactionExtractor(TransactionExtractor):
                     
         return list(set(detected_months))
     
-    def extract_transactions(self, pages: List[Tuple[float, float, str]]):
+    def extract_transactions(self, pages: List[Tuple[float, float, str]], months: List[str]) -> List[Dict[str, str]]:
         years = self.extract_year_from_pdf(pages)
-        classified_words = self.classify_words_from_page(pages, years)
+        classified_words = self.classify_words_from_page(pages, years, months)
         
         transactions = []
         current_transaction = {}
@@ -160,7 +168,7 @@ class BanorteCreditTransactionProcessor(TransactionProcessor):
         pages = self.reader.extract_words_with_coordinates()
         
         self.month_abbreviations = self.extractor.extract_month_from_pdf(pages)
-        transactions = self.extractor.extract_transactions(pages)
+        transactions = self.extractor.extract_transactions(pages, self.month_abbreviations)
         
         df = pd.DataFrame(transactions)
         df['Date'] = pd.to_datetime(df['Date'])
