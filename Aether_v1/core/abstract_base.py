@@ -15,26 +15,6 @@ class DocumentReader(ABC):
     def extract_words_with_coordinates(self) -> List[Tuple[float, float, str]]:
         """Extracts words with their x-coordinates, y-coordinates, and text content from the document."""
         pass
-    
-    @abstractmethod
-    def extract_words_with_coordinates_with_ocr(self) -> List[Tuple[float, float, str]]:
-        """
-        Extracts words along with their coordinates from a PDF file using OCR.
-
-        This method processes each page of the PDF specified by the file path,
-        converts the pages into images at a specified resolution (DPI), and applies
-        OCR to detect text. For each detected word, the method retrieves its
-        bounding box coordinates, extracts the top-left corner's position (x, y),
-        and associates it with the detected text.
-
-        Returns:
-            A list of lists, where each inner list contains tuples representing
-            the words detected on a single page. Each tuple consists of:
-            - float: The x-coordinate of the word's top-left corner.
-            - float: The y-coordinate of the word's top-left corner.
-            - str: The text of the word.
-        """
-        pass
 
 class TransactionExtractor(ABC):
     def __init__(self, month_patterns: Dict[str, str]):
