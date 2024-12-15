@@ -4,7 +4,7 @@ from typing import List, Dict, Tuple
 import re
 
 class BanorteCreditTransactionExtractor(TransactionExtractor):
-    def classify_words_from_page(self, pages: List[Tuple[float, float, str]], years: List[int], months: List[str]) -> Dict[str, List[str]]:
+    def classify_words_from_page(self, pages: List[Tuple[float, float, str]], years: List[int], months: List[str]) -> Dict[str, List[Tuple[float, float, int, str]]]:
         classified_words = {'dates': [], 'descriptions': [], 'amounts': []}
     
         for i, page in enumerate(pages):
@@ -54,7 +54,7 @@ class BanorteCreditTransactionExtractor(TransactionExtractor):
                     
         return classified_words
     
-    def extract_year_from_pdf(self, pages: List[Tuple[float, float, str]]) -> List[int]:
+    def detect_year_from_pdf(self, pages: List[Tuple[float, float, str]]) -> List[int]:
         
         detected_years = []
         
@@ -97,7 +97,7 @@ class BanorteCreditTransactionExtractor(TransactionExtractor):
         return list(set(detected_months))
     
     def extract_transactions(self, pages: List[Tuple[float, float, str]], months: List[str]) -> List[Dict[str, str]]:
-        years = self.extract_year_from_pdf(pages)
+        years = self.detect_year_from_pdf(pages)
         classified_words = self.classify_words_from_page(pages, years, months)
         
         transactions = []

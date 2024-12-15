@@ -53,7 +53,7 @@ class BanorteDebitTransactionExtractor(TransactionExtractor):
                 
         return detected_months
     
-    def extract_year_from_pdf(self, classified_words: Dict[str, List[Tuple[float, float, int, str]]]) -> List[int]:
+    def detect_year_from_pdf(self, classified_words: Dict[str, List[Tuple[float, float, int, str]]]) -> List[int]:
         detected_years = []
         
         for dates in classified_words['dates']:

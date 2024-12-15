@@ -23,7 +23,7 @@ class PDFReader(DocumentReader):
                     
         return extracted_words
     
-    def extract_words_with_coordinates_by_page(self) -> List[List[Tuple[float, float, str]]]:
+    def extract_words_with_coordinates_with_ocr(self) -> List[List[Tuple[float, float, str]]]:
         reader = ocr.Reader(['es', 'en'])
         
         words_from_page = []
