@@ -8,6 +8,7 @@ from models import (
     AmexCreditTransactionExtractor, AmexCreditTransactionProcessor,
     BanorteCreditTransactionExtractor, BanorteCreditTransactionProcessor,
     BanorteDebitTransactionExtractor, BanorteDebitTransactionProcessor,
+    SantanderCreditTransactionExtractor, SantanderCreditTransactionProcessor,
     PDFReader
     )
 from config import INPUTS_FOLDER, OUTPUTS_FOLDER, DEFAULT_BANK, DEFAULT_STATEMENT_TYPE, MONTH_PATTERNS_ENG, MONTH_PATTERNS_SPA, NUMERIC_MONTH_PATTERNS
@@ -51,14 +52,18 @@ def get_bank_processor(bank_name, statement_type, pdf_path, month_patterns):
     elif bank_name == 'Banorte' and statement_type == 'debit':
         extractor = BanorteDebitTransactionExtractor(month_patterns)
         return BanorteDebitTransactionProcessor(PDFReader(pdf_path), extractor)
+    elif bank_name == 'Santander' and statement_type == 'credit':
+        extractor = SantanderCreditTransactionExtractor(month_patterns)
+        return SantanderCreditTransactionProcessor(PDFReader(pdf_path), extractor)
     else:
         raise ValueError(f"Unsupported bank or statement type: {bank_name} - {statement_type}")
 
 if __name__ == "__main__":
     # Example usage with dynamic paths from the config
-    bank_name = 'Banorte'
-    statement_type = 'debit'
-    input_file = os.path.join(INPUTS_FOLDER, 'test_files/banorte_debit_statement.pdf')
+    bank_name = 'Santander'
+    statement_type = 'credit'
+    
+    input_file = os.path.join(INPUTS_FOLDER, 'test_files', bank_name, f'{bank_name}_{statement_type}_statement.pdf')
 
     # Process the transactions
     try:
