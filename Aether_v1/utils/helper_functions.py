@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import List
 import pandas as pd
+import re
 
 def get_min_month(months: List[str]) -> str:
     """
@@ -79,3 +80,36 @@ def calculate_savings_and_validate_balances(data: pd.DataFrame) -> pd.DataFrame:
     # Convert results to DataFrame
     results_df = pd.DataFrame(results)
     return results_df
+
+def eliminate_ocr_errors_for_amounts(value: str) -> str:
+    """
+    Corrects common OCR errors in numerical strings representing monetary amounts.
+
+    Args:
+        value: A string containing a numerical value with potential OCR errors, such as misplaced spaces or commas.
+
+    Returns:
+        A corrected string representing the numerical value with the decimal point correctly positioned.
+    """
+    
+    if ' ' in value:
+        number_parts = re.split(r' ', value)
+        if len(number_parts[-1]) == 2:
+            int_part = ''.join(number_parts[:-1])
+            decimal_part = number_parts[-1]
+            
+            value = int_part + '.' + decimal_part
+        else:
+            value = ''.join(number_parts)
+    
+    number_parts = re.split(r',', value)
+    
+    if len(number_parts[-1]) == 2:
+        int_part = ''.join(number_parts[:-1])
+        decimal_part = number_parts[-1]
+        
+        amount = int_part + '.' + decimal_part
+    else:
+        amount = ''.join(number_parts)
+    
+    return amount
