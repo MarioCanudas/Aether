@@ -41,11 +41,7 @@ class PDFReader(DocumentReader):
                 for result in results:    
                     bbox, text, conf = result
                     
-                    x1, y1 = bbox[0]
-                    x4, y4 = bbox[3]
-                    
-                    x = float((x1 + x4) / 2)
-                    y = float((y1 + y4) / 2)
+                    x, y = bbox[0]
                     
                     words_from_page.append((x, y, text))
         
