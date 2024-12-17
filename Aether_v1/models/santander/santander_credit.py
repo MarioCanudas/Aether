@@ -1,4 +1,5 @@
 from core import TransactionProcessor, TransactionExtractor
+from utils import eliminate_ocr_errors_for_amounts
 import pandas as pd
 from typing import List, Dict, Tuple
 import re
@@ -7,8 +8,6 @@ class SantanderCreditTransactionExtractor(TransactionExtractor):
     def classify_words_from_page(self, pages: List[Tuple[float, float, str]], years: List[int], months: List[str]) -> Dict[str, List[Tuple[float, float, int, str]]]:
         classified_words = {'dates': [], 'descriptions': [], 'amounts': []}
         inverted_month_patterns = {v: k for k, v in self.month_patterns.items()}
-        print(months)
-        print(years)
         
         for i, page in enumerate(pages):
             for word in page:
@@ -43,25 +42,7 @@ class SantanderCreditTransactionExtractor(TransactionExtractor):
                     classified_words['descriptions'].append((x, y, i, text)) # x coord, y coord, i page number, text
                     
                 elif 1000 <= x <= 1250:
-                    if ' ' in text:
-                        number_parts = re.split(r' ', text)
-                        if len(number_parts[-1]) == 2:
-                            int_part = ''.join(number_parts[:-1])
-                            decimal_part = number_parts[-1]
-                            
-                            text = int_part + '.' + decimal_part
-                        else:
-                            text = ''.join(number_parts)
-                        
-                    number_parts = re.split(r',', text)
-                    
-                    if len(number_parts[-1]) == 2:
-                        int_part = ''.join(number_parts[:-1])
-                        decimal_part = number_parts[-1]
-                        
-                        amount = int_part + '.' + decimal_part
-                    else:
-                        amount = ''.join(number_parts)
+                    amount = eliminate_ocr_errors_for_amounts(text)
                     
                     try:
                         amount = float(amount)
