@@ -92,24 +92,21 @@ def eliminate_ocr_errors_for_amounts(value: str) -> str:
         A corrected string representing the numerical value with the decimal point correctly positioned.
     """
     
-    if ' ' in value:
-        number_parts = re.split(r' ', value)
-        if len(number_parts[-1]) == 2:
-            int_part = ''.join(number_parts[:-1])
-            decimal_part = number_parts[-1]
+    value = value.replace(' ', '')
+    
+    parts = re.split(r',', value)
+    
+    if len(parts) > 1:
+        if len(parts[-1]) == 2:
+            int_part = ''.join(parts[:-1])
+            decimal_part = parts[-1]
             
-            value = int_part + '.' + decimal_part
+            value = f'{int_part}.{decimal_part}'
         else:
-            value = ''.join(number_parts)
+            value = ''.join(parts)
+            
+    if value.count('.') > 1:
+        *int_parts, decimal_part = value.split('.')
+        value = f'{''.join(int_parts)}.{decimal_part}'
     
-    number_parts = re.split(r',', value)
-    
-    if len(number_parts[-1]) == 2:
-        int_part = ''.join(number_parts[:-1])
-        decimal_part = number_parts[-1]
-        
-        amount = int_part + '.' + decimal_part
-    else:
-        amount = ''.join(number_parts)
-    
-    return amount
+    return value
