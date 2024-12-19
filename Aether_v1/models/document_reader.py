@@ -43,7 +43,7 @@ class PDFReader(DocumentReader):
                     
                     x, y = bbox[0]
                     
-                    words_from_page.append((x, y, text))
+                    words_from_page.append((float(x), float(y), text))
         
                 extracted_words.append(words_from_page)
                 
