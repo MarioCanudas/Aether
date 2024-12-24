@@ -11,6 +11,7 @@ from models import (
     SantanderCreditTransactionExtractor, SantanderCreditTransactionProcessor,
     SantanderDebitTransactionExtractor, SantanderDebitTransactionProcessor,
     HSBCCreditTransactionExtractor, HSBCCreditTransactionProcessor,
+    InbursaCreditTransactionExtractor, InbursaCreditTransactionProcessor,
     PDFReader
     )
 from config import INPUTS_FOLDER, OUTPUTS_FOLDER, DEFAULT_BANK, DEFAULT_STATEMENT_TYPE, MONTH_PATTERNS_ENG, MONTH_PATTERNS_SPA, NUMERIC_MONTH_PATTERNS
@@ -63,12 +64,15 @@ def get_bank_processor(bank_name, statement_type, pdf_path, month_patterns):
     elif bank_name == 'HSBC' and statement_type == 'credit':
         extractor = HSBCCreditTransactionExtractor(month_patterns)
         return HSBCCreditTransactionProcessor(PDFReader(pdf_path), extractor)
+    elif bank_name == 'Inbursa' and statement_type == 'credit':
+        extractor = InbursaCreditTransactionExtractor(month_patterns)
+        return InbursaCreditTransactionProcessor(PDFReader(pdf_path), extractor)
     else:
         raise ValueError(f"Unsupported bank or statement type: {bank_name} - {statement_type}")
 
 if __name__ == "__main__":
     # Example usage with dynamic paths from the config
-    bank_name = 'HSBC'
+    bank_name = 'Inbursa'
     statement_type = 'credit'
     
     input_file = os.path.join(INPUTS_FOLDER, 'test_files', bank_name, f'{bank_name}_{statement_type}_statement.pdf')
