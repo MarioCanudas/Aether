@@ -8,7 +8,7 @@ from .amex import AmexCreditTransactionExtractor, AmexCreditTransactionProcessor
 from .banorte import BanorteCreditTransactionExtractor, BanorteCreditTransactionProcessor, BanorteDebitTransactionExtractor, BanorteDebitTransactionProcessor
 from .santander import SantanderCreditTransactionExtractor, SantanderCreditTransactionProcessor, SantanderDebitTransactionExtractor, SantanderDebitTransactionProcessor
 from .hsbc import HSBCCreditTransactionExtractor, HSBCCreditTransactionProcessor
-from .Inbursa import InbursaCreditTransactionExtractor, InbursaCreditTransactionProcessor
+from .Inbursa import InbursaCreditTransactionExtractor, InbursaCreditTransactionProcessor, InbursaDebitTransactionExtractor, InbursaDebitTransactionProcessor
 
 __all__ = [
     'PDFReader',
@@ -23,5 +23,6 @@ __all__ = [
     'SantanderCreditTransactionExtractor', 'SantanderCreditTransactionProcessor',
     'SantanderDebitTransactionExtractor', 'SantanderDebitTransactionProcessor',
     'HSBCCreditTransactionExtractor', 'HSBCCreditTransactionProcessor',
-    'InbursaCreditTransactionExtractor', 'InbursaCreditTransactionProcessor'
+    'InbursaCreditTransactionExtractor', 'InbursaCreditTransactionProcessor',
+    'InbursaDebitTransactionExtractor', 'InbursaDebitTransactionProcessor'
 ]
