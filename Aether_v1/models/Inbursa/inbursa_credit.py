@@ -4,8 +4,10 @@ from typing import List, Dict, Tuple
 import re
 
 class InbursaCreditTransactionExtractor(TransactionExtractor):
-    DATE_X_MIN = 40
-    DESCRIPTION_X_MIN = 75
+    DATE_X = 40
+    
+    DESCRIPTION_X = 75
+    
     AMOUNT_X_MIN = 450
     AMOUNT_X_MAX = 550
     
@@ -16,7 +18,7 @@ class InbursaCreditTransactionExtractor(TransactionExtractor):
             for word in page:
                 x, y, text = word
                 
-                if self.DATE_X_MIN <= x < self.DESCRIPTION_X_MIN:
+                if self.DATE_X <= x < self.DESCRIPTION_X:
                     match = re.match(r'(\d{2})/(\d{2})', text)
                     if match:
                         month_number, day = match.groups()
@@ -44,7 +46,7 @@ class InbursaCreditTransactionExtractor(TransactionExtractor):
                             
                             classified_words['dates'].append((x, y, page_num, date))
                 
-                elif self.DESCRIPTION_X_MIN <= x < self.AMOUNT_X_MIN:
+                elif self.DESCRIPTION_X <= x < self.AMOUNT_X_MIN:
                     classified_words['descriptions'].append((x, y, page_num, text))
                 
                 elif self.AMOUNT_X_MIN <= x < self.AMOUNT_X_MAX:
@@ -98,6 +100,7 @@ class InbursaCreditTransactionExtractor(TransactionExtractor):
         current_transaction = {}
         
         number_of_dates = len(classified_words['dates'])
+        avarage_distance_to_next_date: int = 10
         
         for i, date in enumerate(classified_words['dates']):
             x_date, y_date, page_date, text_date = date
@@ -106,10 +109,10 @@ class InbursaCreditTransactionExtractor(TransactionExtractor):
                 y_next_date = classified_words['dates'][i + 1][1]
                 
                 if y_next_date < y_date:
-                    y_next_date = y_date + 10
+                    y_next_date = y_date + avarage_distance_to_next_date
                     
             else:
-                y_next_date = y_date + 10
+                y_next_date = y_date + avarage_distance_to_next_date
                 
             if current_transaction:
                 try:

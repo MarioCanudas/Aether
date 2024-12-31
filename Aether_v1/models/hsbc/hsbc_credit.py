@@ -4,6 +4,16 @@ from typing import List, Dict, Tuple
 import re
 
 class HSBCCreditTransactionExtractor(TransactionExtractor):
+    # Constants for classifying words based on their x-axis positions in the PDF.
+    # These thresholds determine whether a word is classified as a date, description, or amount.
+    DATE_X_MIN: int = 38
+    DATE_X_MAX: int = 75
+    
+    DESCRIPTION_X: int = 100
+    
+    AMOUNT_X_MIN: int = 450
+    AMOUNT_X_MAX: int = 575
+    
     def classify_words_from_page(self, pages: List[List[Tuple[float, float, str]]], years: List[int], months: List[str]) -> Dict[str, List[Tuple[float, float, int, str]]]:
         inverted_month_patterns = {v: k for k, v in self.month_patterns.items()}
         classified_words = {'dates': [], 'descriptions': [], 'amounts': []}
@@ -16,7 +26,7 @@ class HSBCCreditTransactionExtractor(TransactionExtractor):
                     next_word = page[i + 1][2]
                 except: next_word = ''
                 
-                if 38 <= x <= 75:
+                if self.DATE_X_MIN <= x <= self.DATE_X_MAX:
                     if text.isnumeric() and next_word in months:
                         month_number = int(inverted_month_patterns[next_word])
                         
@@ -38,10 +48,10 @@ class HSBCCreditTransactionExtractor(TransactionExtractor):
                                 
                         classified_words['dates'].append((x, y, num_page, date))
                 
-                elif 100 <= x < 450:
+                elif self.DESCRIPTION_X <= x < self.AMOUNT_X_MIN:
                     classified_words['descriptions'].append((x, y, num_page, text))
                 
-                elif 450 <= x <= 575:
+                elif self.AMOUNT_X_MIN <= x <= self.AMOUNT_X_MAX:
                     text = text.replace(',', '')
                     try:
                         amount = float(text)
@@ -82,6 +92,8 @@ class HSBCCreditTransactionExtractor(TransactionExtractor):
         current_transaction = {}
         
         number_of_dates = len(classified_words['dates'])
+        avarage_distance_to_next_date: int = 10
+        
         for i, date in enumerate(classified_words['dates']):
             x_date, y_date, page_date, text_date = date
             
@@ -89,9 +101,9 @@ class HSBCCreditTransactionExtractor(TransactionExtractor):
                 y_next_date = classified_words['dates'][i + 1][1]
                 
                 if y_next_date < y_date:
-                    y_next_date = y_date + 10
+                    y_next_date = y_date + avarage_distance_to_next_date
             else:
-                y_next_date = y_date + 10
+                y_next_date = y_date + avarage_distance_to_next_date
                 
             if current_transaction:
                 if ' GRACIAS' in current_transaction['Description'].upper():

@@ -5,6 +5,17 @@ from typing import List, Dict, Tuple
 import re
 
 class SantanderCreditTransactionExtractor(TransactionExtractor):
+    # Constants for classifying words based on their x-axis positions in the PDF.
+    # These thresholds determine whether a word is classified as a date, description, or amount.
+    DATE_X_MIN: int = 90
+    DATE_X_MAX: int = 110
+    
+    DESCRIPTION_X_MIN: int = 185
+    DESCRIPTION_X_MAX: int = 700
+    
+    AMOUNT_X_MIN: int = 1000
+    AMOUNT_X_MAX: int = 1250
+    
     def classify_words_from_page(self, pages: List[Tuple[float, float, str]], years: List[int], months: List[str]) -> Dict[str, List[Tuple[float, float, int, str]]]:
         classified_words = {'dates': [], 'descriptions': [], 'amounts': []}
         inverted_month_patterns = {v: k for k, v in self.month_patterns.items()}
@@ -13,7 +24,7 @@ class SantanderCreditTransactionExtractor(TransactionExtractor):
             for word in page:
                 x, y, text = word
                 
-                if 90 <= x < 110:
+                if self.DATE_X_MIN <= x < self.DATE_X_MAX:
                     match = re.match(r'(\d{1,2})\s(\w{3})', text)
                     if match:
                         day, month = match.groups()
@@ -38,10 +49,10 @@ class SantanderCreditTransactionExtractor(TransactionExtractor):
                             classified_words['dates'].append((x, y, i, date)) # x coord, y coord, i page number, text
                         else: pass
                 
-                elif 185 <= x < 700:
+                elif self.DESCRIPTION_X_MIN <= x < self.DESCRIPTION_X_MAX:
                     classified_words['descriptions'].append((x, y, i, text)) # x coord, y coord, i page number, text
                     
-                elif 1000 <= x <= 1250:
+                elif self.AMOUNT_X_MIN <= x <= self.AMOUNT_X_MAX:
                     amount = eliminate_ocr_errors_for_amounts(text)
                     
                     try:
@@ -91,6 +102,7 @@ class SantanderCreditTransactionExtractor(TransactionExtractor):
         current_transaction = {}
         
         number_of_dates = len(classified_words['dates'])
+        avarage_distance_to_next_date: int = 20
         
         for i, date in enumerate(classified_words['dates']):
             x_date, y_date, page_date, text_date = date
@@ -99,9 +111,9 @@ class SantanderCreditTransactionExtractor(TransactionExtractor):
                 y_next_date = classified_words['dates'][i + 1][1]
                 
                 if y_next_date < y_date:
-                    y_next_date = y_date + 20
+                    y_next_date = y_date + avarage_distance_to_next_date
             else:
-                y_next_date = y_date + 20
+                y_next_date = y_date + avarage_distance_to_next_date
                 
             if current_transaction:
                 if 'pago' in current_transaction['Description'].lower():

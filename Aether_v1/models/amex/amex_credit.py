@@ -4,19 +4,34 @@ from typing import List, Dict, Tuple
 import re
 
 class AmexCreditTransactionExtractor(TransactionExtractor):
+    # Constants for classifying words based on their x-axis positions in the PDF.
+    # These thresholds determine whether a word is classified as a date, description, or amount.
+    DATE_X_MIN: int = 14
+    DATE_X_MAX: int = 37
+    
+    DESCRIPTION_X_MIN: int = 80
+    DESCRIPTION_X_MAX: int = 425
+    
+    AMOUNT_X_MIN: int = 450
+    AMOUNT_X_MAX: int = 550
+    
     def classify_words_from_page(self, words: List[Tuple[float, float, str]]) -> Dict[str, List[str]]:
         classified_words = {'dates': [], 'descriptions': [], 'amounts': []}
         
         for i, word in enumerate(words):
             x, y, text = word
-            if 14 <= x <= 37:
+            
+            if self.DATE_X_MIN <= x <= self.DATE_X_MAX:
                 if text.isnumeric() and len(text) <= 2:
                     if words[i + 2][2] in self.month_patterns.keys():
                         date = text + ' de ' + words[i + 2][2]
+                        
                         classified_words['dates'].append((x, y, date))
-            elif 80 <= x <=425:
+                        
+            elif self.DESCRIPTION_X_MIN <= x <= self.DESCRIPTION_X_MAX:
                 classified_words['descriptions'].append((x, y, text))
-            elif 450 <= x <= 550:
+                
+            elif self.AMOUNT_X_MIN <= x <= self.AMOUNT_X_MAX:
                 text = text.replace(',', '')
                 try:
                     amount = float(text)

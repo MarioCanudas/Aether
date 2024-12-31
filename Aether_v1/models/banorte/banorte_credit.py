@@ -4,6 +4,17 @@ from typing import List, Dict, Tuple
 import re
 
 class BanorteCreditTransactionExtractor(TransactionExtractor):
+    # Constants for classifying words based on their x-axis positions in the PDF.
+    # These thresholds determine whether a word is classified as a date, description, or amount.
+    DATE_X_MIN: int = 32
+    DATE_X_MAX: int = 50
+    
+    DESCRIPTION_X_MIN: int = 60
+    DESCRIPTION_X_MAX: int = 250
+    
+    AMOUNT_X_MIN: int = 450
+    AMOUNT_X_MAX: int = 550
+    
     def classify_words_from_page(self, pages: List[Tuple[float, float, str]], years: List[int], months: List[str]) -> Dict[str, List[Tuple[float, float, int, str]]]:
         classified_words = {'dates': [], 'descriptions': [], 'amounts': []}
     
@@ -11,7 +22,7 @@ class BanorteCreditTransactionExtractor(TransactionExtractor):
             for word in page:
                 x, y, text = word
                 
-                if 32 <= x <= 50:
+                if self.DATE_X_MIN <= x <= self.DATE_X_MAX:
                     match = re.match(r"(\d{1,2})/(\d{2})", text)
                     if match:
                         if len(years) == 1:
@@ -35,10 +46,10 @@ class BanorteCreditTransactionExtractor(TransactionExtractor):
                             
                         classified_words['dates'].append((x, y, i, date)) # x coord, y coord, i page number, text
                 
-                elif 60<= x <= 250:
+                elif self.DESCRIPTION_X_MIN <= x <= self.DESCRIPTION_X_MAX:
                     classified_words['descriptions'].append((x, y, i, text)) # x coord, y coord, i page number, text
                     
-                elif 450 <= x <= 550:
+                elif self.AMOUNT_X_MIN <= x <= self.AMOUNT_X_MAX:
                     text = text.replace(',', '').replace('$', '')
                     
                     if '-' in text:
@@ -104,6 +115,7 @@ class BanorteCreditTransactionExtractor(TransactionExtractor):
         current_transaction = {}
         
         number_of_dates = len(classified_words['dates']) 
+        avarage_distance_to_next_date: int = 15
         
         for i, date in enumerate(classified_words['dates']):
             x_date, y_date, page_date, text_date = date
@@ -112,9 +124,9 @@ class BanorteCreditTransactionExtractor(TransactionExtractor):
                 y_next_date = classified_words['dates'][i + 1][1]
                 
                 if y_next_date < y_date:
-                    y_next_date = y_date + 15
+                    y_next_date = y_date + avarage_distance_to_next_date
             else :
-                y_next_date = y_date + 15
+                y_next_date = y_date + avarage_distance_to_next_date
             
             try:
                 if current_transaction:

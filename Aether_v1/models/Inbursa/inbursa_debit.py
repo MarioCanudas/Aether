@@ -4,13 +4,16 @@ from typing import List, Dict, Tuple
 import re
 
 class InbursaDebitTransactionExtractor(TransactionExtractor):
-    # Int constants for determining the x-axis position of the words in de PDF
-    DATE_X = 11
-    DESCRIPTION_X = 42
-    EXPENSES_AMOUNT_X = 350
-    INCOMES_AMOUNT_X = 425
-    BALANCE_AMOUNT_X = 500
-    AMOUNT_X_MAX = 570
+    # Constants for classifying words based on their x-axis positions in the PDF.
+    # These thresholds determine whether a word is classified as a date, description, or amount.
+    DATE_X: int = 11
+    
+    DESCRIPTION_X: int = 42
+    
+    EXPENSES_AMOUNT_X: int = 350
+    INCOMES_AMOUNT_X: int = 425
+    BALANCE_AMOUNT_X: int = 500
+    AMOUNT_X_MAX: int = 570
     
     def classify_words_from_page(self, pages: List[List[Tuple[float, float, str]]], years: List[int], months: List[str]) -> Dict[str, List[Tuple[float, float, int, str]]]:
         classified_words = {'dates': [], 'descriptions': [], 'amounts': []}
@@ -122,10 +125,10 @@ class InbursaDebitTransactionExtractor(TransactionExtractor):
         current_transaction = {}
         
         number_of_dates = len(classified_words['dates'])
+        avarage_distance_to_next_date: int = 20
         
         for i, date in enumerate(classified_words['dates']):
             x_date, y_date, page_date, text_date = date
-            avarage_distance_to_next_date: int = 20
             
             if number_of_dates > i + 1:
                 y_next_date = classified_words['dates'][i + 1][1]

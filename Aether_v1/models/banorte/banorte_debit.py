@@ -4,6 +4,19 @@ from typing import List, Dict, Tuple
 import re
 
 class BanorteDebitTransactionExtractor(TransactionExtractor):
+    # Constants for classifying words based on their x-axis positions in the PDF.
+    # These thresholds determine whether a word is classified as a date, description, or amount.
+    DATE_X_MIN: int = 50
+    DATE_X_MAX: int = 70
+    
+    DESCRIPTION_X_MIN: int = 85
+    DESCRIPTION_X_MAX: int = 320
+    
+    INCOMES_AMOUNT_X: int = 350
+    EXPENSES_AMOUNT_X: int = 425
+    BALANCE_AMOUNT_X: int = 500
+    AMOUNT_X_MAX: int = 600
+    
     def classify_words_from_page(self, pages: List[Tuple[float, float, str]]) -> Dict[str, List[Tuple[float, float, int, str]]]:
         inverted_month_patterns = {v: k for k, v in self.month_patterns.items()}
         classified_words = {'dates': [], 'descriptions': [], 'amounts': []}
@@ -12,25 +25,25 @@ class BanorteDebitTransactionExtractor(TransactionExtractor):
             for word in page:
                 x, y, text = word
                 
-                if 50 <= x <= 70:
+                if self.DATE_X_MIN <= x <= self.DATE_X_MAX:
                     match = re.match(r"(\d{2})-(\w{3})-(\d{2})", text)
                     if match:
                         month = inverted_month_patterns[match.group(2)]
                         date = f'20{match.group(3)}-{month}-{match.group(1)}'
                         classified_words['dates'].append((x, y, i, date)) # x coord, y coord, i page number, text
-                elif 85 <= x < 320:
+                elif self.DESCRIPTION_X_MIN <= x < self.DESCRIPTION_X_MAX:
                     if text == ',' or text == '-':
                         pass
                     else:
                         classified_words['descriptions'].append((x, y, i, text)) # x coord, y coord, i page number, text
-                elif 350 <= x < 425 or 500 <= x < 600:
+                elif self.INCOMES_AMOUNT_X <= x < self.EXPENSES_AMOUNT_X or self.BALANCE_AMOUNT_X <= x < self.AMOUNT_X_MAX:
                     text = text.replace(',', '')
                     try:
                         amount = float(text)
                         classified_words['amounts'].append((x, y, i, amount)) # x coord, y coord, i page number, text
                     except:
                         pass
-                elif 425 <= x < 500:
+                elif self.EXPENSES_AMOUNT_X <= x < self.BALANCE_AMOUNT_X:
                     text = text.replace(',', '')
                     try:
                         amount = float(text)*-1
@@ -71,6 +84,8 @@ class BanorteDebitTransactionExtractor(TransactionExtractor):
         
         number_of_dates = len(classified_words['dates'])
         all_dates = []
+        avarage_distance_to_next_date: int = 15
+        
         for date in classified_words['dates']:
             all_dates.append(date[3])
         
@@ -81,9 +96,9 @@ class BanorteDebitTransactionExtractor(TransactionExtractor):
                 y_next_date = classified_words['dates'][i + 1][1]
                 
                 if y_next_date < y_date:
-                    y_next_date = y_date + 15
+                    y_next_date = y_date + avarage_distance_to_next_date
             else :
-                y_next_date = y_date + 15
+                y_next_date = y_date + avarage_distance_to_next_date
                 
             if current_transaction:
                 if 'trasp' in current_transaction['Description'].lower() or 'fondo' in current_transaction['Description'].lower():

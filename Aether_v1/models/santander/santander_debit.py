@@ -5,6 +5,19 @@ from typing import List, Dict, Tuple
 import re
 
 class SantanderDebitTransactionExtractor(TransactionExtractor):
+    # Constants for classifying words based on their x-axis positions in the PDF.
+    # These thresholds determine whether a word is classified as a date, description, or amount.
+    DATE_X_MIN: int = 63
+    DATE_X_MAX: int = 100
+    
+    DESCRIPTION_X_MIN: int = 220
+    DESCRIPTION_X_MAX: int = 600
+    
+    INCOMES_AMOUNT_X: int = 750
+    EXPENSES_AMOUNT_X: int = 875
+    BALANCE_AMOUNT_X: int = 1100
+    AMOUNT_X_MAX: int = 1300
+    
     def classify_words_from_page(self, pages: List[Tuple[float, float, str]], months: List[str]) -> Dict[str, List[Tuple[float, float, int, str]]]:
         classified_words = {'dates': [], 'descriptions': [], 'amounts': []}
         inverted_month_patterns = {v: k for k, v in self.month_patterns.items()}
@@ -13,7 +26,7 @@ class SantanderDebitTransactionExtractor(TransactionExtractor):
             for word in page:
                 x, y, text = word
                 
-                if 63 <= x <= 100:
+                if self.DATE_X_MIN <= x <= self.DATE_X_MAX:
                     match = re.match(r'(\d{2})-(\w{3})-(\d{4})', text)
                     if match:
                         day, month, year = match.groups()
@@ -27,10 +40,10 @@ class SantanderDebitTransactionExtractor(TransactionExtractor):
                             description = text.replace(match.group(0), '').strip()
                             classified_words['descriptions'].append((x, y, i, description)) # x coord, y coord, i page number, text
                 
-                elif 220 <= x <= 600:
+                elif self.DESCRIPTION_X_MIN <= x <= self.DESCRIPTION_X_MAX:
                     classified_words['descriptions'].append((x, y, i, text)) # x coord, y coord, i page number, text
                     
-                elif 750 <= x < 875 or 1100 <= x < 1300:
+                elif self.INCOMES_AMOUNT_X <= x < self.EXPENSES_AMOUNT_X or self.BALANCE_AMOUNT_X <= x < self.AMOUNT_X_MAX:
                     amount = eliminate_ocr_errors_for_amounts(text)
                     
                     try:
@@ -38,7 +51,7 @@ class SantanderDebitTransactionExtractor(TransactionExtractor):
                         classified_words['amounts'].append((x, y, i, amount)) # x coord, y coord, i page number, text
                     except: pass
                     
-                elif 875 <= x < 1100:
+                elif self.EXPENSES_AMOUNT_X <= x < self.BALANCE_AMOUNT_X:
                     amount = eliminate_ocr_errors_for_amounts(text)
                     
                     try:
@@ -77,7 +90,9 @@ class SantanderDebitTransactionExtractor(TransactionExtractor):
     def extract_transactions(self, classified_words: Dict[str, List[Tuple[float, float, int, str]]]) -> List[Dict[str, str]]:
         transactions = []
         current_transaction = {}
+        
         number_of_dates = len(classified_words['dates'])
+        avarage_distance_to_next_date: int = 25
         
         for i, date in enumerate(classified_words['dates']):
             x_date, y_date, page_date, text_date = date
@@ -86,9 +101,9 @@ class SantanderDebitTransactionExtractor(TransactionExtractor):
                 y_next_date = classified_words['dates'][i + 1][1]
                 
                 if y_next_date < y_date:
-                    y_next_date = y_date + 25
+                    y_next_date = y_date + avarage_distance_to_next_date
             else:
-                y_next_date = y_date + 25
+                y_next_date = y_date + avarage_distance_to_next_date
                 
             if current_transaction:
                 if current_transaction['Amount'] < 0:
