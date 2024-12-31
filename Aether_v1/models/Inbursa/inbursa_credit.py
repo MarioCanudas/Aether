@@ -4,6 +4,11 @@ from typing import List, Dict, Tuple
 import re
 
 class InbursaCreditTransactionExtractor(TransactionExtractor):
+    DATE_X_MIN = 40
+    DESCRIPTION_X_MIN = 75
+    AMOUNT_X_MIN = 450
+    AMOUNT_X_MAX = 550
+    
     def classify_words_from_page(self, pages: List[List[Tuple[float, float, str]]], years: List[int], months: List[str]) -> Dict[str, List[Tuple[float, float, int, str]]]:
         classified_words = {'dates': [], 'descriptions': [], 'amounts': []}
         
@@ -11,7 +16,7 @@ class InbursaCreditTransactionExtractor(TransactionExtractor):
             for word in page:
                 x, y, text = word
                 
-                if 40 <= x < 75:
+                if self.DATE_X_MIN <= x < self.DESCRIPTION_X_MIN:
                     match = re.match(r'(\d{2})/(\d{2})', text)
                     if match:
                         month_number, day = match.groups()
@@ -20,23 +25,29 @@ class InbursaCreditTransactionExtractor(TransactionExtractor):
                             
                             if len(years) == 1:
                                 year = years[0]
-                                if int(month_number) - 6 <= 0:
-                                    date = f'{year}-{month_number}-{day}'
+                                if 'ENE' in months and 'DIC' in months: # DIC - ENE period
+                                    # If the month is between ENE and JUN
+                                    if int(month_number) - 6 <= 0:                  
+                                        date = f'{year}-{month_number}-{day}'
+                                        
+                                    # If the month is between JUL and DIC
+                                    else:                                           
+                                        date = f'{year - 1}-{month_number}-{day}'
                                 else:
-                                    date = f'{year - 1}-{month_number}-{day}'
-                            elif len(years) == 2:
+                                    date = f'{year}-{month_number}-{day}'
+                            elif len(years) == 2: # This should be just for DIC - ENE period
                                 year1, year2 = years
-                                if int(month_number) - 6 <= 0:
+                                if int(month_number) - 6 <= 0: 
                                     date = f'{year2}-{month_number}-{day}'
                                 else:
                                     date = f'{year1}-{month_number}-{day}'
                             
                             classified_words['dates'].append((x, y, page_num, date))
                 
-                elif 75 <= x < 450:
+                elif self.DESCRIPTION_X_MIN <= x < self.AMOUNT_X_MIN:
                     classified_words['descriptions'].append((x, y, page_num, text))
                 
-                elif 450 <= x < 550:
+                elif self.AMOUNT_X_MIN <= x < self.AMOUNT_X_MAX:
                     text = text.replace(',','').replace('$','')
                     
                     try:
