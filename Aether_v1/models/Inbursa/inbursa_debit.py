@@ -120,7 +120,7 @@ class InbursaDebitTransactionExtractor(TransactionExtractor):
         
         return detected_months
     
-    def extract_transactions(self, classified_words: Dict[str, List[Tuple[float, float, int, str]]]) -> pd.DataFrame:
+    def extract_transactions(self, classified_words: Dict[str, List[Tuple[float, float, int, str]]]) -> List[Dict[str, str]]:
         transactions = []
         current_transaction = {}
         
