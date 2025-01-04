@@ -176,4 +176,4 @@ Aether_project/
 # !documents/inputs/test_files/*.txt
 
 # Experimental files
-experimental/*
+test/
