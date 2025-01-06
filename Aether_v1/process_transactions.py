@@ -33,7 +33,7 @@ def get_bank_processor(bank_name, statement_type, pdf_path, month_patterns, form
     Returns:
     - An instance of the relevant TransactionProcessor for the specified bank and statement type
     """
-    if bank_name == 'Banorte' and statement_type == 'credit' and format == 'new':
+    if statement_type == 'credit' and format == 'new':
         extractor = GeneralCreditTransactionExtractor(month_patterns)
         return GeneralCreditTransactionProcessor(PDFReader(pdf_path), extractor)
     elif bank_name == 'Nu' and statement_type == 'credit':
@@ -80,7 +80,7 @@ def get_bank_processor(bank_name, statement_type, pdf_path, month_patterns, form
 
 if __name__ == "__main__":
     # Example usage with dynamic paths from the config
-    bank_name = 'Banorte'
+    bank_name = 'BBVA'
     statement_type = 'credit'
     
     input_file = os.path.join(INPUTS_FOLDER, 'test_files', bank_name, f'{bank_name}_{statement_type}_new_statement.pdf')
