@@ -13,28 +13,26 @@ class GeneralCreditTransactionExtractor(TransactionExtractor):
             for i, word in enumerate(page):
                 x, y, text = word
                 text = text.strip()
+                previous_word = page[i - 1][2].strip()
                 
                 if bank == 'BBVA' or bank == 'Citibanamex':
                     signs = ['+', '-']
                     
                     if re.match(r'\$\d+(,\d{3})*(\.\d{2})?', text):
-                        sign = page[i - 1][2].strip()
-                        if sign in signs:
-                            text = f'{sign}{text}'
+                        if previous_word in signs:
+                            text = f'{previous_word}{text}'
                             
                             page[i] = (x, y, text)
-                            page.pop(i - 1)
-                        else:
-                            continue
+                        else: continue
                 
                 date_match = re.match(r'(\d{2})-([A-Za-z]{3})-(\d{4})', text)
                 amount_match = re.match(r'[+-]( ?)\$\d+(,\d{3})*(\.\d{2})?', text)
                 
                 if date_match:
-                    if i > 0 and re.match(r'(\d{2})-([A-Za-z]{3})-(\d{4})', page[i - 1][2]):
-                        continue
-                    
-                    all_x_values.append({'Date_x': x, 'Amount_x': None})
+                    if  not re.match(r'(\d{2})-([A-Za-z]{3})-(\d{4})', previous_word):
+                        all_x_values.append({'Date_x': x, 'Amount_x': None})
+                    else: continue
+                        
                 elif amount_match:
                     all_x_values.append({'Date_x': None, 'Amount_x': x})
         
@@ -46,7 +44,7 @@ class GeneralCreditTransactionExtractor(TransactionExtractor):
             Q3 = df[column].quantile(0.75)
             IQR = Q3 - Q1
             
-            iqr_multiplier = 1.0
+            iqr_multiplier = 1.25
             
             lower_bound = Q1 - (iqr_multiplier * IQR)
             upper_bound = Q3 + (iqr_multiplier * IQR)
@@ -58,13 +56,16 @@ class GeneralCreditTransactionExtractor(TransactionExtractor):
             
         return sorted(x_values)
     
+    # 
+    X_THRESHOLD_DATE = 5
+    X_THRESHOLD_AMOUNT = 50
+    
     def classify_words_from_page(self, pages: List[List[Tuple[float, float, str]]], x_values: Tuple[float, float]) -> Dict[str, List[Tuple[float, float, int, str]]]:
         inverted_month_patterns = {v: k for k, v in self.month_patterns.items()}
         
         print(x_values)
         DATE_X, AMOUNT_X = x_values
-        X_THRESHOLD_DATE = 20
-        X_THRESHOLD_AMOUNT = 50
+        
         
         classified_words = {'dates': [], 'descriptions': [], 'amounts': []}
         
@@ -75,7 +76,7 @@ class GeneralCreditTransactionExtractor(TransactionExtractor):
                 x = round(x, 3) # Round the x-axis value to avoid errors in word classification
                 y = round(y, 3) # Round the y-axis value to avoid errors in transactions extraction
                 
-                if abs(DATE_X - x) < X_THRESHOLD_DATE:
+                if abs(DATE_X - x) < self.X_THRESHOLD_DATE:
                     
                     date_match = re.match(r'(\d{2})-([A-Za-z]{3})-(\d{4})', text)
                     
@@ -89,10 +90,10 @@ class GeneralCreditTransactionExtractor(TransactionExtractor):
                         
                         classified_words['dates'].append((x, y, num_page, date)) 
                 
-                elif DATE_X < x + 5 < AMOUNT_X:
+                elif DATE_X + self.X_THRESHOLD_DATE < x < AMOUNT_X - self.X_THRESHOLD_AMOUNT:
                     classified_words['descriptions'].append((x, y, num_page, text)) # Round the y-axis value to avoid errors in transactions extraction
                     
-                elif abs(AMOUNT_X - x) < X_THRESHOLD_AMOUNT:
+                elif abs(AMOUNT_X - x) < self.X_THRESHOLD_AMOUNT:
                     text = text.replace(',','').replace('$','').replace('+', '').replace(' ', '')
                     
                     try:
@@ -102,38 +103,36 @@ class GeneralCreditTransactionExtractor(TransactionExtractor):
         
         return classified_words
     
-    def detect_year_from_pdf(self, pages: List[List[Tuple[float, float, str]]]) -> List[int]:
+    def detect_year_from_pdf(self, pages: List[List[Tuple[float, float, str]]], x_values: List[float]) -> List[int]:
         detected_years = []
-        x_values = self.x_axis_values(pages)
-        
         DATE_X = x_values[0]
         
         for page in pages:
             for word in page:
-                x, y, text = word
-                
-                if abs(x - DATE_X) < 5:
-                    match = re.match(r'(\d{2})-([A-Za-z]{3})-(\d{4})', text)
-                    
-                    if match:
-                        year = int(match.group(3))
-                        
-                        if year not in detected_years:
-                            detected_years.append(year)
-        
-        return detected_years
-    
-    def extract_month_from_pdf(self, pages: List[List[Tuple[float, float, str]]]) -> List[str]:
-        detected_months = []
-        
-        for page in pages:
-            for word in page:
-                x, y, text = word
+                x, _, text = word
                 
                 match = re.match(r'(\d{2})-([A-Za-z]{3})-(\d{4})', text)
                 
-                if match:
-                    month = match.group(2)
+                if match and abs(x - DATE_X) < self.X_THRESHOLD_DATE:
+                    year = int(match.group(3))
+                    
+                    if year not in detected_years:
+                        detected_years.append(year)
+        
+        return detected_years
+    
+    def extract_month_from_pdf(self, pages: List[List[Tuple[float, float, str]]], x_values: List[float]) -> List[str]:
+        detected_months = []
+        DATE_X = x_values[0]
+        
+        for page in pages:
+            for word in page:
+                x, _, text = word
+                
+                match = re.match(r'(\d{2})-([A-Za-z]{3})-(\d{4})', text)
+                
+                if match and abs(x - DATE_X) < self.X_THRESHOLD_DATE:
+                    month = match.group(2).upper()
                     
                     if month not in detected_months:
                         detected_months.append(month)
@@ -207,9 +206,9 @@ class GeneralCreditTransactionProcessor(TransactionProcessor):
     def process_transactions(self, bank : List[Literal['Amex', 'BBVA', 'Banorte', 'Citibanamex', 'Hsbc', 'Inbursa', 'Nu', 'Santander']]):
         pages = self.reader.extract_words_with_coordinates_with_ocr() if bank == 'Santander' else self.reader.extract_words_with_coordinates()
         
-        self.month_abbreviations = self.extractor.extract_month_from_pdf(pages)
-        
         x_values = self.extractor.x_axis_values(pages, bank)
+        self.month_abbreviations = self.extractor.extract_month_from_pdf(pages, x_values)
+        
         clasified_words = self.extractor.classify_words_from_page(pages, x_values)
         transaction = self.extractor.extract_transactions(clasified_words)
         
