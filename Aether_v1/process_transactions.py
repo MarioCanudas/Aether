@@ -5,9 +5,17 @@ from models import (
     BBVADebitTransactionExtractor, BBVADebitTransactionProcessor,
     BBVACreditTransactionExtractor, BBVACreditTransactionProcessor,
     CitibanamexCreditTransactionExtractor, CitibanamexCreditTransactionProcessor,
+    AmexCreditTransactionExtractor, AmexCreditTransactionProcessor,
+    BanorteCreditTransactionExtractor, BanorteCreditTransactionProcessor,
+    BanorteDebitTransactionExtractor, BanorteDebitTransactionProcessor,
+    SantanderCreditTransactionExtractor, SantanderCreditTransactionProcessor,
+    SantanderDebitTransactionExtractor, SantanderDebitTransactionProcessor,
+    HSBCCreditTransactionExtractor, HSBCCreditTransactionProcessor,
+    InbursaCreditTransactionExtractor, InbursaCreditTransactionProcessor,
+    InbursaDebitTransactionExtractor, InbursaDebitTransactionProcessor,
     PDFReader
     )
-from config import INPUTS_FOLDER, OUTPUTS_FOLDER, DEFAULT_BANK, DEFAULT_STATEMENT_TYPE, MONTH_PATTERNS, NUMERIC_MONTH_PATTERNS
+from config import INPUTS_FOLDER, OUTPUTS_FOLDER, DEFAULT_BANK, DEFAULT_STATEMENT_TYPE, MONTH_PATTERNS_ENG, MONTH_PATTERNS_SPA, NUMERIC_MONTH_PATTERNS
 
 import os
 
@@ -39,14 +47,39 @@ def get_bank_processor(bank_name, statement_type, pdf_path, month_patterns):
     elif bank_name == 'BBVA' and statement_type == 'debit':
         extractor = BBVADebitTransactionExtractor(month_patterns)
         return BBVADebitTransactionProcessor(PDFReader(pdf_path), extractor)
+    elif bank_name == 'Amex' and statement_type == 'credit':
+        extractor = AmexCreditTransactionExtractor(month_patterns)
+        return AmexCreditTransactionProcessor(PDFReader(pdf_path), extractor)
+    elif bank_name == 'Banorte' and statement_type == 'credit':
+        extractor = BanorteCreditTransactionExtractor(month_patterns)
+        return BanorteCreditTransactionProcessor(PDFReader(pdf_path), extractor)
+    elif bank_name == 'Banorte' and statement_type == 'debit':
+        extractor = BanorteDebitTransactionExtractor(month_patterns)
+        return BanorteDebitTransactionProcessor(PDFReader(pdf_path), extractor)
+    elif bank_name == 'Santander' and statement_type == 'credit':
+        extractor = SantanderCreditTransactionExtractor(month_patterns)
+        return SantanderCreditTransactionProcessor(PDFReader(pdf_path), extractor)
+    elif bank_name == 'Santander' and statement_type == 'debit':
+        extractor = SantanderDebitTransactionExtractor(month_patterns)
+        return SantanderDebitTransactionProcessor(PDFReader(pdf_path), extractor)
+    elif bank_name == 'HSBC' and statement_type == 'credit':
+        extractor = HSBCCreditTransactionExtractor(month_patterns)
+        return HSBCCreditTransactionProcessor(PDFReader(pdf_path), extractor)
+    elif bank_name == 'Inbursa' and statement_type == 'credit':
+        extractor = InbursaCreditTransactionExtractor(month_patterns)
+        return InbursaCreditTransactionProcessor(PDFReader(pdf_path), extractor)
+    elif bank_name == 'Inbursa' and statement_type == 'debit':
+        extractor = InbursaDebitTransactionExtractor(month_patterns)
+        return InbursaDebitTransactionProcessor(PDFReader(pdf_path), extractor)
     else:
         raise ValueError(f"Unsupported bank or statement type: {bank_name} - {statement_type}")
 
 if __name__ == "__main__":
     # Example usage with dynamic paths from the config
-    bank_name = 'BBVA'
+    bank_name = 'Inbursa'
     statement_type = 'debit'
-    input_file = os.path.join(INPUTS_FOLDER, 'test_files/bbva_debit_statement.pdf')
+    
+    input_file = os.path.join(INPUTS_FOLDER, 'test_files', bank_name, f'{bank_name}_{statement_type}_statement.pdf')
 
     # Process the transactions
     try:

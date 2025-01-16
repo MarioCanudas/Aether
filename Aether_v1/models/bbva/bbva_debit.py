@@ -24,7 +24,7 @@ class BBVADebitTransactionExtractor(TransactionExtractor):
 
         month_regexes = [re.compile(rf'\s*(\d{{2}}/{month})') for month in detected_months]
 
-        for i, (x,text) in enumerate(page):
+        for i, (x,y,text) in enumerate(page):
             if text == 'Periodo' and page[i+ 1][1] == 'DEL':
                 initial_date = page[i+ 2][1].split('/')
                 period_dates.append(f"{initial_date[2]}-{datetime.strptime(initial_date[1], '%m').month:02}-{initial_date[0]}")

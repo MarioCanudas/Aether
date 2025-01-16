@@ -4,6 +4,11 @@ from .document_reader import PDFReader
 from .bbva import BBVACreditTransactionExtractor, BBVACreditTransactionProcessor, BBVADebitTransactionExtractor, BBVADebitTransactionProcessor
 from .nu import NuBankCreditTransactionExtractor, NuBankCreditTransactionProcessor, NuBankDebitTransactionExtractor, NuBankDebitTransactionProcessor
 from .citibanamex import CitibanamexCreditTransactionExtractor, CitibanamexCreditTransactionProcessor
+from .amex import AmexCreditTransactionExtractor, AmexCreditTransactionProcessor
+from .banorte import BanorteCreditTransactionExtractor, BanorteCreditTransactionProcessor, BanorteDebitTransactionExtractor, BanorteDebitTransactionProcessor
+from .santander import SantanderCreditTransactionExtractor, SantanderCreditTransactionProcessor, SantanderDebitTransactionExtractor, SantanderDebitTransactionProcessor
+from .hsbc import HSBCCreditTransactionExtractor, HSBCCreditTransactionProcessor
+from .Inbursa import InbursaCreditTransactionExtractor, InbursaCreditTransactionProcessor, InbursaDebitTransactionExtractor, InbursaDebitTransactionProcessor
 
 __all__ = [
     'PDFReader',
@@ -11,5 +16,13 @@ __all__ = [
     'NuBankDebitTransactionExtractor', 'NuBankDebitTransactionProcessor',
     'BBVACreditTransactionExtractor', 'BBVACreditTransactionProcessor',
     'BBVADebitTransactionExtractor', 'BBVADebitTransactionProcessor',
-    'CitibanamexCreditTransactionExtractor', 'CitibanamexCreditTransactionProcessor'
+    'CitibanamexCreditTransactionExtractor', 'CitibanamexCreditTransactionProcessor',
+    'AmexCreditTransactionExtractor', 'AmexCreditTransactionProcessor',
+    'BanorteCreditTransactionExtractor', 'BanorteCreditTransactionProcessor',
+    'BanorteDebitTransactionExtractor', 'BanorteDebitTransactionProcessor',
+    'SantanderCreditTransactionExtractor', 'SantanderCreditTransactionProcessor',
+    'SantanderDebitTransactionExtractor', 'SantanderDebitTransactionProcessor',
+    'HSBCCreditTransactionExtractor', 'HSBCCreditTransactionProcessor',
+    'InbursaCreditTransactionExtractor', 'InbursaCreditTransactionProcessor',
+    'InbursaDebitTransactionExtractor', 'InbursaDebitTransactionProcessor'
 ]
