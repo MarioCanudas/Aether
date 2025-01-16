@@ -110,3 +110,56 @@ def eliminate_ocr_errors_for_amounts(value: str) -> str:
         value = f'{''.join(int_parts)}.{decimal_part}'
     
     return value
+
+def delete_double_transactions(data: pd.DataFrame) -> pd.DataFrame:
+    """
+    Removes duplicate transactions from a financial dataset, specifically targeting credit card payments
+    (abonos) and their corresponding debit transactions (cargos) to avoid double-counting.
+
+    The function identifies:
+    1. Credit transactions that are marked as "Abono" in the credit statement.
+    2. Debit transactions that are marked as "Cargo" in the debit statement.
+    3. Matches debit transactions to credit transactions based on:
+       - Equal transaction amounts.
+       - Debit transaction dates less than or equal to the corresponding credit transaction dates.
+    4. Removes the credit transaction and the last matching debit transaction (based on the date).
+
+    Parameters:
+        data (pd.DataFrame): A DataFrame containing financial transaction data with the following expected columns:
+            - 'statement_type': Type of statement ('credit' or 'debit').
+            - 'Type': Type of transaction ('Abono' for payments, 'Cargo' for charges).
+            - 'Amount': The transaction amount.
+            - 'Date': The date of the transaction.
+
+    Returns:
+        pd.DataFrame: A cleaned DataFrame with duplicate transactions removed.
+
+    Example:
+        cleaned_data = delete_double_transactions(transaction_data)
+    """
+    data_cleaned = data.copy()
+
+    credit_transactions = data_cleaned[
+        (data_cleaned['statement_type'] == 'credit') &
+        (data_cleaned['Type'] == 'Abono')
+    ]
+    debit_transactions = data_cleaned[
+        (data_cleaned['statement_type'] == 'debit') &
+        (data_cleaned['Type'] == 'Cargo')
+    ]
+
+    indices_to_remove = []
+
+    for index, credit in credit_transactions.iterrows():
+        matching_debit = debit_transactions[
+            (debit_transactions['Amount'] == -credit['Amount']) &
+            (debit_transactions['Date'] <= credit['Date'])
+        ]
+
+        if not matching_debit.empty:
+            # Find the last matching debit based on date
+            last_matching_debit = matching_debit.sort_values(by='Date').iloc[-1]
+            # Add indices of credit and the last matching debit to the list
+            indices_to_remove.extend([index, last_matching_debit.name])
+
+    return data_cleaned.drop(indices_to_remove)
