@@ -17,7 +17,7 @@ st.set_page_config(page_title="Quick Analysis", page_icon=":lightbulb:")
 
 # -- Sidebar Setup --
 def load_sidebar():
-    st.sidebar.image("frontend/assets/eli-logo.png", use_container_width=True)
+    st.sidebar.image("assets/eli-logo.png", use_container_width=True)
     st.sidebar.text("Eli Alpha Version v0.0")
 
 # -- Page Navigation --

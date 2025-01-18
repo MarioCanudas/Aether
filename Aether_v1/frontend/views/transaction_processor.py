@@ -6,7 +6,7 @@ from functions.bank_processor import get_bank_processor
 from functions.process import identify_pdf
 from utils.helper_functions import calculate_savings_and_validate_balances
 import os
-from config import MONTH_PATTERNS, NUMERIC_MONTH_PATTERNS
+from config import MONTH_PATTERNS_ENG, NUMERIC_MONTH_PATTERNS
 
 def show_transaction_processor():
     st.title("Transaction Processor")
@@ -34,7 +34,7 @@ def show_transaction_processor():
                 statement_type = bank_info["account_type"]
                 st.info(f"Detected bank for {uploaded_file.name}: {bank_name} - {statement_type}")
 
-                month_patterns = NUMERIC_MONTH_PATTERNS if bank_name == 'BBVA' and statement_type == 'credit' else MONTH_PATTERNS
+                month_patterns = NUMERIC_MONTH_PATTERNS if bank_name == 'BBVA' and statement_type == 'credit' else MONTH_PATTERNS_ENG
                 processor = get_bank_processor(bank_name, statement_type, temp_file_path, month_patterns)
                 transactions_df = processor.process_transactions()
                 transactions_df['bank'] = bank_name
