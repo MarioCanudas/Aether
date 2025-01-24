@@ -4,7 +4,7 @@ from typing import List, Dict, Tuple, Literal
 import re
 
 class GeneralCreditTransactionExtractor(TransactionExtractor):
-    def x_axis_values(self, pages: List[List[Tuple[float, float, str]]], bank : List[Literal['Amex', 'BBVA', 'Banorte', 'Citibanamex', 'Hsbc', 'Inbursa', 'Nu', 'Santander']]) -> List[Tuple[float, float]]:
+    def x_axis_values(self, pages: List[List[Tuple[float, float, str]]], bank : Literal['Amex', 'BBVA', 'Banorte', 'Citibanamex', 'Hsbc', 'Inbursa', 'Nu', 'Santander']) -> List[Tuple[float, float]]:
         x_values = []
         
         all_x_values = []
