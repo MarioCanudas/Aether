@@ -15,9 +15,9 @@ from models import (
     InbursaDebitTransactionExtractor, InbursaDebitTransactionProcessor,
     GeneralCreditTransactionExtractor, GeneralCreditTransactionProcessor,
     PDFReader
-    )
+)
+from utils import TableManager
 from config import INPUTS_FOLDER, OUTPUTS_FOLDER, DEFAULT_BANK, DEFAULT_STATEMENT_TYPE, MONTH_PATTERNS_ENG, MONTH_PATTERNS_SPA, NUMERIC_MONTH_PATTERNS
-
 import os
 
 def get_bank_processor(bank_name, statement_type, pdf_path, month_patterns, format = 'old'):
@@ -29,6 +29,7 @@ def get_bank_processor(bank_name, statement_type, pdf_path, month_patterns, form
     - statement_type: str - The type of statement ('credit' or 'debit')
     - pdf_path: str - The file path of the PDF statement
     - month_patterns: dict - A dictionary of month patterns for extraction
+    - format: str - The format of the statement ('old' or 'new')
 
     Returns:
     - An instance of the relevant TransactionProcessor for the specified bank and statement type
