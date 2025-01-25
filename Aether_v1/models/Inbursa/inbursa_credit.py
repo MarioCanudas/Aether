@@ -56,7 +56,7 @@ class InbursaCreditTransactionExtractor(TransactionExtractor):
                         amount = float(text)
                         classified_words['amounts'].append((x, y, page_num, amount))
                     except: pass
-                                    
+                        
         return classified_words
     
     def detect_year_from_pdf(self, pages: List[List[Tuple[float, float, str]]]) -> List[int]:
@@ -95,7 +95,7 @@ class InbursaCreditTransactionExtractor(TransactionExtractor):
         
         return detected_months
     
-    def extract_transactions(self, classified_words: Dict[str, List[Tuple[float, float, int, str]]]) -> pd.DataFrame:
+    def extract_transactions(self, classified_words: Dict[str, List[Tuple[float, float, int, str]]]) -> List[Dict[str, str]]:
         transactions = []
         current_transaction = {}
         
