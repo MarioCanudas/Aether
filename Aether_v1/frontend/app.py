@@ -13,30 +13,18 @@ from views.transaction_processor import show_transaction_processor  # Import the
 
 
 # -- Page Configuration --
-st.set_page_config(page_title="Quick Analysis", page_icon=":lightbulb:")
-
-# -- Sidebar Setup --
-def load_sidebar():
-    st.sidebar.image("assets/eli-logo.png", use_container_width=True)
-    st.sidebar.text("Eli Alpha Version v0.0")
+st.logo("assets/eli-logo.png", size= 'large', icon_image= "assets/eli-logo.png")
 
 # -- Page Navigation --
 PAGES = {
-    "Overview": show_home,
-    "Data Export": show_data,
-    "Income Analysis": show_income_analysis,
-    "Expenses Analysis": show_expenses_analysis,
-    "Transaction Processor": show_transaction_processor,  # New view added here
+    'Eli Alpha Version v0.0': [
+        st.Page(show_home, title= "Overview"),
+        st.Page(show_data, title= "Data Export"),
+        st.Page(show_income_analysis, title= "Income Analysis"),
+        st.Page(show_expenses_analysis, title= "Expenses Analysis"),
+        st.Page(show_transaction_processor, title= "Transaction Processor") # New view added here
+    ],
 }
 
-def main():
-    load_sidebar()
-    st.title("Eli Financial Analysis")
-
-    # Navigation
-    page_selection = st.sidebar.radio("Go to", list(PAGES.keys()))
-    page = PAGES[page_selection]
-    page()  # Call the selected page function
-
-if __name__ == "__main__":
-    main()
+page = st.navigation(PAGES)
+page.run()

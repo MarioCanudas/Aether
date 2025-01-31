@@ -5,6 +5,9 @@ from typing import List, Dict
 import pandas as pd
 
 class NuBankDebitTransactionExtractor(TransactionExtractor):
+    def classify_words_from_page(self):
+        pass
+    
     def extract_month_from_pdf(self, lines: List[str]) -> List[str]:
         '''Implements the month extraction logic for NuBank's debit cards statements, detecting multiple months'''
         detected_months = []

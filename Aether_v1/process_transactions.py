@@ -81,15 +81,15 @@ def get_bank_processor(bank_name, statement_type, pdf_path, month_patterns, form
 
 if __name__ == "__main__":
     # Example usage with dynamic paths from the config
-    bank_name = 'BBVA'
-    statement_type = 'credit'
+    bank_name = 'Nu'
+    statement_type = 'debit'
     
-    input_file = os.path.join(INPUTS_FOLDER, 'test_files', bank_name, f'{bank_name}_{statement_type}_new_statement.pdf')
+    input_file = os.path.join(INPUTS_FOLDER, 'test_files', bank_name, f'{bank_name}_{statement_type}_statement.pdf')
 
     # Process the transactions
     
-    processor = get_bank_processor(bank_name, statement_type, input_file, NUMERIC_MONTH_PATTERNS, format = 'new')
-    transactions_df = processor.process_transactions(bank_name)
+    processor = get_bank_processor(bank_name, statement_type, input_file, NUMERIC_MONTH_PATTERNS)
+    transactions_df = processor.process_transactions()
 
     # Extract unique months from the processor for file naming
     month_str = "_".join(sorted(set(processor.month_abbreviations)))  # Combine unique months into a string
