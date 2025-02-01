@@ -1,6 +1,11 @@
 import streamlit as st
+from .cash_transaction import adding_cash_transaction
 
 def show_data():
+    with st.sidebar:
+        if st.button('Add cash transaction', type= 'primary'):
+            adding_cash_transaction()
+        
     st.title('Data')
 
     # Check if data is available in session state

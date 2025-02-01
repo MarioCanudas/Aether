@@ -9,12 +9,13 @@ from views.home import show_home
 from views.data import show_data
 from views.income_analysis import show_income_analysis
 from views.expenses_analysis import show_expenses_analysis
+from views.cash_transaction import adding_cash_transaction
 from views.transaction_processor import show_transaction_processor  # Import the transaction processor
-
 
 # -- Page Configuration --
 st.logo("assets/eli-logo.png", size= 'large', icon_image= "assets/eli-logo.png")
-
+if not 'all_transactions' in st.session_state:
+    st.session_state.all_transactions = []
 # -- Page Navigation --
 PAGES = {
     'Eli Alpha Version v0.0': [
