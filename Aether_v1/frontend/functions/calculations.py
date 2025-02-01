@@ -8,7 +8,7 @@ def calculate_savings_and_credit_card_expenses_by_month(processed_data):
 
     :param processed_data: DataFrame containing the processed transaction data
     :return: A DataFrame with columns for initial_balance, total_income, total_withdrawal, savings,
-             final_balance, total_credit_card_expenses, and avg_credit_card_expense for each month.
+            final_balance, total_credit_card_expenses, and avg_credit_card_expense for each month.
     """
     # Ensure the 'Date' column is in datetime format
     processed_data['Date'] = pd.to_datetime(processed_data['Date'], format='%d-%b-%y')

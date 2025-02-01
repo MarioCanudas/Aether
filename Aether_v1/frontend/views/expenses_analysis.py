@@ -1,8 +1,13 @@
 import streamlit as st
 import matplotlib.pyplot as plt
 import pandas as pd
+from .cash_transaction import adding_cash_transaction
 
 def show_expenses_analysis():
+    with st.sidebar:
+        if st.button('Add cash transaction', type= 'primary'):
+            adding_cash_transaction()
+        
     st.title('Expenses Analysis')
 
     # Check if monthly results are available
