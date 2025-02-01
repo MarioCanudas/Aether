@@ -91,24 +91,24 @@ def eliminate_ocr_errors_for_amounts(value: str) -> str:
     Returns:
         A corrected string representing the numerical value with the decimal point correctly positioned.
     """
-    
+
     value = value.replace(' ', '')
-    
+
     parts = re.split(r',', value)
-    
+
     if len(parts) > 1:
         if len(parts[-1]) == 2:
             int_part = ''.join(parts[:-1])
             decimal_part = parts[-1]
-            
+
             value = f'{int_part}.{decimal_part}'
         else:
             value = ''.join(parts)
-            
+
     if value.count('.') > 1:
         *int_parts, decimal_part = value.split('.')
-        value = f'{''.join(int_parts)}.{decimal_part}'
-    
+        value = f"{''.join(int_parts)}.{decimal_part}"
+
     return value
 
 def delete_double_transactions(data: pd.DataFrame) -> pd.DataFrame:

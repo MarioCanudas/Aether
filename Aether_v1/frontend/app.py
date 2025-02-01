@@ -13,7 +13,7 @@ from views.cash_transaction import adding_cash_transaction
 from views.transaction_processor import show_transaction_processor  # Import the transaction processor
 
 # -- Page Configuration --
-st.logo("assets/eli-logo.png", size= 'large', icon_image= "assets/eli-logo.png")
+st.logo("frontend/assets/eli-logo.png", size= 'large', icon_image= "frontend/assets/eli-logo.png")
 if not 'all_transactions' in st.session_state:
     st.session_state.all_transactions = []
 # -- Page Navigation --

@@ -10,12 +10,12 @@ class DocumentReader(ABC):
     def extract_text_by_page(self) -> List[str]:
         """Extracts text page by page from the document."""
         pass
-    
+
     @abstractmethod
     def extract_words_with_coordinates(self) -> List[Tuple[float, float, str]]:
         """Extracts words with their x-coordinates, y-coordinates, and text content from the document."""
         pass
-    
+
     @abstractmethod
     def extract_words_with_coordinates_with_ocr(self) -> List[List[Tuple[float, float, str]]]:
         """
@@ -74,25 +74,24 @@ class TransactionExtractor(ABC):
             if year_match:
                 return int(year_match.group(1))
         return None
-    
-    @abstractmethod
+
     def classify_words_from_page(self, pages: List[Tuple[float, float, str]]) -> Dict[str, List[Tuple[float, float, int, str]]]:
         """
         Classifies words extracted from PDF pages into three categories: dates, descriptions, and amounts.
 
-        The classification is based on the x-coordinate of the words, which determines their alignment and 
-        positional significance. This method processes a list of words with their x-coordinates, y-coordinates, 
+        The classification is based on the x-coordinate of the words, which determines their alignment and
+        positional significance. This method processes a list of words with their x-coordinates, y-coordinates,
         and text content, and organizes them into a dictionary.
 
         Parameters:
-            pages (List[Tuple[float, float, str]]): 
+            pages (List[Tuple[float, float, str]]):
             - A list of tuples where each tuple contains:
                 - x (float): The x-coordinate of the word.
                 - y (float): The y-coordinate of the word.
                 - text (str): The content of the word.
 
         Returns:
-            Dict[str, List[Tuple[float, float, int, str]]]: 
+            Dict[str, List[Tuple[float, float, int, str]]]:
             - A dictionary with the following keys:
                 - 'dates': A list of strings representing words classified as dates.
                 - 'descriptions': A list of strings representing words classified as descriptions.
