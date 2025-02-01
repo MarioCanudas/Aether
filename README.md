@@ -77,7 +77,7 @@ Once the script is executed, a CSV file containing the extracted transactions wi
 Run the Streamlit App: Navigate to the frontend directory and start the app:
 
 ```python
-streamlit run app.py
+streamlit run frontend/app.py
 ```
 Access the App: After starting, open your web browser and go to the URL provided by Streamlit (usually http://localhost:8501).
 
