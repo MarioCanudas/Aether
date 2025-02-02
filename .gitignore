@@ -177,3 +177,6 @@ Aether_project/
 
 # Experimental files
 test/
+
+# vscode
+.vscode/

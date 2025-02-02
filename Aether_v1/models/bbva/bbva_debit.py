@@ -12,7 +12,7 @@ class BBVADebitTransactionExtractor(TransactionExtractor):
         detected_months = []
         for word in words:
             for month in self.month_patterns.values():
-                if re.search(rf'\b{month}\b', word[1]) and month not in detected_months:
+                if re.search(rf'\b{month}\b', word[2]) and month not in detected_months:
                     detected_months.append(month)
         return detected_months
 
@@ -25,19 +25,19 @@ class BBVADebitTransactionExtractor(TransactionExtractor):
         month_regexes = [re.compile(rf'\s*(\d{{2}}/{month})') for month in detected_months]
 
         for i, (x,y,text) in enumerate(page):
-            if text == 'Periodo' and page[i+ 1][1] == 'DEL':
-                initial_date = page[i+ 2][1].split('/')
+            if text == 'Periodo' and page[i+ 1][2] == 'DEL':
+                initial_date = page[i+ 2][2].split('/')
                 period_dates.append(f"{initial_date[2]}-{datetime.strptime(initial_date[1], '%m').month:02}-{initial_date[0]}")
-                final_date = page[i+ 4][1].split('/')
+                final_date = page[i+ 4][2].split('/')
                 period_dates.append(f"{final_date[2]}-{datetime.strptime(initial_date[1], '%m').month:02}-{final_date[0]}")
             if text == 'Saldo':
                 if i + 1 < len(page):
-                    next_word = page[i + 1][1]
+                    next_word = page[i + 1][2]
 
                     # Check for "Saldo Anterior" (Initial Balance)
                     if next_word == 'Anterior':
-                        if i + 2 < len(page) and page[i + 2][1].replace(',', '').replace('.', '').isdigit():
-                            initial_amount = float(page[i + 2][1].replace(',', ''))
+                        if i + 2 < len(page) and page[i + 2][2].replace(',', '').replace('.', '').isdigit():
+                            initial_amount = float(page[i + 2][2].replace(',', ''))
                             transactions.append({
                                 'Date': period_dates[0],  # Start of the period
                                 'Description': 'Saldo inicial',
@@ -114,7 +114,7 @@ class BBVADebitTransactionProcessor(TransactionProcessor):
         for page in pages:
             detected_months += self.extractor.extract_month_from_pdf(page)
             for word in page:
-                date = re.search(r"(\d{2})/(\d{2})/(\d{4})", word[1])
+                date = re.search(r"(\d{2})/(\d{2})/(\d{4})", word[2])
                 if date:
                     self.year = int(date.group(3))
                     break
