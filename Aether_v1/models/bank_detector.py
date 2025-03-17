@@ -20,38 +20,38 @@ class DefaultBankDetector(BankDetector):
         for bank_name in banks_names:
             pattern = re.escape(bank_name.lower())
             for text in df_footer['text'].str.lower():
-                if isinstance(text, str) and re.search(pattern, text):
+                if isinstance(text, str) and re.search(f"^{pattern.lower()}$", text.lower()):
                     return bank_name
-                
+
         return None
 
     def detect_bank(self) -> Literal['amex', 'banorte', 'bbva', 'citibanamex', 'hsbc', 'inbursa', 'nu', 'santander']:
-        footer_percentage = 0.1
+        footer_percentage = 0.05
         footer_threshold = self.extracted_words['page_height'].mean() * footer_percentage
-        
+
         df_footer = self.extracted_words[self.extracted_words['bottom'] > self.extracted_words['page_height'].mean() - footer_threshold]
-        
+
         detected_bank = self.identify_bank_in_footer(df_footer, BANKS)
-        
+
         if detected_bank:
             return detected_bank
         else:
             raise ValueError('No bank was identified')
-    
+
     def detect_statement_type(self) -> Literal['debit', 'credit']:
         credit_condition_phrase = ['límite', 'de', 'crédito']
-        
+
         for i in range(len(self.extracted_words) - len(credit_condition_phrase)):
             if list(self.extracted_words['text'].iloc[i : i + len(credit_condition_phrase)].str.lower()) == credit_condition_phrase:
                 return 'credit'
-            
+
         return 'debit'
-    
+
     @property
     def statement_propertys(self):
         bank = self.detect_bank()
         statement_type = self.detect_statement_type()
-        
+
         match (bank, statement_type):
             case ('amex', 'credit'):
                 return AMEX_CREDIT_PROPERTYS
@@ -61,7 +61,7 @@ class DefaultBankDetector(BankDetector):
 
             case ('banamex', 'credit'):
                 return BANAMEX_CREDIT_PROPERTYS
-            
+
             case ('banorte', 'debit'):
                 return BANORTE_DEBIT_PROPERTYS
 
@@ -97,7 +97,6 @@ class DefaultBankDetector(BankDetector):
 
             case ('santander', 'credit'):
                 return SANTANDER_CREDIT_PROPERTYS
-            
+
             case _ :
                 return None
-            
