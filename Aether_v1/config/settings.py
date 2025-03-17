@@ -8,11 +8,11 @@ DOCUMENTS_FOLDER = os.path.join(PROJECT_ROOT, 'documents')
 INPUTS_FOLDER = os.path.join(DOCUMENTS_FOLDER, 'inputs')
 OUTPUTS_FOLDER = os.path.join(DOCUMENTS_FOLDER, 'outputs')
 DATA_FOLDER = os.path.join(PROJECT_ROOT, 'data')
-print(DATA_FOLDER)
 
 # Other config variables
-DEFAULT_BANK = 'Nu'
-DEFAULT_STATEMENT_TYPE = 'credit'
+BANKS = ['amex', 'banorte', 'bbva', 'citibanamex', 'hsbc', 'inbursa', 'nu', 'santander']
+STATEMENTS_TYPES = ['debit', 'credit']
+
 MONTH_PATTERNS_ENG = {
     'january': 'ENE',
     'february': 'FEB',
