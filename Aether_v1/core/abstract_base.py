@@ -13,7 +13,10 @@ class DocumentReader(ABC):
     def __init__(self, file_path: str):
         self.file_path = file_path
 
-    @abstractmethod
+    def extract_text_by_page(self) -> List[str]:
+        """Extracts text page by page from the document."""
+        pass
+
     def extract_words_from_pdf(self) -> pd.DataFrame:
         """
         Extract words along with their x and y coordinates and text content.

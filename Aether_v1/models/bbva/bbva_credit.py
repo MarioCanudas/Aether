@@ -88,6 +88,7 @@ class BBVACreditTransactionExtractor(TransactionExtractor):
 class BBVACreditTransactionProcessor(TransactionProcessor):
     def process_transactions(self) -> pd.DataFrame:
         pages = self.reader.extract_text_by_page()
+        print(pages)
         transactions = []
         detected_months = []
         for page in pages:
