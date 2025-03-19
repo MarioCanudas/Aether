@@ -11,7 +11,7 @@ from .banorte import BanorteCreditTransactionExtractor, BanorteCreditTransaction
 from .santander import SantanderCreditTransactionExtractor, SantanderCreditTransactionProcessor, SantanderDebitTransactionExtractor, SantanderDebitTransactionProcessor
 from .hsbc import HSBCCreditTransactionExtractor, HSBCCreditTransactionProcessor
 from .Inbursa import InbursaCreditTransactionExtractor, InbursaCreditTransactionProcessor, InbursaDebitTransactionExtractor, InbursaDebitTransactionProcessor
-## from .general import GeneralCreditTransactionExtractor, GeneralCreditTransactionProcessor
+from .general import GeneralCreditTransactionExtractor, GeneralCreditTransactionProcessor
 
 __all__ = ['PDFReader', 'DefaultBankDetector','NuBankCreditTransactionExtractor', 'NuBankCreditTransactionProcessor',
     'NuBankDebitTransactionExtractor', 'NuBankDebitTransactionProcessor',
@@ -25,4 +25,5 @@ __all__ = ['PDFReader', 'DefaultBankDetector','NuBankCreditTransactionExtractor'
     'SantanderDebitTransactionExtractor', 'SantanderDebitTransactionProcessor',
     'HSBCCreditTransactionExtractor', 'HSBCCreditTransactionProcessor',
     'InbursaCreditTransactionExtractor', 'InbursaCreditTransactionProcessor',
-    'InbursaDebitTransactionExtractor', 'InbursaDebitTransactionProcessor']
+    'InbursaDebitTransactionExtractor', 'InbursaDebitTransactionProcessor',
+    'GeneralCreditTransactionExtractor', 'GeneralCreditTransactionProcessor']
