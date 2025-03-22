@@ -1,7 +1,6 @@
 # models/__init__.py
 
 from .document_reader import PDFReader
-from .bank_detector import DefaultBankDetector
 
 from .bbva import BBVACreditTransactionExtractor, BBVACreditTransactionProcessor, BBVADebitTransactionExtractor, BBVADebitTransactionProcessor
 from .nu import NuBankCreditTransactionExtractor, NuBankCreditTransactionProcessor, NuBankDebitTransactionExtractor, NuBankDebitTransactionProcessor

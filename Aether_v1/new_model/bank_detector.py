@@ -3,7 +3,7 @@ from typing import Literal, List
 import re
 import pandas as pd
 from config import BANKS, STATEMENTS_TYPES
-from .propertys_catalog import (
+from propertys_catalog import (
     AMEX_CREDIT_PROPERTYS,
     BANAMEX_DEBIT_PROPERTYS, BANAMEX_CREDIT_PROPERTYS,
     BANORTE_DEBIT_PROPERTYS, BANORTE_CREDIT_PROPERTYS,
