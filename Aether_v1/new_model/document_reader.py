@@ -1,8 +1,8 @@
 import pdfplumber
 import pandas as pd
-from core import DocumentReader
+from core import NewDocumentReader
 
-class PDFReader(DocumentReader):
+class PDFReader(NewDocumentReader):
     def extract_words_from_pdf(self) -> pd.DataFrame:
         extracted_words = []
         
