@@ -128,13 +128,17 @@ class RowSegmenter(ABC):
     @property
     @abstractmethod
     def sorted_df(self) -> pd.DataFrame:
-        """"""
+        """
+        
+        """
         pass
 
     @property
     @abstractmethod
     def row_threshold(self) -> float:
-        """"""
+        """
+        
+        """
         pass
 
     @abstractmethod
@@ -190,5 +194,91 @@ class TableReconstructor(ABC):
 
         Returns:
             pd.DataFrame: The structured table with properly classified data.
+        """
+        pass
+    
+class TableNormalizer(ABC):
+    """
+    Base class for normalizing the reconstructed transaction table from the statement.
+
+    Attributes:
+        df_table (pd.DataFrame): DataFrame containing the reconstructed transaction table.
+        df_extracted_words (pd.DataFrame): DataFrame containing the extracted words.
+        statement_properties (dict): Dictionary with the statement's metadata.
+    """
+    
+    def __init__(self, df_table: pd.DataFrame, df_extracted_words: pd.DataFrame, statement_properties: dict):
+        self.df_table = df_table
+        self.df_extracted_words = df_extracted_words.copy()
+        self.statement_properties = statement_properties
+        
+    @property
+    @abstractmethod
+    def period_idx(self) -> int:
+        """
+        Determines the index of the column containing the period information.
+
+        Returns:
+            int: Index of the column containing the period information.
+        """
+        pass
+        
+    @abstractmethod
+    def get_year(self) -> List[int]:
+        """
+        Extracts the year from the statement.
+
+        Returns:
+            List[int]: List of years extracted from the statement.
+        """
+        pass
+    
+    @abstractmethod
+    def get_month(self) -> List[str]:
+        """
+        Extracts the month from the statement.
+        
+        Returns:
+            List[str]: List of months extracted from the statement.
+        """
+        pass
+    
+    @abstractmethod
+    def normalize_date(self, date: str) -> str:
+        """
+        Converts the extracted date into a standardized format (YYYY-MM-DD).
+
+        Args:
+            date (str): Extracted date from the statement.
+        Returns:
+            str: Normalized date in the format YYYY-MM-DD.
+        """
+        pass
+    
+    @abstractmethod
+    def normalize_amount(self, value: str) -> float:
+        """
+        Converts the extracted amount into a decimal number.
+
+        Args:
+            value (str): Extracted amount from the statement.
+
+        Returns:
+            float: Normalized amount as a decimal number.
+        """
+        pass
+    
+
+    @abstractmethod
+    def normalize_table(self) -> pd.DataFrame:
+        """
+        Standardizes the extracted transaction table into a uniform format suitable for database storage.
+
+        Returns:
+            pd.DataFrame: Normalized transaction table with standardized columns:
+                - date: Transaction date (YYYY-MM-DD)
+                - description: Standardized transaction description
+                - amount: Transaction amount as decimal
+                - type: Transaction type (expense/income/balance)
         """
         pass
