@@ -26,9 +26,8 @@ BBVA_DEBIT_PROPERTYS = {
     'expense_column' : 'CARGOS',
     'date_pattern' : r"^(\d{2})/([A-Z]{3})\b",
     'period_phrase' : ['periodo'],
-    'period_pattern' : r"(\d{2})-(\d{2})-(\d{4})",
+    'period_pattern' : r"(\d{2})/(\d{2})/(\d{4})",
     'year_group' : 3, 
-    'len_period_values' : 4,
 }
 
 BBVA_CREDIT_PROPERTYS = {

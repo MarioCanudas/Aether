@@ -1,12 +1,13 @@
 from core import TableNormalizer
 import re
+import pandas as pd
 from functools import cached_property
 from typing import List
 
 class TransactionTableNormalizer(TableNormalizer):
     @cached_property
     def period_idx(self) -> int:
-        period_phrase = self.statement_propertys['period_phrase']
+        period_phrase = self.statement_properties['period_phrase']
         
         for i in range(len(self.df_extracted_words) - len(period_phrase)):
             if list(self.df_extracted_words["text"].iloc[i : i + len(period_phrase)].str.lower()) == period_phrase:
@@ -20,22 +21,33 @@ class TransactionTableNormalizer(TableNormalizer):
     def get_year(self) -> List[int]:
         detected_years = []
         
-        period_values = self.df_extracted_words['text'].iloc[self.period_idx : self.period_idx + self.statement_properties['len_period_values']]
+        # Check if period_idx is valid
+        if self.period_idx is None:
+            return detected_years
+            
+        # Get the text values after the period phrase
+        period_values = self.df_extracted_words.iloc[self.period_idx : self.period_idx + 10]
         
         for text in period_values['text']:
             if self.statement_properties['period_pattern']:
                 year_match = re.search(self.statement_properties['period_pattern'], text)
-
+                
                 if year_match:
-                    year = int(year_match.group(self.statement_properties['year_group']))
-                    detected_years.append(year_match.group(year))
+                    try:
+                        year = int(year_match.group(self.statement_properties['year_group']))
+                        detected_years.append(year)  # Append the integer directly
+                    except (ValueError, IndexError):
+                        continue
                     
             else:
-                year_match = re.search(r'\b\d{4}\b', text)
-
+                year_match = re.search(r'\b20\d{2}\b', text)  # More specific regex for years
+                
                 if year_match:
-                    year = int(year_match.group())
-                    detected_years.append(int)
+                    try:
+                        year = int(year_match.group())
+                        detected_years.append(year)  # Append the integer, not 'int'
+                    except ValueError:
+                        continue
                     
         return sorted(list(set(detected_years)))
     
