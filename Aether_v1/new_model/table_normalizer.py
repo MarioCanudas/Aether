@@ -51,26 +51,124 @@ class TransactionTableNormalizer(TableNormalizer):
                     
         return sorted(list(set(detected_years)))
     
-    def normalize_date(self, value: str) -> str:
-        date_match = re.search(self.statement_properties['date_pattern'], value)
+    def normalize_dates(self, date_column: pd.Series) -> pd.Series:
+        date_pattern = self.statement_properties['date_pattern']
+        year_group, month_group, day_group = self.statement_properties['date_groups']
+        month_pattern = self.statement_properties['month_pattern']
         
-        if date_match:
-            pass
+        if year_group:
+            def normalize_date(date: str) -> str:
+                date_match = re.match(date_pattern, date)
+                
+                if date_match:
+                    year = date_match.group(year_group)
+                    month = date_match.group(month_group)
+                    day = date_match.group(day_group)
+                    
+                    month = month_pattern[month]
+                    
+                    return f"{year}-{month}-{day}"
+                else:
+                    return ""
+        else:
+            def normalize_date(date: str) -> str:
+                years = self.get_year()
+                date_match = re.match(date_pattern, date)
+
+                if len(years) == 1:
+                    year = years[0]
+                    
+                    if date_match:
+                        month = date_match.group(month_group)
+                        day = date_match.group(day_group)
+                        
+                        month = month_pattern[month]
+                        
+                        return f"{year}-{month}-{day}"
+                    else:
+                        return ""
+                elif len(years) == 2:
+                    year1 = years[0]
+                    year2 = years[1]
+                    
+                    if date_match:
+                        month = date_match.group(month_group)
+                        day = date_match.group(day_group)
+                        
+                        month = month_pattern[month]
+                        
+                        if int(month) <= 12:
+                            return f"{year1}-{month}-{day}"
+                        else:
+                            return f"{year2}-{month}-{day}"
+                    else:
+                        return ""
+                    
+        return date_column.apply(normalize_date)
+    
+    def income_idxs(self) -> List[int]:
+        df_table = self.df_table.copy()
         
-    def normalize_amount(self, value: str) -> float:
-        pass
+        income_condition = self.statement_properties['income_condition']
+        description_column = self.statement_properties['description_column']
+        income_idxs = []
+        
+        for i, row in df_table.iterrows():
+            if income_condition in row[description_column].lower():
+                income_idxs.append(i)
+                
+        return income_idxs
+        
+    def normalize_amounts(self, amount_columns: pd.Series | pd.DataFrame) -> pd.Series:
+        column_names = amount_columns.columns.tolist()
+        
+        if len(column_names) == 1:
+            def normalize_amount(amount: str, i: int) -> float:
+                income_idxs = self.income_idxs()
+
+                try:
+                    if i in income_idxs:
+                        return float(amount)
+                    else:
+                        return -float(amount)
+                except ValueError:
+                    return 0.0
+        else:
+            def normalize_amount(row: str) -> float:
+                income_column = self.statement_properties['income_column']
+                expense_column = self.statement_properties['expense_column']
+                
+                if not pd.isna(row[income_column]) and row[expense_column] == '':
+                    try:
+                        return float(row[income_column].replace(',', ''))
+                    except ValueError:
+                        return 0.0
+                    
+                elif not pd.isna(row[expense_column]) and row[income_column] == '':
+                    try:
+                        return float(row[expense_column].replace(',', '')) * -1
+                    except ValueError:
+                        return 0.0
+                else:
+                    return 0.0
+
+        return amount_columns.apply(normalize_amount, axis=1)
     
     def normalize_table(self) -> pd.DataFrame:
+        df_table = self.df_table.copy()
         df_normalized = pd.DataFrame()
         
         date_column = self.statement_properties['date_column']
         description_column = self.statement_properties['description_column']
         amount_column = self.statement_properties['amount_column']
         
-        df_normalized['date'] = self.df_table[date_column].apply(self.normalize_date)
-        df_normalized['description'] = self.df_table[description_column]
-        df_normalized['amount'] = self.df_table[amount_column].apply(self.normalize_amount)
+        df_normalized['Date'] = self.normalize_dates(df_table[date_column])
+        df_normalized['Description'] = df_table[description_column]
+        df_normalized['Amount'] = self.normalize_amounts(df_table[amount_column])
         
-        df_normalized['date'] = pd.to_datetime(normalized['date'])
+        df_normalized['Type'] = df_normalized['Amount'].apply(
+            lambda x: 'Abono' if x > 0 else 'Cargo' if x < 0 else 'Saldo'
+        )
+        df_normalized['Date'] = pd.to_datetime(df_normalized['Date'])
         
         return df_normalized

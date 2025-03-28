@@ -242,32 +242,6 @@ class TableNormalizer(ABC):
             List[str]: List of months extracted from the statement.
         """
         pass
-    
-    @abstractmethod
-    def normalize_date(self, date: str) -> str:
-        """
-        Converts the extracted date into a standardized format (YYYY-MM-DD).
-
-        Args:
-            date (str): Extracted date from the statement.
-        Returns:
-            str: Normalized date in the format YYYY-MM-DD.
-        """
-        pass
-    
-    @abstractmethod
-    def normalize_amount(self, value: str) -> float:
-        """
-        Converts the extracted amount into a decimal number.
-
-        Args:
-            value (str): Extracted amount from the statement.
-
-        Returns:
-            float: Normalized amount as a decimal number.
-        """
-        pass
-    
 
     @abstractmethod
     def normalize_table(self) -> pd.DataFrame:

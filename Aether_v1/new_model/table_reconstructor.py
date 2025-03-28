@@ -52,4 +52,4 @@ class TransactionTableReconstructor(TableReconstructor):
 
         df_merged = pd.DataFrame(merged_rows)
         
-        return df_merged[df_merged[date_column].str.match(date_pattern, na=False)]
+        return df_merged[df_merged[date_column].str.match(date_pattern, na=False)].reset_index(drop=True)

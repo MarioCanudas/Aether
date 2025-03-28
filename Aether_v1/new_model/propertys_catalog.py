@@ -1,3 +1,7 @@
+from config import MONTH_PATTERNS_SPA, NUMERIC_MONTH_PATTERNS
+
+inverted_numeric_month_patterns = {v:k for k,v in NUMERIC_MONTH_PATTERNS.items()}
+
 AMEX_CREDIT_PROPERTYS = {
     
 }
@@ -16,15 +20,24 @@ BANORTE_CREDIT_PROPERTYS = {
 }
 
 BBVA_DEBIT_PROPERTYS = {
+    # Phrase properties
     'start_phrase' : ["detalle", "de", "movimientos", "realizados"],
     'end_phrase' : ["le", "informamos", "que", "puede"],
+    
+    # Column distribution properties
     'columns': ['OPER', 'LIQ', 'DESCRIPCION', 'REFERENCIA', 'CARGOS', 'ABONOS', 'OPERACION', 'LIQUIDACION'],
     'date_column' : 'OPER',
     'description_column' : 'DESCRIPCION',
     'amount_column' : ['CARGOS', 'ABONOS'],
     'income_column' : 'ABONOS',
     'expense_column' : 'CARGOS',
+    
+    # Date properties
     'date_pattern' : r"^(\d{2})/([A-Z]{3})\b",
+    'date_groups': (None, 2, 1), # groups: (year, month, day)
+    'month_pattern' : inverted_numeric_month_patterns,
+    
+    # Period properties
     'period_phrase' : ['periodo'],
     'period_pattern' : r"(\d{2})/(\d{2})/(\d{4})",
     'year_group' : 3, 
