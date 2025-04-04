@@ -2,7 +2,7 @@ from core import BankDetector
 from typing import Literal, List
 import re
 import pandas as pd
-from config import BANKS, STATEMENTS_TYPES
+from config import BANKS, BANKS_CODES, STATEMENTS_TYPES
 from propertys_catalog import (
     AMEX_CREDIT_PROPERTYS,
     BANAMEX_DEBIT_PROPERTYS, BANAMEX_CREDIT_PROPERTYS,
@@ -16,16 +16,34 @@ from propertys_catalog import (
 
 
 class DefaultBankDetector(BankDetector):
-    def identify_bank_in_footer(self, df_footer: pd.DataFrame, banks_names: List[str]) -> str:
-        for bank_name in banks_names:
-            pattern = re.escape(bank_name.lower())
-            for text in df_footer['text'].str.lower():
-                if isinstance(text, str) and re.search(f"^{pattern.lower()}$", text.lower()):
-                    return bank_name
-
+    def identify_bank_in_footer(self, df_footer: pd.DataFrame, banks_names: List[str]) -> Literal['amex', 'banorte', 'bbva', 'citibanamex', 'hsbc', 'inbursa', 'nu', 'santander']:
+        """
+        Detect the bank by analyzing the footer of the document.
+        This method checks if any of the bank names are present in the footer text.
+        
+        Args:
+            df_footer (pd.DataFrame): DataFrame containing the footer text.
+            banks_names (List[str]): List of bank names to check against.
+        Returns:
+            str: The detected bank name if found, otherwise None.
+        """
+        footer_text = df_footer['text'].apply(lambda x: x.lower())
+        for bank in banks_names:
+            bank_lower = bank.lower()
+            mask = footer_text.str.contains(f"\\b{re.escape(bank_lower)}\\b", regex=True)
+            if mask.any():
+                return bank
+    
         return None
 
-    def detect_bank(self) -> Literal['amex', 'banorte', 'bbva', 'citibanamex', 'hsbc', 'inbursa', 'nu', 'santander']:
+    def detect_bank_in_footer(self) -> Literal['amex', 'banorte', 'bbva', 'citibanamex', 'hsbc', 'inbursa', 'nu', 'santander']:
+        """
+        Detect the bank by analyzing the footer of the document.
+        
+        Returns:
+            str: The detected bank name if found, otherwise raises a ValueError.
+        """
+        
         footer_percentage = 0.05
         footer_threshold = self.extracted_words['page_height'].mean() * footer_percentage
 
@@ -37,6 +55,50 @@ class DefaultBankDetector(BankDetector):
             return detected_bank
         else:
             raise ValueError('No bank was identified')
+        
+    def detect_bank_by_code(self) -> Literal['amex', 'banorte', 'bbva', 'citibanamex', 'hsbc', 'inbursa', 'nu', 'santander']:
+        """
+        Detect the bank by analyzing the CLABE code in the document.
+        
+        Returns:
+            str: The detected bank name if found, otherwise None.
+        """
+        df_extracted_words = self.extracted_words.copy()
+    
+        clabe_keyword = r'\bclabe\b'
+        
+        clabe_pattern = r'(\d{3})(\d{7,15})?'
+        
+        mask = df_extracted_words['text'].str.contains(clabe_keyword, regex=True, case=False)
+        
+        if mask.any():
+            clabe_indices = df_extracted_words.index[mask].tolist()
+            
+            for idx in clabe_indices:
+                start_idx = max(0, idx - 5)
+                end_idx = min(len(df_extracted_words), idx + 20)
+                
+                # Extraer texto en ese rango y eliminar espacios
+                nearby_text = df_extracted_words.iloc[start_idx:end_idx]['text'].astype(str)
+                nearby_text = nearby_text.str.replace(r'\s+', '', regex=True)
+                
+                for i, text in enumerate(nearby_text):
+                    clabe_matches = re.findall(clabe_pattern, text)
+                    
+                    if clabe_matches:
+                        for bank_code, rest_of_digits in clabe_matches:
+                            if bank_code in BANKS_CODES:
+                                return BANKS_CODES[bank_code]
+                
+        return None
+    
+    def detect_bank(self):
+        bank = self.detect_bank_by_code()
+        
+        if not bank:
+            bank = self.detect_bank_in_footer()
+            
+        return bank
 
     def detect_statement_type(self) -> Literal['debit', 'credit']:
         credit_condition_phrase = ['límite', 'de', 'crédito']
