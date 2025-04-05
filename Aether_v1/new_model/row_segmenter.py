@@ -79,12 +79,24 @@ class TransactionRowSegmenter(RowSegmenter):
                     
         return header_row
     
+    def construct_word(self, row: pd.Series) -> str:
+        text = row['text']
+        x0 = row['x0']
+        x1 = row['x1']
+        
+        return (text, x0, x1)
+    
     def group_rows(self) -> pd.DataFrame:
-        self.sorted_df["row_group"] = (self.sorted_df["top"].diff().abs() > self.row_threshold).cumsum()
-        grouped_rows = self.sorted_df.groupby("row_group").agg({
-            "text": lambda x: " ".join(x),  # Concatenate words in row order
-            "x0": lambda x: list(x),  # Keep all x0 values as a list
-            "x1": lambda x: list(x), # Right-most position of row
+        sorted_df = self.sorted_df.copy()
+        row_threshold = self.row_threshold
+        
+        sorted_df["row_group"] = (sorted_df["top"].diff().abs() > row_threshold).cumsum()
+        
+        sorted_df["words"] = sorted_df.apply(self.construct_word, axis=1)
+        
+        grouped_rows = sorted_df.groupby("row_group").agg({
+            "text": lambda x: " ".join(x),  # Concatenate all words in row
+            "words": lambda x: list(x),  # Keep all words in row as a list
             "top": "min",  # Top position of row
             "bottom": "max",  # Bottom position of row
             "page": "first"  # Keep page number
