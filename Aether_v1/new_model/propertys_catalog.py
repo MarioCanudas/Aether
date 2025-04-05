@@ -7,12 +7,27 @@ AMEX_CREDIT_PROPERTYS = {
 }
 
 BANORTE_DEBIT_PROPERTYS = {
+    # Phrase properties
     'start_phrase' : ['detalle', 'de', 'movimientos', '(pesos)▼'],
     'end_phrase' : ['inversión', 'enlace', 'personal'],
+    
+    # Column distribution properties
     'columns': ['FECHA', 'DESCRIPCIÓN / ESTABLECIMIENTO', 'MONTO DEL DEPOSITO', 'MONTO DEL RETIRO', 'SALDO'],
     'date_column' : 'FECHA',
-    'description_column' : 'DESCRIPCIÓN',
-    'date_pattern' : r"(\d{2})-(\w{3})-(\d{2})"
+    'description_column' : 'DESCRIPCIÓN / ESTABLECIMIENTO',
+    'amount_column' : ['MONTO DEL DEPOSITO', 'MONTO DEL RETIRO'],
+    'income_column' : 'MONTO DEL DEPOSITO',
+    'expense_column' : 'MONTO DEL RETIRO',
+    
+    # Date properties
+    'date_pattern' : r"(\d{2})-(\w{3})-(\d{2})",
+    'date_groups' : (3, 2, 1), # groups: (year, month, day)
+    'month_pattern' : inverted_numeric_month_patterns,
+    
+    # Period properties
+    'period_phrase' : ['periodo'],
+    'period_pattern' : r"(\d{2})/(Enero|Febrero|Marzo|Abril|Mayo|Junio|Julio|Agosto|Septiembre|Octubre|Noviembre|Diciembre)/(\d{4})",
+    'year_group' : 3,
 }
 
 BANORTE_CREDIT_PROPERTYS = {
@@ -46,7 +61,10 @@ BBVA_DEBIT_PROPERTYS = {
 BBVA_CREDIT_PROPERTYS = {
     'start_phrase' : ['movimientos', 'efectuados'],
     'end_phrase': ['resumen', 'informativo', 'de', 'beneficios'],
-    'columns' : []
+    
+    'columns' : ['AUTORIZACION', 'APLICACION', 'CARGOS', 'ABONOS'],
+    'date_column' : 'OPER',
+    
 }
 
 BANAMEX_DEBIT_PROPERTYS = {
