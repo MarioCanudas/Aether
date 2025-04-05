@@ -2,7 +2,7 @@ from core import TableNormalizer
 import re
 import pandas as pd
 from functools import cached_property
-from typing import List
+from typing import List, Tuple
 
 class TransactionTableNormalizer(TableNormalizer):
     @cached_property
@@ -51,60 +51,70 @@ class TransactionTableNormalizer(TableNormalizer):
                     
         return sorted(list(set(detected_years)))
     
+    def normalize_date_with_year(self, date: str, date_pattern: str, groups_date: Tuple[int], month_pattern: dict) -> str:
+        year_group, month_group, day_group = groups_date
+        
+        date_match = re.match(date_pattern, date)
+        
+        if date_match:
+            year = date_match.group(year_group)
+            month = date_match.group(month_group)
+            day = date_match.group(day_group)
+            
+            month = month_pattern[month]
+            
+            return f"{year}-{month}-{day}" if len(year) == 4 else f"20{year}-{month}-{day}"
+        else:
+            return ""
+        
+    def normalize_date_without_year(self, date: str, date_pattern: str, groups_date: Tuple[int], month_pattern: dict) -> str:
+        years = self.get_year()
+        _, month_group, day_group = groups_date
+        
+        date_match = re.match(date_pattern, date)
+
+        if len(years) == 1:
+            year = years[0]
+            
+            if date_match:
+                month = date_match.group(month_group)
+                day = date_match.group(day_group)
+                
+                month = month_pattern[month]
+                
+                return f"{year}-{month}-{day}"
+            else:
+                return ""
+        elif len(years) == 2:
+            year1 = years[0]
+            year2 = years[1]
+            
+            if date_match:
+                month = date_match.group(month_group)
+                day = date_match.group(day_group)
+                
+                month = month_pattern[month]
+                
+                if int(month) <= 12:
+                    return f"{year1}-{month}-{day}"
+                else:
+                    return f"{year2}-{month}-{day}"
+            else:
+                return ""
+            
     def normalize_dates(self, date_column: pd.Series) -> pd.Series:
         date_pattern = self.statement_properties['date_pattern']
-        year_group, month_group, day_group = self.statement_properties['date_groups']
+        groups_date = self.statement_properties['date_groups']
         month_pattern = self.statement_properties['month_pattern']
         
-        if year_group:
-            def normalize_date(date: str) -> str:
-                date_match = re.match(date_pattern, date)
-                
-                if date_match:
-                    year = date_match.group(year_group)
-                    month = date_match.group(month_group)
-                    day = date_match.group(day_group)
-                    
-                    month = month_pattern[month]
-                    
-                    return f"{year}-{month}-{day}"
-                else:
-                    return ""
+        if groups_date[0]:
+            return date_column.apply(
+                lambda x: self.normalize_date_with_year(x, date_pattern, groups_date, month_pattern)
+            )
         else:
-            def normalize_date(date: str) -> str:
-                years = self.get_year()
-                date_match = re.match(date_pattern, date)
-
-                if len(years) == 1:
-                    year = years[0]
-                    
-                    if date_match:
-                        month = date_match.group(month_group)
-                        day = date_match.group(day_group)
-                        
-                        month = month_pattern[month]
-                        
-                        return f"{year}-{month}-{day}"
-                    else:
-                        return ""
-                elif len(years) == 2:
-                    year1 = years[0]
-                    year2 = years[1]
-                    
-                    if date_match:
-                        month = date_match.group(month_group)
-                        day = date_match.group(day_group)
-                        
-                        month = month_pattern[month]
-                        
-                        if int(month) <= 12:
-                            return f"{year1}-{month}-{day}"
-                        else:
-                            return f"{year2}-{month}-{day}"
-                    else:
-                        return ""
-                    
-        return date_column.apply(normalize_date)
+            return date_column.apply(
+                lambda x: self.normalize_date_without_year(x, date_pattern, groups_date, month_pattern)
+            )
     
     def income_idxs(self) -> List[int]:
         df_table = self.df_table.copy()
