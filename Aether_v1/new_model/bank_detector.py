@@ -43,11 +43,12 @@ class DefaultBankDetector(BankDetector):
         Returns:
             str: The detected bank name if found, otherwise raises a ValueError.
         """
+        document_height = self.document_height
         
         footer_percentage = 0.05
-        footer_threshold = self.extracted_words['page_height'].mean() * footer_percentage
+        footer_threshold = document_height * footer_percentage
 
-        df_footer = self.extracted_words[self.extracted_words['bottom'] > self.extracted_words['page_height'].mean() - footer_threshold]
+        df_footer = self.extracted_words[self.extracted_words['bottom'] > document_height - footer_threshold]
 
         detected_bank = self.identify_bank_in_footer(df_footer, BANKS)
 

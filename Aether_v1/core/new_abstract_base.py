@@ -35,8 +35,9 @@ class BankDetector(ABC):
         extracted_words (pd.DataFrame): DataFrame containing the extracted words and their positions.
     """
 
-    def __init__(self, extracted_words: pd.DataFrame):
+    def __init__(self, extracted_words: pd.DataFrame, document_height: float):
         self.extracted_words = extracted_words.copy()
+        self.document_height = document_height
 
     @abstractmethod
     def detect_bank(self) -> Literal['amex', 'banorte', 'bbva', 'citibanamex', 'hsbc', 'inbursa', 'nu', 'santander']:
