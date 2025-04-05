@@ -122,8 +122,9 @@ class RowSegmenter(ABC):
         df_table (pd.DataFrame): DataFrame containing the transaction table.
     """
 
-    def __init__(self, df_table: pd.DataFrame):
+    def __init__(self, df_table: pd.DataFrame, statement_propertys: dict):
         self.df_table = df_table
+        self.statement_propertys = statement_propertys
 
     @property
     @abstractmethod
@@ -159,21 +160,11 @@ class TableReconstructor(ABC):
         grouped_rows (pd.DataFrame): DataFrame with words grouped by row.
     """
 
-    def __init__(self, grouped_rows: pd.DataFrame, statement_propertys: dict):
+    def __init__(self, grouped_rows: pd.DataFrame, header_row: dict, statement_propertys: dict):
         self.grouped_rows = grouped_rows
+        self.header_row = header_row
         self.statement_propertys = statement_propertys
-
-    @property
-    @abstractmethod
-    def header_row(self) -> float:
-        """
-        Locate the header row of the transaction table, which contains the column names.
-
-        Returns:
-            float: The vertical position of the header row.
-        """
-        pass
-
+        
     @abstractmethod
     def classify_columns(self, row) -> pd.Series:
         """
