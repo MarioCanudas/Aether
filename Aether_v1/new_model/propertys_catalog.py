@@ -15,6 +15,7 @@ AMEX_CREDIT_PROPERTYS = {
     'amount_column' : [],
     'income_column' : '',
     'expense_column' : '',
+    'balance_column' : '',
     
     # Date properties
     'date_pattern' : r"",
@@ -41,6 +42,7 @@ BANORTE_DEBIT_PROPERTYS = {
     'amount_column' : ['MONTO DEL DEPOSITO', 'MONTO DEL RETIRO'],
     'income_column' : 'MONTO DEL DEPOSITO',
     'expense_column' : 'MONTO DEL RETIRO',
+    'balance_column' : 'SALDO',
     
     # Date properties
     'date_pattern' : r"(\d{2})-(\w{3})-(\d{2})",
@@ -70,6 +72,7 @@ BBVA_DEBIT_PROPERTYS = {
     'amount_column' : ['CARGOS', 'ABONOS'],
     'income_column' : 'ABONOS',
     'expense_column' : 'CARGOS',
+    'balance_column' : 'LIQUIDACION',
     
     # Date properties
     'date_pattern' : r"^(\d{2})/([A-Z]{3})\b",
@@ -95,6 +98,7 @@ BBVA_CREDIT_PROPERTYS = {
     'amount_column' : ['IMPORTE CARGOS', 'IMPORTE ABONOS'],
     'income_column' : 'IMPORTE ABONOS',
     'expense_column' : 'IMPORTE CARGOS',
+    'balance_column' : None,
     
     # Date properties
     'date_pattern' : r"(\d{2})/(\d{2})/(\d{2})",

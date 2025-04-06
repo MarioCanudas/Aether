@@ -131,41 +131,46 @@ class TransactionTableNormalizer(TableNormalizer):
                 income_idxs.append(i)
                 
         return income_idxs
+    
+    def celan_amount(self, amount: str) -> str:
+        return amount.replace(',', '').replace('$', '').replace('+', '').replace('-','')
+    
+    def normalize_amount_for_single_column(self, amount: str) -> float:
+        pass
+    
+    def normalize_amount_for_multiple_columns(self, row: str) -> float:
+        income_column = self.statement_properties['income_column']
+        expense_column = self.statement_properties['expense_column']
+        balance_column = self.statement_properties['balance_column']
+        
+        if not pd.isna(row[income_column]) and row[expense_column] == '':
+            try:
+                return float(self.celan_amount(row[income_column]))
+            except ValueError:
+                return 0.0
+            
+        elif not pd.isna(row[expense_column]) and row[income_column] == '':
+            try:
+                return float(self.celan_amount(row[expense_column])) * -1
+            except ValueError:
+                return 0.0
+        
+        elif balance_column:
+            if not pd.isna(row[balance_column]) and row[income_column] == '' and row[expense_column] == '':
+                try:
+                    return float(self.celan_amount(row[balance_column]))
+                except ValueError:
+                    return 0.0
+        else:
+            return 0.0
         
     def normalize_amounts(self, amount_columns: pd.Series | pd.DataFrame) -> pd.Series:
         column_names = amount_columns.columns.tolist()
         
         if len(column_names) == 1:
-            def normalize_amount(amount: str, i: int) -> float:
-                income_idxs = self.income_idxs()
-
-                try:
-                    if i in income_idxs:
-                        return float(amount)
-                    else:
-                        return -float(amount)
-                except ValueError:
-                    return 0.0
+            return amount_columns.apply(self.normalize_amount_for_single_column, axis=1)
         else:
-            def normalize_amount(row: str) -> float:
-                income_column = self.statement_properties['income_column']
-                expense_column = self.statement_properties['expense_column']
-                
-                if not pd.isna(row[income_column]) and row[expense_column] == '':
-                    try:
-                        return float(row[income_column].replace(',', ''))
-                    except ValueError:
-                        return 0.0
-                    
-                elif not pd.isna(row[expense_column]) and row[income_column] == '':
-                    try:
-                        return float(row[expense_column].replace(',', '')) * -1
-                    except ValueError:
-                        return 0.0
-                else:
-                    return 0.0
-
-        return amount_columns.apply(normalize_amount, axis=1)
+            return amount_columns.apply(self.normalize_amount_for_multiple_columns, axis=1)
     
     def normalize_table(self) -> pd.DataFrame:
         df_table = self.df_table.copy()
