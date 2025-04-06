@@ -61,7 +61,10 @@ class TransactionTableNormalizer(TableNormalizer):
             month = date_match.group(month_group)
             day = date_match.group(day_group)
             
-            month = month_pattern[month]
+            try:
+                month = int(month)
+            except:
+                month = month_pattern[month]
             
             return f"{year}-{month}-{day}" if len(year) == 4 else f"20{year}-{month}-{day}"
         else:

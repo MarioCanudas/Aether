@@ -3,7 +3,7 @@ import pandas as pd
 
 class TransactionTableReconstructor(TableReconstructor):
     def get_columns_row(self) -> float:
-        colums_row = " ".join(self.statement_propertys['columns'])
+        colums_row = " ".join(self.statement_propertys['columns_row'])
         return self.grouped_rows[self.grouped_rows['text'].str.contains(colums_row, na= False)].iloc[0]
     
     @property

@@ -27,7 +27,7 @@ class TransactionRowSegmenter(RowSegmenter):
         return filtered_diffs.mean()
     
     def get_header_row(self) -> dict:
-        df_table = self.df_table.copy()
+        rows = self.sorted_df.to_dict(orient='records')
         
         columns = self.statement_propertys['columns']
         
@@ -37,34 +37,34 @@ class TransactionRowSegmenter(RowSegmenter):
             'x1': [],
         }
         
-        used_words_idx = []
-        
         for col in columns:
             header_row['columns'].append(col)
-            
             words_col = col.split()
             words_num = len(words_col)
+            
+            words_col_verification = {col: False for col in words_col}
             
             col_x0 = None
             col_x1 = None
             
-            for i, row in df_table.iterrows():
-                if i in used_words_idx:
-                    continue
-                
+            for i, row in enumerate(rows):
                 word = row['text'].strip()
                 x0 = row['x0']
                 x1 = row['x1']
                 
                 if word in words_col:
-                    used_words_idx.append(i)
+                    if words_col_verification[word]:
+                        continue
+                    else:
+                        words_col_verification[word] = True
+                    
                     word_idx = words_col.index(word)
                     
                     if words_num == 1:
                         col_x0 = x0
                         col_x1 = x1
-                        
                         break 
+                    
                     elif words_num > 1:
                         if word_idx == 0 and col_x0 is None:
                             col_x0 = x0
@@ -73,6 +73,8 @@ class TransactionRowSegmenter(RowSegmenter):
                             
                         if col_x0 is not None and col_x1 is not None:
                             break
+                        
+                    rows[i]['text'] = ''
                         
             header_row['x0'].append(col_x0)
             header_row['x1'].append(col_x1)
