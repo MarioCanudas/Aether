@@ -3,6 +3,28 @@ from config import MONTH_PATTERNS_SPA, NUMERIC_MONTH_PATTERNS
 inverted_numeric_month_patterns = {v:k for k,v in NUMERIC_MONTH_PATTERNS.items()}
 
 AMEX_CREDIT_PROPERTYS = {
+    # Phrase properties
+    'start_phrase' : [],
+    'end_phrase' : [],
+    
+    # Column distribution properties
+    'columns': [],
+    'columns_row' : [],
+    'date_column' : '',
+    'description_column' : '',
+    'amount_column' : [],
+    'income_column' : '',
+    'expense_column' : '',
+    
+    # Date properties
+    'date_pattern' : r"",
+    'date_groups' : (), # groups: (year, month, day)
+    'month_pattern' : inverted_numeric_month_patterns,
+    
+    # Period properties
+    'period_phrase' : [],
+    'period_pattern' : r"",
+    'year_group' : None,
     
 }
 
@@ -13,6 +35,7 @@ BANORTE_DEBIT_PROPERTYS = {
     
     # Column distribution properties
     'columns': ['FECHA', 'DESCRIPCIÓN / ESTABLECIMIENTO', 'MONTO DEL DEPOSITO', 'MONTO DEL RETIRO', 'SALDO'],
+    'columns_row' : ['FECHA', 'DESCRIPCIÓN / ESTABLECIMIENTO', 'MONTO DEL DEPOSITO', 'MONTO DEL RETIRO', 'SALDO'],
     'date_column' : 'FECHA',
     'description_column' : 'DESCRIPCIÓN / ESTABLECIMIENTO',
     'amount_column' : ['MONTO DEL DEPOSITO', 'MONTO DEL RETIRO'],
@@ -41,6 +64,7 @@ BBVA_DEBIT_PROPERTYS = {
     
     # Column distribution properties
     'columns': ['OPER', 'LIQ', 'DESCRIPCION', 'REFERENCIA', 'CARGOS', 'ABONOS', 'OPERACION', 'LIQUIDACION'],
+    'columns_row' : ['OPER', 'LIQ', 'DESCRIPCION', 'REFERENCIA', 'CARGOS', 'ABONOS', 'OPERACION', 'LIQUIDACION'],
     'date_column' : 'OPER',
     'description_column' : 'DESCRIPCION',
     'amount_column' : ['CARGOS', 'ABONOS'],
@@ -59,12 +83,28 @@ BBVA_DEBIT_PROPERTYS = {
 }
 
 BBVA_CREDIT_PROPERTYS = {
+    # Phrase properties
     'start_phrase' : ['movimientos', 'efectuados'],
-    'end_phrase': ['resumen', 'informativo', 'de', 'beneficios'],
+    'end_phrase' : ['resumen', 'informativo', 'de', 'beneficios'],
     
-    'columns' : ['AUTORIZACION', 'APLICACION', 'CARGOS', 'ABONOS'],
-    'date_column' : 'OPER',
+    # Column distribution properties
+    'columns': ['FECHA AUTORIZACION', 'FECHA APLICACION', 'CONCEPTO', 'R.F.C.', 'REFERENCIA', 'IMPORTE CARGOS', 'IMPORTE ABONOS'],
+    'columns_row' : ['AUTORIZACION', 'APLICACION', 'CARGOS', 'ABONOS'],
+    'date_column' : 'FECHA AUTORIZACION',
+    'description_column' : 'CONCEPTO',
+    'amount_column' : ['IMPORTE CARGOS', 'IMPORTE ABONOS'],
+    'income_column' : 'IMPORTE ABONOS',
+    'expense_column' : 'IMPORTE CARGOS',
     
+    # Date properties
+    'date_pattern' : r"(\d{2})/(\d{2})/(\d{2})",
+    'date_groups' : (3, 2, 1), # groups: (year, month, day)
+    'month_pattern' : NUMERIC_MONTH_PATTERNS,
+    
+    # Period properties
+    'period_phrase' : ['Periodo'],
+    'period_pattern' : r"(\d{2})/(\d{2})/(\d{2})",
+    'year_group' : 3,
 }
 
 BANAMEX_DEBIT_PROPERTYS = {
