@@ -248,3 +248,24 @@ class TableNormalizer(ABC):
                 - type: Transaction type (expense/income/balance)
         """
         pass
+    
+class DataExporter(ABC):
+    """
+    Base class for exporting the normalized transaction table to a database.
+
+    Attributes:
+        df_table (pd.DataFrame): DataFrame containing the normalized transaction table.
+    """
+
+    def __init__(self, df_table: pd.DataFrame):
+        self.df_table = df_table.copy()
+
+    @abstractmethod
+    def export_to_csv(self, file_path: str) -> None:
+        """
+        Export the DataFrame to a CSV file.
+
+        Args:
+            file_path (str): Path to save the CSV file.
+        """
+        pass
