@@ -9,6 +9,7 @@ AMEX_CREDIT_PROPERTYS = {
     
     # Column distribution properties
     'columns': [],
+    #'columns_pattern' : [],
     'columns_row' : [],
     'date_column' : '',
     'description_column' : '',
@@ -22,11 +23,18 @@ AMEX_CREDIT_PROPERTYS = {
     'date_groups' : (), # groups: (year, month, day)
     'month_pattern' : inverted_numeric_month_patterns,
     
+    # Amount properties
+    'income_sign': '',
+    'expense_sign': '',
+    
     # Period properties
     'period_phrase' : [],
     'period_pattern' : r"",
     'year_group' : None,
     
+    # Trheshold properties
+    'row_treshold_adjust' : False,
+    'amount_treshold_adjust' : False,
 }
 
 BANORTE_DEBIT_PROPERTYS = {
@@ -39,7 +47,7 @@ BANORTE_DEBIT_PROPERTYS = {
     'columns_row' : ['FECHA', 'DESCRIPCIÓN / ESTABLECIMIENTO', 'MONTO DEL DEPOSITO', 'MONTO DEL RETIRO', 'SALDO'],
     'date_column' : 'FECHA',
     'description_column' : 'DESCRIPCIÓN / ESTABLECIMIENTO',
-    'amount_column' : ['MONTO DEL DEPOSITO', 'MONTO DEL RETIRO'],
+    'amount_column' : ['MONTO DEL DEPOSITO', 'MONTO DEL RETIRO', 'SALDO'],
     'income_column' : 'MONTO DEL DEPOSITO',
     'expense_column' : 'MONTO DEL RETIRO',
     'balance_column' : 'SALDO',
@@ -49,14 +57,52 @@ BANORTE_DEBIT_PROPERTYS = {
     'date_groups' : (3, 2, 1), # groups: (year, month, day)
     'month_pattern' : inverted_numeric_month_patterns,
     
+    # Amount properties
+    'income_sign': None,
+    'expense_sign': None,
+    
     # Period properties
     'period_phrase' : ['periodo'],
     'period_pattern' : r"(\d{2})/(Enero|Febrero|Marzo|Abril|Mayo|Junio|Julio|Agosto|Septiembre|Octubre|Noviembre|Diciembre)/(\d{4})",
     'year_group' : 3,
+    
+    # Trheshold properties
+    'row_treshold_adjust' : True,
+    'amount_treshold_adjust' : False,
 }
 
 BANORTE_CREDIT_PROPERTYS = {
+    # Phrase properties
+    'start_phrase' : ['detalle', 'de', 'movimientos', 'del' ,'titular',  'en', 'm.n.'],
+    'end_phrase' : ['si', 'solo', 'realizas', 'el', 'pago', 'mínimo'],
     
+    # Column distribution properties
+    'columns': ['Fecha', 'Concepto', 'RFC/CURP', 'Tipo de transacción', 'Importe'],
+    'columns_row' : ['Fecha', 'Concepto', 'RFC/CURP', 'Tipo de transacción', 'Importe'],
+    'date_column' : 'Fecha',
+    'description_column' : 'Concepto',
+    'amount_column' : ['Importe'],
+    'income_column' : 'Importe',
+    'expense_column' : 'Importe',
+    'balance_column' : None,
+    
+    # Date properties
+    'date_pattern' : r"(\d{2})/(\d{2})",
+    'date_groups' : (None, 2, 1), # groups: (year, month, day)
+    'month_pattern' : inverted_numeric_month_patterns,
+    
+    # Amount properties
+    'income_sign': '-',
+    'expense_sign': None,
+    
+    # Period properties
+    'period_phrase' : ['periodo'],
+    'period_pattern' : None,
+    'year_group' : None,
+    
+    # Trheshold properties
+    'row_treshold_adjust' : False,
+    'amount_treshold_adjust' : False,
 }
 
 BBVA_DEBIT_PROPERTYS = {
@@ -69,7 +115,7 @@ BBVA_DEBIT_PROPERTYS = {
     'columns_row' : ['OPER', 'LIQ', 'DESCRIPCION', 'REFERENCIA', 'CARGOS', 'ABONOS', 'OPERACION', 'LIQUIDACION'],
     'date_column' : 'OPER',
     'description_column' : 'DESCRIPCION',
-    'amount_column' : ['CARGOS', 'ABONOS'],
+    'amount_column' : ['CARGOS', 'ABONOS', 'LIQUIDACION'],
     'income_column' : 'ABONOS',
     'expense_column' : 'CARGOS',
     'balance_column' : 'LIQUIDACION',
@@ -79,10 +125,18 @@ BBVA_DEBIT_PROPERTYS = {
     'date_groups': (None, 2, 1), # groups: (year, month, day)
     'month_pattern' : inverted_numeric_month_patterns,
     
+    # Amount properties
+    'income_sign': None,
+    'expense_sign': None,
+    
     # Period properties
     'period_phrase' : ['periodo'],
     'period_pattern' : r"(\d{2})/(\d{2})/(\d{4})",
     'year_group' : 3, 
+    
+    # Trheshold properties
+    'row_treshold_adjust' : False,
+    'amount_treshold_adjust' : False,
 }
 
 BBVA_CREDIT_PROPERTYS = {
@@ -105,10 +159,18 @@ BBVA_CREDIT_PROPERTYS = {
     'date_groups' : (3, 2, 1), # groups: (year, month, day)
     'month_pattern' : NUMERIC_MONTH_PATTERNS,
     
+    # Amount properties
+    'income_sign': None,
+    'expense_sign': None,
+    
     # Period properties
     'period_phrase' : ['Periodo'],
     'period_pattern' : r"(\d{2})/(\d{2})/(\d{2})",
     'year_group' : 3,
+    
+    # Trheshold properties
+    'row_treshold_adjust' : True,
+    'amount_treshold_adjust' : False,
 }
 
 BANAMEX_DEBIT_PROPERTYS = {
@@ -116,7 +178,37 @@ BANAMEX_DEBIT_PROPERTYS = {
 }
 
 BANAMEX_CREDIT_PROPERTYS = {
+    # Phrase properties
+    'start_phrase' : ['detalle', 'de', 'operaciones'],
+    'end_phrase' : ['mensualidad*', 'aplica', 'para', 'compras', 'a', 'plazos.'],
     
+    # Column distribution properties
+    'columns': ['Fecha', 'Concepto/Giro de Negocio Mensualidad * / Tipos de Cambio', 'Población / RFC Moneda Ext.', 'Otras Divisas', 'Pesos'],
+    'columns_row' : ['Fecha', 'Concepto/Giro de Negocio', 'Población / RFC', 'Otras', 'Pesos'],
+    'date_column' : 'Fecha',
+    'description_column' : 'Concepto/Giro de Negocio Mensualidad * / Tipos de Cambio',
+    'amount_column' : ['Pesos'],
+    'income_column' : 'Pesos',
+    'expense_column' : 'Pesos',
+    'balance_column' : None,
+    
+    # Date properties
+    'date_pattern' : r"(Ene|Feb|Mar|Abr|May|Jun|Jul|Ago|Sep|Oct|Nov|Dic) (\d{2})",
+    'date_groups' : (None, 1, 2), # groups: (year, month, day)
+    'month_pattern' : {month.capitalize(): num for num, month in NUMERIC_MONTH_PATTERNS.items()},
+    
+    # Amount properties
+    'income_sign': '-',
+    'expense_sign': None,
+    
+    # Period properties
+    'period_phrase' : ['fecha', 'de', 'corte'],
+    'period_pattern' : None,
+    'year_group' : None,
+    
+    # Trheshold properties
+    'row_treshold_adjust' : True,
+    'amount_treshold_adjust' : True,
 }
 
 HSBC_DEBIT_PROPERTYS = {
@@ -124,15 +216,105 @@ HSBC_DEBIT_PROPERTYS = {
 }
 
 HSBC_CREDIT_PROPERTYS = {
+    # Phrase properties
+    'start_phrase' : ['detalle', 'de', 'movimientos'],
+    'end_phrase' : ['información', "spei´s", 'recibidos'],
     
+    # Column distribution properties
+    'columns': ['Fecha', 'Concepto', 'Importe'],
+    'columns_row' : ['Fecha', 'Concepto', 'Importe'],
+    'date_column' : 'Fecha',
+    'description_column' : 'Concepto',
+    'amount_column' : ['Importe'],
+    'income_column' : 'Importe',
+    'expense_column' : 'Importe',
+    'balance_column' : None,
+    
+    # Date properties
+    'date_pattern' : r"(\d{2}) (ENE|FEB|MAR|ABR|MAY|JUN|JUL|AGO|SEP|OCT|NOV|DIC)",
+    'date_groups' : (None, 2, 1), # groups: (year, month, day)
+    'month_pattern' : inverted_numeric_month_patterns,
+    
+    # Amount properties
+    'income_sign': '-',
+    'expense_sign': None,
+    
+    # Period properties
+    'period_phrase' : ['fecha', 'de', 'corte'],
+    'period_pattern' : None,
+    'year_group' : None,
+    
+    # Trheshold properties
+    'row_treshold_adjust' : True,
+    'amount_treshold_adjust' : False,
 }
 
 INBURSA_DEBIT_PROPERTYS = {
+    # Phrase properties
+    'start_phrase' : ['detalle', 'de', 'movimientos'],
+    'end_phrase' : ['movimientos', 'por', 'aclaracion'],
     
+    # Column distribution properties
+    'columns': ['FECHA', 'REFERENCIA', 'CONCEPTO', 'CARGOS', 'ABONOS', 'SALDO'],
+    'columns_row' : ['FECHA', 'REFERENCIA', 'CONCEPTO', 'CARGOS', 'ABONOS', 'SALDO'],
+    'date_column' : 'FECHA',
+    'description_column' : 'CONCEPTO',
+    'amount_column' : ['CARGOS', 'ABONOS', 'SALDO'],
+    'income_column' : 'ABONOS',
+    'expense_column' : 'CARGOS',
+    'balance_column' : 'SALDO',
+    
+    # Date properties
+    'date_pattern' : r"(ENE|FEB|MAR|ABR|MAY|JUN|JUL|AGO|SEP|OCT|NOV|DIC) (\d{2})",
+    'date_groups' : (None, 1, 2), # groups: (year, month, day)
+    'month_pattern' : inverted_numeric_month_patterns,
+    
+    # Amount properties
+    'income_sign': None,
+    'expense_sign': None,
+    
+    # Period properties
+    'period_phrase' : ['periodo'],
+    'period_pattern' : None,
+    'year_group' : None,
+    
+    # Trheshold properties
+    'row_treshold_adjust' : True,
+    'amount_treshold_adjust' : True,
 }
 
 INBURSA_CREDIT_PROPERTYS = {
+    # Phrase properties
+    'start_phrase' : ['movimientos', 'del', 'periodo'],
+    'end_phrase' : ['resumen', 'de', 'promociones', 'a', 'meses', 'sin', 'interes'],
     
+    # Column distribution properties
+    'columns': ['Fecha', 'Descripción', 'Cantidad (pesos)'],
+    'columns_row' : ['Cantidad', 'Fecha', 'Descripción', '(pesos)'],
+    'date_column' : 'Fecha',
+    'description_column' : 'Descripción',
+    'amount_column' : ['Cantidad (pesos)'],
+    'income_column' : 'Cantidad (pesos)',
+    'expense_column' : 'Cantidad (pesos)',
+    'balance_column' : None,
+    
+    # Date properties
+    'date_pattern' : r"(\d{2})/(\d{2})",
+    'date_groups' : (None, 1, 2), # groups: (year, month, day)
+    'month_pattern' : NUMERIC_MONTH_PATTERNS,
+    
+    # Amount properties
+    'income_sign': '-',
+    'expense_sign': None,
+    
+    # Period properties
+    'period_phrase' : ['resumen', 'del', 'periodo'],
+    'period_pattern' : None,
+    'year_group' : None,
+    
+    # Trheshold properties
+    'row_treshold_adjust' : True,
+    'amount_treshold_adjust' : True,
 }
 
 NU_DEBIT_PROPERTYS = {

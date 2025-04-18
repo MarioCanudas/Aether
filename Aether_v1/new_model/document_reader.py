@@ -12,6 +12,16 @@ class PDFReader(NewDocumentReader):
         """
         with pdfplumber.open(self.file_path) as pdf:
             return pdf.pages[0].height
+        
+    def get_width(self) -> float:
+        """
+        Get the width of the first page of the PDF.
+
+        Returns:
+            float: Width of the first page.
+        """
+        with pdfplumber.open(self.file_path) as pdf:
+            return pdf.pages[0].width
     
     def extract_words_from_pdf(self) -> pd.DataFrame:
         extracted_words = []

@@ -11,7 +11,7 @@ class TransactionTableBoundaryDetector(TableBoundaryDetector):
         
         for i, row in df.iterrows():
             text = row['text']
-            date_match = re.match(date_pattern, text)
+            date_match = re.match(date_pattern, str(text))
             
             if date_match:
                 date_str = date_match.group(0)
@@ -27,12 +27,13 @@ class TransactionTableBoundaryDetector(TableBoundaryDetector):
                         df.loc[i + 1, 'text'] = word + ' ' + df.loc[i + 1, 'text']
                 except: 
                     continue
-        return df
+        return df   
         
     @cached_property
     def start_idx(self) -> int:
         start_phrase = self.statement_propertys['start_phrase']
         
+        print(len(self.df_corrected) - len(start_phrase))
         for i in range(len(self.df_corrected) - len(start_phrase)):
             if list(self.df_corrected["text"].iloc[i : i + len(start_phrase)].str.lower()) == start_phrase:
                 return i + len(start_phrase)  # First row after match

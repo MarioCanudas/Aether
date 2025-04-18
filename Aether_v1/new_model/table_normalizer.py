@@ -26,7 +26,7 @@ class TransactionTableNormalizer(TableNormalizer):
             return detected_years
             
         # Get the text values after the period phrase
-        period_values = self.df_extracted_words.iloc[self.period_idx : self.period_idx + 10]
+        period_values = self.df_extracted_words.iloc[self.period_idx : self.period_idx + 15]
         
         for text in period_values['text']:
             if self.statement_properties['period_pattern']:
@@ -83,7 +83,7 @@ class TransactionTableNormalizer(TableNormalizer):
                 month = date_match.group(month_group)
                 day = date_match.group(day_group)
                 
-                month = month_pattern[month]
+                month = month_pattern[month] if not month.isnumeric() else month
                 
                 return f"{year}-{month}-{day}"
             else:
@@ -96,7 +96,7 @@ class TransactionTableNormalizer(TableNormalizer):
                 month = date_match.group(month_group)
                 day = date_match.group(day_group)
                 
-                month = month_pattern[month]
+                month = month_pattern[month] if not month.isnumeric() else month
                 
                 if int(month) <= 12:
                     return f"{year1}-{month}-{day}"
@@ -119,58 +119,84 @@ class TransactionTableNormalizer(TableNormalizer):
                 lambda x: self.normalize_date_without_year(x, date_pattern, groups_date, month_pattern)
             )
     
-    def income_idxs(self) -> List[int]:
-        df_table = self.df_table.copy()
-        
-        income_condition = self.statement_properties['income_condition']
-        description_column = self.statement_properties['description_column']
-        income_idxs = []
-        
-        for i, row in df_table.iterrows():
-            if income_condition in row[description_column].lower():
-                income_idxs.append(i)
-                
-        return income_idxs
-    
-    def celan_amount(self, amount: str) -> str:
+    def clean_amount(self, amount: str) -> str:
         return amount.replace(',', '').replace('$', '').replace('+', '').replace('-','')
     
-    def normalize_amount_for_single_column(self, amount: str) -> float:
-        pass
+    def normalize_amount_for_single_column(self, value: str) -> float:
+        income_sign = self.statement_properties['income_sign']
+        expense_sign = self.statement_properties['expense_sign']
+        
+        amount = 0.0
+        transaction_type = None
+        
+        if income_sign and not expense_sign:
+            if income_sign in value:
+                amount = float(self.clean_amount(value.replace(income_sign, '')))
+                transaction_type = 'Abono'
+            else:
+                amount = float(self.clean_amount(value)) * -1
+                transaction_type = 'Cargo'
+        
+        elif not income_sign and expense_sign:
+            if expense_sign in value:
+                amount = float(self.clean_amount(value.replace(expense_sign, ''))) * -1
+                transaction_type = 'Cargo'
+            else:
+                amount = float(self.clean_amount(value))
+                transaction_type = 'Abono'
+        
+        elif income_sign and expense_sign:
+            if income_sign in value:
+                amount = float(self.clean_amount(value.replace(income_sign, '')))
+                transaction_type = 'Abono'
+            elif expense_sign in value:
+                amount = float(self.clean_amount(amount.replace(expense_sign, ''))) * -1
+                transaction_type = 'Cargo'
+                
+        return pd.Series({'Amount': amount, 'Type': transaction_type})
     
-    def normalize_amount_for_multiple_columns(self, row: str) -> float:
+    def normalize_amount_for_multiple_columns(self, row) -> float:
         income_column = self.statement_properties['income_column']
         expense_column = self.statement_properties['expense_column']
         balance_column = self.statement_properties['balance_column']
         
-        if not pd.isna(row[income_column]) and row[expense_column] == '':
+        amount = 0.0
+        transaction_type = None
+        
+        if not pd.isna(row[income_column]) and row[income_column] != '' and row[expense_column] == '':
             try:
-                return float(self.celan_amount(row[income_column]))
+                amount = float(self.clean_amount(row[income_column]))
+                transaction_type = 'Abono'
             except ValueError:
-                return 0.0
+                pass
             
-        elif not pd.isna(row[expense_column]) and row[income_column] == '':
+        elif not pd.isna(row[expense_column]) and row[expense_column] != '' and row[income_column] == '':
             try:
-                return float(self.celan_amount(row[expense_column])) * -1
+                amount = float(self.clean_amount(row[expense_column])) * -1
+                transaction_type = 'Cargo'
             except ValueError:
-                return 0.0
+                pass
         
         elif balance_column:
             if not pd.isna(row[balance_column]) and row[income_column] == '' and row[expense_column] == '':
                 try:
-                    return float(self.celan_amount(row[balance_column]))
+                    amount = float(self.clean_amount(row[balance_column]))
+                    transaction_type = 'Saldo'
                 except ValueError:
-                    return 0.0
-        else:
-            return 0.0
+                    pass
+        
+        return pd.Series({'Amount': amount, 'Type': transaction_type})
         
     def normalize_amounts(self, amount_columns: pd.Series | pd.DataFrame) -> pd.Series:
-        column_names = amount_columns.columns.tolist()
+        if isinstance(amount_columns, pd.Series):
+            return amount_columns.apply(self.normalize_amount_for_single_column)
+        else: 
+            column_names = amount_columns.columns.tolist()
         
-        if len(column_names) == 1:
-            return amount_columns.apply(self.normalize_amount_for_single_column, axis=1)
-        else:
-            return amount_columns.apply(self.normalize_amount_for_multiple_columns, axis=1)
+            if len(column_names) == 1:
+                return amount_columns[column_names[0]].apply(self.normalize_amount_for_single_column)
+            else:
+                return amount_columns.apply(self.normalize_amount_for_multiple_columns, axis=1)
     
     def normalize_table(self) -> pd.DataFrame:
         df_table = self.df_table.copy()
@@ -182,11 +208,13 @@ class TransactionTableNormalizer(TableNormalizer):
         
         df_normalized['Date'] = self.normalize_dates(df_table[date_column])
         df_normalized['Description'] = df_table[description_column]
-        df_normalized['Amount'] = self.normalize_amounts(df_table[amount_column])
         
-        df_normalized['Type'] = df_normalized['Amount'].apply(
-            lambda x: 'Abono' if x > 0 else 'Cargo' if x < 0 else 'Saldo'
-        )
+        df_amount = self.normalize_amounts(df_table[amount_column]) if len(amount_column) > 1 else self.normalize_amounts(df_table[amount_column[0]])
+        
+        df_normalized['Amount'] = df_amount['Amount']
+        df_normalized['Type'] = df_amount['Type']
+        
+        
         df_normalized['Date'] = pd.to_datetime(df_normalized['Date'])
         
         return df_normalized

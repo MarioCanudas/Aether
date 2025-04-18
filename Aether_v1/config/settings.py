@@ -13,7 +13,7 @@ DATA_FOLDER = os.path.join(PROJECT_ROOT, 'data')
 BANKS = ['amex', 'banorte', 'bbva', 'citibanamex', 'hsbc', 'inbursa', 'nu', 'santander']
 
 BANKS_CODES = {
-    '002': 'citibanamex',
+    '002': 'banamex',
     '006': 'bancomext',
     '009': 'banobras',
     '012': 'bbva',

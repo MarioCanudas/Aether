@@ -13,6 +13,7 @@ class TransactionTableReconstructor(TableReconstructor):
         
         date_column = self.statement_propertys['date_column']
         description_column = self.statement_propertys['description_column']
+        amounts_columns = self.statement_propertys['amount_column']
         columns = self.statement_propertys['columns']
         
         positions = {}
@@ -21,7 +22,9 @@ class TransactionTableReconstructor(TableReconstructor):
             if col == date_column:
                 positions[col] = (0, x1_list[i])
             elif col == description_column:
-                positions[col] = (x1_list[i - 1]+ 10, x0_list[i + 1]- 20) # Adjusted for description column
+                positions[col] = (x1_list[i - 1]+ 5, x0_list[i + 1]- 20) # Adjusted for description column
+            elif col in amounts_columns:
+                positions[col] = (x0_list[i] - 15, x1_list[i]) if not self.statement_propertys['amount_treshold_adjust'] else (x0_list[i] - 20, x1_list[i] + 10)
             else:
                 positions[col] = (x0_list[i] - 10, x1_list[i])
         
@@ -40,8 +43,7 @@ class TransactionTableReconstructor(TableReconstructor):
         return pd.Series(columns)
     
     def get_structured_table(self) -> pd.DataFrame:
-        columns_row = self.get_columns_row()
-        df_structured = self.grouped_rows[self.grouped_rows["row_group"] > columns_row["row_group"]].apply(self.classify_columns, axis=1)
+        df_structured = self.grouped_rows.apply(self.classify_columns, axis=1)
         df_structured = df_structured.map(lambda x: x.strip())
         
         merged_rows = []
@@ -57,7 +59,11 @@ class TransactionTableReconstructor(TableReconstructor):
                     merged_rows.append(current_row)  # Save the last completed row
                 current_row = row.copy()  # Start a new row
             else:  # Continuation row
-                current_row[description_column] += " " + row[description_column]  # Merge description
+                try:
+                    current_row[description_column] += " " + row[description_column]  # Merge description
+                except: 
+                    print(current_row)
+                    continue
 
         if current_row is not None:
             merged_rows.append(current_row)  # Append last row

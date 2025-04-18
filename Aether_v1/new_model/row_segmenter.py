@@ -1,6 +1,6 @@
 from core import RowSegmenter
 import pandas as pd
-import numpy as np
+import re
 from functools import cached_property
 
 class TransactionRowSegmenter(RowSegmenter):
@@ -24,7 +24,7 @@ class TransactionRowSegmenter(RowSegmenter):
 
         filtered_diffs = positive_diffs[(positive_diffs >= lower_bound) & (positive_diffs <= upper_bound)]
 
-        return filtered_diffs.mean()
+        return filtered_diffs.mean() - 5 if self.statement_propertys['row_treshold_adjust'] else filtered_diffs.mean()
     
     def get_header_row(self) -> dict:
         rows = self.sorted_df.to_dict(orient='records')
