@@ -105,6 +105,40 @@ BANORTE_CREDIT_PROPERTYS = {
     'amount_treshold_adjust' : False,
 }
 
+BANORTE_NEW_CREDIT_FORMAT_PROPERTYS = {
+    # Phrase properties
+    'start_phrase' : ['cargos,', 'abonos', 'y', 'compras', 'regulares'],
+    'end_phrase' : ['total', 'cargos'],
+    
+    # Column distribution properties
+    'columns': ['Fecha de la operación', 'Fecha de cargo', 'Descripción del movimiento', 'Monto'],
+    'columns_row' : None,
+    'date_column' : 'Fecha de la operación',
+    'description_column' : 'Descripción del movimiento',
+    'amount_column' : ['Monto'],
+    'income_column' : None,
+    'expense_column' : None,
+    'balance_column' : None,
+    
+    # Date properties
+    'date_pattern' : r"(\d{2})-(ENE|FEB|MAR|ABR|MAY|JUN|JUL|AGO|SEP|OCT|NOV|DIC)-(20\d{2})",
+    'date_groups' : (3, 2, 1), # groups: (year, month, day)
+    'month_pattern' : inverted_numeric_month_patterns,
+    
+    # Amount properties
+    'income_sign': '-',
+    'expense_sign': '+',
+    
+    # Period properties
+    'period_phrase' : None,
+    'period_pattern' : None,
+    'year_group' : None,
+    
+    # Trheshold properties
+    'row_treshold_adjust' : True,
+    'amount_treshold_adjust' : True,
+}
+
 BBVA_DEBIT_PROPERTYS = {
     # Phrase properties
     'start_phrase' : ["detalle", "de", "movimientos", "realizados"],
@@ -173,6 +207,40 @@ BBVA_CREDIT_PROPERTYS = {
     'amount_treshold_adjust' : False,
 }
 
+BBVA_NEW_CREDIT_FORMAT_PROPERTYS = {
+    # Phrase properties
+    'start_phrase' : ['cargos,compras', 'y', 'abonos'],
+    'end_phrase' : ['total', 'cargos'],
+    
+    # Column distribution properties
+    'columns': ['Fecha de la operación', 'Fecha de cargo', 'Descripción del movimiento', 'Monto'],
+    'columns_row' : None,
+    'date_column' : 'Fecha de la operación',
+    'description_column' : 'Descripción del movimiento',
+    'amount_column' : ['Monto'],
+    'income_column' : None,
+    'expense_column' : None,
+    'balance_column' : None,
+    
+    # Date properties
+    'date_pattern' : r"(\d{2})-(ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic)-(20\d{2})",
+    'date_groups' : (3, 2, 1), # groups: (year, month, day)
+    'month_pattern' : {month.lower() : num for num, month in NUMERIC_MONTH_PATTERNS.items()},
+    
+    # Amount properties
+    'income_sign': '-',
+    'expense_sign': '+',
+    
+    # Period properties
+    'period_phrase' : None,
+    'period_pattern' : None,
+    'year_group' : None,
+    
+    # Trheshold properties
+    'row_treshold_adjust' : True,
+    'amount_treshold_adjust' : True,
+}
+
 BANAMEX_DEBIT_PROPERTYS = {
     
 }
@@ -208,6 +276,40 @@ BANAMEX_CREDIT_PROPERTYS = {
     
     # Trheshold properties
     'row_treshold_adjust' : True,
+    'amount_treshold_adjust' : True,
+}
+
+BANAMEX_NEW_CREDIT_FORMAT_PROPERTYS = {
+    # Phrase properties
+    'start_phrase' : ['cargos,', 'abonos', 'y', 'compras', 'regulares'],
+    'end_phrase' : ['total', 'cargos'],
+    
+    # Column distribution properties
+    'columns': ['Fecha de la operación', 'Fecha de cargo', 'Descripción del movimiento', 'Monto'],
+    'columns_row' : None,
+    'date_column' : 'Fecha de la operación',
+    'description_column' : 'Descripción del movimiento',
+    'amount_column' : ['Monto'],
+    'income_column' : None,
+    'expense_column' : None,
+    'balance_column' : None,
+    
+    # Date properties
+    'date_pattern' : r"(\d{2})-(ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic)-(20\d{2})",
+    'date_groups' : (3, 2, 1), # groups: (year, month, day)
+    'month_pattern' : {month.lower() : num for num, month in NUMERIC_MONTH_PATTERNS.items()},
+    
+    # Amount properties
+    'income_sign': '-',
+    'expense_sign': '+',
+    
+    # Period properties
+    'period_phrase' : None,
+    'period_pattern' : None,
+    'year_group' : None,
+    
+    # Trheshold properties
+    'row_treshold_adjust' : False,
     'amount_treshold_adjust' : True,
 }
 

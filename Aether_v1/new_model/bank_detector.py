@@ -5,9 +5,9 @@ import pandas as pd
 from config import BANKS, BANKS_CODES, STATEMENTS_TYPES
 from propertys_catalog import (
     AMEX_CREDIT_PROPERTYS,
-    BANAMEX_DEBIT_PROPERTYS, BANAMEX_CREDIT_PROPERTYS,
-    BANORTE_DEBIT_PROPERTYS, BANORTE_CREDIT_PROPERTYS,
-    BBVA_DEBIT_PROPERTYS, BBVA_CREDIT_PROPERTYS,
+    BANAMEX_DEBIT_PROPERTYS, BANAMEX_CREDIT_PROPERTYS, BANAMEX_NEW_CREDIT_FORMAT_PROPERTYS,
+    BANORTE_DEBIT_PROPERTYS, BANORTE_CREDIT_PROPERTYS, BANORTE_NEW_CREDIT_FORMAT_PROPERTYS,
+    BBVA_DEBIT_PROPERTYS, BBVA_CREDIT_PROPERTYS, BBVA_NEW_CREDIT_FORMAT_PROPERTYS,
     HSBC_DEBIT_PROPERTYS, HSBC_CREDIT_PROPERTYS,
     INBURSA_DEBIT_PROPERTYS, INBURSA_CREDIT_PROPERTYS,
     NU_DEBIT_PROPERTYS, NU_CREDIT_PROPERTYS,
@@ -104,14 +104,20 @@ class DefaultBankDetector(BankDetector):
     def detect_statement_type(self) -> Literal['debit', 'credit']:
         credit_condition_phrase = ['límite', 'de', 'crédito']
 
-        for i in range(len(self.extracted_words) - len(credit_condition_phrase)):
-            if list(self.extracted_words['text'].iloc[i : i + len(credit_condition_phrase)].str.lower()) == credit_condition_phrase:
+        text_column = self.extracted_words['text'].copy()
+
+        processed_text = text_column.str.lower().str.replace(':', '', regex=False)
+
+        for i in range(len(processed_text) - len(credit_condition_phrase) + 1):
+            current_phrase = list(processed_text.iloc[i : i + len(credit_condition_phrase)])
+
+            if current_phrase == credit_condition_phrase:
                 return 'credit'
 
         return 'debit'
 
     @property
-    def statement_propertys(self):
+    def statement_propertys(self) -> dict:
         bank = self.detect_bank()
         statement_type = self.detect_statement_type()
 
@@ -163,3 +169,17 @@ class DefaultBankDetector(BankDetector):
 
             case _ :
                 return None
+            
+    @property
+    def new_credit_satement_propertys(self) -> dict:
+        bank = self.detect_bank()
+        
+        if bank == 'banorte':
+            return BANORTE_NEW_CREDIT_FORMAT_PROPERTYS
+        elif bank == 'banamex':
+            return BANAMEX_NEW_CREDIT_FORMAT_PROPERTYS
+        elif bank == 'bbva':
+            return BBVA_NEW_CREDIT_FORMAT_PROPERTYS
+        else:
+            return {}
+        

@@ -2,10 +2,6 @@ from core import TableReconstructor
 import pandas as pd
 
 class TransactionTableReconstructor(TableReconstructor):
-    def get_columns_row(self) -> float:
-        colums_row = " ".join(self.statement_propertys['columns_row'])
-        return self.grouped_rows[self.grouped_rows['text'].str.contains(colums_row, na= False)].iloc[0]
-    
     @property
     def column_positions(self) -> dict:
         x0_list = self.header_row['x0']
@@ -22,9 +18,9 @@ class TransactionTableReconstructor(TableReconstructor):
             if col == date_column:
                 positions[col] = (0, x1_list[i])
             elif col == description_column:
-                positions[col] = (x1_list[i - 1]+ 5, x0_list[i + 1]- 20) # Adjusted for description column
+                positions[col] = (x1_list[i - 1] + 1, x0_list[i + 1]- 25) # Adjusted for description column
             elif col in amounts_columns:
-                positions[col] = (x0_list[i] - 15, x1_list[i]) if not self.statement_propertys['amount_treshold_adjust'] else (x0_list[i] - 20, x1_list[i] + 10)
+                positions[col] = (x0_list[i] - 15, x1_list[i]) if not self.statement_propertys['amount_treshold_adjust'] else (x1_list[i - 1] + 10, x1_list[i] + 10)
             else:
                 positions[col] = (x0_list[i] - 10, x1_list[i])
         
@@ -42,15 +38,21 @@ class TransactionTableReconstructor(TableReconstructor):
 
         return pd.Series(columns)
     
+    def get_classified_table(self) -> pd.DataFrame:
+        df_classified = self.grouped_rows.apply(self.classify_columns, axis=1)
+        df_classified = df_classified.map(lambda x: x.strip())
+        
+        return df_classified.reset_index(drop=True)
+    
     def get_structured_table(self) -> pd.DataFrame:
-        df_structured = self.grouped_rows.apply(self.classify_columns, axis=1)
-        df_structured = df_structured.map(lambda x: x.strip())
+        df_structured = self.get_classified_table()
         
         merged_rows = []
         current_row = None
         
         description_column = self.statement_propertys['description_column']
         date_column = self.statement_propertys['date_column']
+        amount_columns = self.statement_propertys['amount_column']
         date_pattern = self.statement_propertys['date_pattern']
 
         for _, row in df_structured.iterrows():
@@ -58,11 +60,16 @@ class TransactionTableReconstructor(TableReconstructor):
                 if current_row is not None:
                     merged_rows.append(current_row)  # Save the last completed row
                 current_row = row.copy()  # Start a new row
+            elif current_row is not None:  # Continuation row
+                for col in amount_columns:
+                    if row[col] != '' and current_row[col] == '':
+                        current_row[col] = row[col]
+                    else:
+                        continue
             else:  # Continuation row
                 try:
                     current_row[description_column] += " " + row[description_column]  # Merge description
                 except: 
-                    print(current_row)
                     continue
 
         if current_row is not None:

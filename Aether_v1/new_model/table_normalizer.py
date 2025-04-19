@@ -150,7 +150,7 @@ class TransactionTableNormalizer(TableNormalizer):
                 amount = float(self.clean_amount(value.replace(income_sign, '')))
                 transaction_type = 'Abono'
             elif expense_sign in value:
-                amount = float(self.clean_amount(amount.replace(expense_sign, ''))) * -1
+                amount = float(self.clean_amount(value.replace(expense_sign, ''))) * -1
                 transaction_type = 'Cargo'
                 
         return pd.Series({'Amount': amount, 'Type': transaction_type})
