@@ -15,10 +15,8 @@ class TransactionTableNormalizer(TableNormalizer):
 
         return None
     
-    def get_month(self) -> str:
-        pass
-    
-    def get_year(self) -> List[int]:
+    @cached_property
+    def years(self) -> List[int]:
         detected_years = []
         
         # Check if period_idx is valid
@@ -51,6 +49,10 @@ class TransactionTableNormalizer(TableNormalizer):
                     
         return sorted(list(set(detected_years)))
     
+    @cached_property
+    def months(self) -> str:
+        pass
+    
     def normalize_date_with_year(self, date: str, date_pattern: str, groups_date: Tuple[int], month_pattern: dict) -> str:
         year_group, month_group, day_group = groups_date
         
@@ -71,7 +73,7 @@ class TransactionTableNormalizer(TableNormalizer):
             return ""
         
     def normalize_date_without_year(self, date: str, date_pattern: str, groups_date: Tuple[int], month_pattern: dict) -> str:
-        years = self.get_year()
+        years = self.years
         _, month_group, day_group = groups_date
         
         date_match = re.match(date_pattern, date)
@@ -199,7 +201,7 @@ class TransactionTableNormalizer(TableNormalizer):
                 return amount_columns.apply(self.normalize_amount_for_multiple_columns, axis=1)
     
     def normalize_table(self) -> pd.DataFrame:
-        df_table = self.df_table.copy()
+        df_table = self.df_table
         df_normalized = pd.DataFrame()
         
         date_column = self.statement_properties['date_column']

@@ -1,11 +1,12 @@
 from core import TableReconstructor
 import pandas as pd
+from functools import cached_property
 
 class TransactionTableReconstructor(TableReconstructor):
-    @property
+    @cached_property
     def column_positions(self) -> dict:
-        x0_list = self.header_row['x0']
-        x1_list = self.header_row['x1']
+        x0_list = self.column_delimitation['x0']
+        x1_list = self.column_delimitation['x1']
         
         date_column = self.statement_propertys['date_column']
         description_column = self.statement_propertys['description_column']
@@ -38,14 +39,14 @@ class TransactionTableReconstructor(TableReconstructor):
 
         return pd.Series(columns)
     
-    def get_classified_table(self) -> pd.DataFrame:
+    def get_structured_table(self) -> pd.DataFrame:
         df_classified = self.grouped_rows.apply(self.classify_columns, axis=1)
         df_classified = df_classified.map(lambda x: x.strip())
         
         return df_classified.reset_index(drop=True)
     
-    def get_structured_table(self) -> pd.DataFrame:
-        df_structured = self.get_classified_table()
+    def reconstruct_table(self) -> pd.DataFrame:
+        df_structured = self.get_structured_table()
         
         merged_rows = []
         current_row = None

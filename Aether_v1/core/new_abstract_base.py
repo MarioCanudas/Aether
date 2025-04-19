@@ -12,12 +12,19 @@ class NewDocumentReader(ABC):
 
     def __init__(self, file_path: str):
         self.file_path = file_path
+        
+    @abstractmethod
+    def get_height(self) -> float:
+        """
+        Get the height of the document.
 
-    def extract_text_by_page(self) -> List[str]:
-        """Extracts text page by page from the document."""
+        Returns:
+            float: Height of the document.
+        """
         pass
 
-    def extract_words_from_pdf(self) -> pd.DataFrame:
+    @abstractmethod
+    def extract_words(self) -> pd.DataFrame:
         """
         Extract words along with their x and y coordinates and text content.
 
@@ -35,12 +42,22 @@ class BankDetector(ABC):
         extracted_words (pd.DataFrame): DataFrame containing the extracted words and their positions.
     """
 
-    def __init__(self, extracted_words: pd.DataFrame, document_height: float):
-        self.extracted_words = extracted_words.copy()
-        self.document_height = document_height
+    def __init__(self, DocumentReader: NewDocumentReader):
+        self.document_reader = DocumentReader
+        
+    @property
+    @abstractmethod
+    def extracted_words(self) -> pd.DataFrame:
+        """
+        Extract words from the document using the DocumentReader.
+
+        Returns:
+            pd.DataFrame: DataFrame containing the extracted words and their positions.
+        """
+        pass
 
     @abstractmethod
-    def detect_bank(self) -> Literal['amex', 'banorte', 'bbva', 'citibanamex', 'hsbc', 'inbursa', 'nu', 'santander']:
+    def detect_bank(self, document_height: float) -> Literal['amex', 'banorte', 'bbva', 'citibanamex', 'hsbc', 'inbursa', 'nu', 'santander']:
         """
         Detect the bank associated with the extracted words.
 
@@ -59,9 +76,8 @@ class BankDetector(ABC):
         """
         pass
 
-    @property
     @abstractmethod
-    def statement_propertys(self) -> dict:
+    def get_statement_properties(self, new_credit_format: bool) -> dict:
         """
         Determine the characteristics of the bank statement, such as transaction table columns, start and end phrases, and date patterns.
 
@@ -82,6 +98,17 @@ class TableBoundaryDetector(ABC):
     def __init__(self, extracted_words: pd.DataFrame, statement_propertys: dict):
         self.extracted_words = extracted_words.copy()
         self.statement_propertys = statement_propertys
+        
+    @property    
+    @abstractmethod
+    def df_corrected(self) -> pd.DataFrame:
+        """
+        Correct the extracted words DataFrame by removing unnecessary words and correcting reading pdf errors.
+
+        Returns:
+            pd.DataFrame: Corrected DataFrame of extracted words.
+        """
+        pass
 
     @property
     @abstractmethod
@@ -124,14 +151,24 @@ class RowSegmenter(ABC):
     """
 
     def __init__(self, df_table: pd.DataFrame, statement_propertys: dict):
-        self.df_table = df_table
+        self.df_table = df_table.copy()
         self.statement_propertys = statement_propertys
 
     @property
     @abstractmethod
     def sorted_df(self) -> pd.DataFrame:
         """
-        
+        Sort the DataFrame by page and top coordinates.
+        """
+        pass
+    
+    @abstractmethod
+    def delimit_column_positions(self) -> dict:
+        """
+        Delimit the column positions based on the header row.
+
+        Returns:
+            dict: A dictionary with column names as keys and their x-coordinates as values.
         """
         pass
 
@@ -139,7 +176,7 @@ class RowSegmenter(ABC):
     @abstractmethod
     def row_threshold(self) -> float:
         """
-        
+        Calculate the threshold for grouping words into rows based on their vertical position.
         """
         pass
 
@@ -161,10 +198,21 @@ class TableReconstructor(ABC):
         grouped_rows (pd.DataFrame): DataFrame with words grouped by row.
     """
 
-    def __init__(self, grouped_rows: pd.DataFrame, header_row: dict, statement_propertys: dict):
+    def __init__(self, grouped_rows: pd.DataFrame, column_delimitation: dict, statement_propertys: dict):
         self.grouped_rows = grouped_rows
-        self.header_row = header_row
+        self.column_delimitation = column_delimitation
         self.statement_propertys = statement_propertys
+        
+    @property
+    @abstractmethod
+    def column_positions(self) -> dict:
+        """
+        Get the positions of the columns based on the header row.
+
+        Returns:
+            dict: A dictionary with column names as keys and their x-coordinates as values.
+        """
+        pass
         
     @abstractmethod
     def classify_columns(self, row) -> pd.Series:
@@ -182,10 +230,20 @@ class TableReconstructor(ABC):
     @abstractmethod
     def get_structured_table(self) -> pd.DataFrame:
         """
-        Generate the final structured transaction table.
+        Get the structured table with properly classified data, based in the columns positions.
 
         Returns:
             pd.DataFrame: The structured table with properly classified data.
+        """
+        pass
+    
+    @abstractmethod
+    def reconstruct_table(self) -> pd.DataFrame:
+        """
+        Reconstruct the transaction table from the structured table.
+
+        Returns:
+            pd.DataFrame: The reconstructed transaction table.
         """
         pass
     
@@ -200,7 +258,7 @@ class TableNormalizer(ABC):
     """
     
     def __init__(self, df_table: pd.DataFrame, df_extracted_words: pd.DataFrame, statement_properties: dict):
-        self.df_table = df_table
+        self.df_table = df_table.copy()
         self.df_extracted_words = df_extracted_words.copy()
         self.statement_properties = statement_properties
         
@@ -215,8 +273,9 @@ class TableNormalizer(ABC):
         """
         pass
         
+    @property
     @abstractmethod
-    def get_year(self) -> List[int]:
+    def years(self) -> List[int]:
         """
         Extracts the year from the statement.
 
@@ -225,13 +284,40 @@ class TableNormalizer(ABC):
         """
         pass
     
+    @property
     @abstractmethod
-    def get_month(self) -> List[str]:
+    def months(self) -> List[str]:
         """
         Extracts the month from the statement.
         
         Returns:
             List[str]: List of months extracted from the statement.
+        """
+        pass
+    
+    @abstractmethod
+    def normalize_dates(self, date_column: pd.Series) -> pd.Series:
+        """
+        Normalize the dates in the transaction table.
+
+        Args:
+            date_column (pd.Series): Series containing the date column.
+
+        Returns:
+            pd.Series: Series with normalized dates.
+        """
+        pass
+    
+    @abstractmethod
+    def normalize_amounts(self, amount_column: pd.Series) -> pd.Series:
+        """
+        Normalize the amounts in the transaction table.
+
+        Args:
+            amount_column (pd.Series): Series containing the amount column.
+
+        Returns:
+            pd.Series: Series with normalized amounts.
         """
         pass
 

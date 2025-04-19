@@ -23,7 +23,7 @@ class PDFReader(NewDocumentReader):
         with pdfplumber.open(self.file_path) as pdf:
             return pdf.pages[0].width
     
-    def extract_words_from_pdf(self) -> pd.DataFrame:
+    def extract_words(self) -> pd.DataFrame:
         extracted_words = []
         
         with pdfplumber.open(self.file_path) as pdf:
