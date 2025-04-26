@@ -2,7 +2,7 @@ from config import MONTH_PATTERNS_SPA, NUMERIC_MONTH_PATTERNS
 
 inverted_numeric_month_patterns = {v:k for k,v in NUMERIC_MONTH_PATTERNS.items()}
 
-AMEX_CREDIT_PROPERTYS = {
+AMEX_CREDIT_PROPERTIES = {
     # Phrase properties
     'start_phrase' : [],
     'end_phrase' : [],
@@ -38,7 +38,7 @@ AMEX_CREDIT_PROPERTYS = {
     'amount_treshold_adjust' : False,
 }
 
-BANORTE_DEBIT_PROPERTYS = {
+BANORTE_DEBIT_PROPERTIES = {
     # Phrase properties
     'start_phrase' : ['detalle', 'de', 'movimientos', '(pesos)▼'],
     'end_phrase' : ['inversión', 'enlace', 'personal'],
@@ -73,7 +73,7 @@ BANORTE_DEBIT_PROPERTYS = {
     'amount_treshold_adjust' : False,
 }
 
-BANORTE_CREDIT_PROPERTYS = {
+BANORTE_CREDIT_PROPERTIES = {
     # Phrase properties
     'start_phrase' : ['detalle', 'de', 'movimientos', 'del' ,'titular',  'en', 'm.n.'],
     'end_phrase' : ['si', 'solo', 'realizas', 'el', 'pago', 'mínimo'],
@@ -108,7 +108,7 @@ BANORTE_CREDIT_PROPERTYS = {
     'amount_treshold_adjust' : False,
 }
 
-BANORTE_NEW_CREDIT_FORMAT_PROPERTYS = {
+BANORTE_NEW_CREDIT_FORMAT_PROPERTIES = {
     # Phrase properties
     'start_phrase' : ['cargos,', 'abonos', 'y', 'compras', 'regulares'],
     'end_phrase' : ['total', 'cargos'],
@@ -143,7 +143,7 @@ BANORTE_NEW_CREDIT_FORMAT_PROPERTYS = {
     'amount_treshold_adjust' : True,
 }
 
-BBVA_DEBIT_PROPERTYS = {
+BBVA_DEBIT_PROPERTIES = {
     # Phrase properties
     'start_phrase' : ["detalle", "de", "movimientos", "realizados"],
     'end_phrase' : ["le", "informamos", "que", "puede"],
@@ -178,7 +178,7 @@ BBVA_DEBIT_PROPERTYS = {
     'amount_treshold_adjust' : False,
 }
 
-BBVA_CREDIT_PROPERTYS = {
+BBVA_CREDIT_PROPERTIES = {
     # Phrase properties
     'start_phrase' : ['movimientos', 'efectuados'],
     'end_phrase' : ['resumen', 'informativo', 'de', 'beneficios'],
@@ -213,7 +213,7 @@ BBVA_CREDIT_PROPERTYS = {
     'amount_treshold_adjust' : False,
 }
 
-BBVA_NEW_CREDIT_FORMAT_PROPERTYS = {
+BBVA_NEW_CREDIT_FORMAT_PROPERTIES = {
     # Phrase properties
     'start_phrase' : ['cargos,compras', 'y', 'abonos'],
     'end_phrase' : ['total', 'cargos'],
@@ -248,11 +248,11 @@ BBVA_NEW_CREDIT_FORMAT_PROPERTYS = {
     'amount_treshold_adjust' : True,
 }
 
-BANAMEX_DEBIT_PROPERTYS = {
+BANAMEX_DEBIT_PROPERTIES = {
     
 }
 
-BANAMEX_CREDIT_PROPERTYS = {
+BANAMEX_CREDIT_PROPERTIES = {
     # Phrase properties
     'start_phrase' : ['detalle', 'de', 'operaciones'],
     'end_phrase' : ['mensualidad*', 'aplica', 'para', 'compras', 'a', 'plazos.'],
@@ -287,7 +287,7 @@ BANAMEX_CREDIT_PROPERTYS = {
     'amount_treshold_adjust' : True,
 }
 
-BANAMEX_NEW_CREDIT_FORMAT_PROPERTYS = {
+BANAMEX_NEW_CREDIT_FORMAT_PROPERTIES = {
     # Phrase properties
     'start_phrase' : ['cargos,', 'abonos', 'y', 'compras', 'regulares'],
     'end_phrase' : ['total', 'cargos'],
@@ -322,11 +322,11 @@ BANAMEX_NEW_CREDIT_FORMAT_PROPERTYS = {
     'amount_treshold_adjust' : True,
 }
 
-HSBC_DEBIT_PROPERTYS = {
+HSBC_DEBIT_PROPERTIES = {
     
 }
 
-HSBC_CREDIT_PROPERTYS = {
+HSBC_CREDIT_PROPERTIES = {
     # Phrase properties
     'start_phrase' : ['detalle', 'de', 'movimientos'],
     'end_phrase' : ['información', "spei´s", 'recibidos'],
@@ -361,7 +361,7 @@ HSBC_CREDIT_PROPERTYS = {
     'amount_treshold_adjust' : False,
 }
 
-INBURSA_DEBIT_PROPERTYS = {
+INBURSA_DEBIT_PROPERTIES = {
     # Phrase properties
     'start_phrase' : ['detalle', 'de', 'movimientos'],
     'end_phrase' : ['movimientos', 'por', 'aclaracion'],
@@ -396,7 +396,7 @@ INBURSA_DEBIT_PROPERTYS = {
     'amount_treshold_adjust' : True,
 }
 
-INBURSA_CREDIT_PROPERTYS = {
+INBURSA_CREDIT_PROPERTIES = {
     # Phrase properties
     'start_phrase' : ['movimientos', 'del', 'periodo'],
     'end_phrase' : ['resumen', 'de', 'promociones', 'a', 'meses', 'sin', 'interes'],
@@ -431,7 +431,7 @@ INBURSA_CREDIT_PROPERTYS = {
     'amount_treshold_adjust' : True,
 }
 
-NU_DEBIT_PROPERTYS = {
+NU_DEBIT_PROPERTIES = {
     # Phrase properties
     'start_phrase' : ['detalle', 'de', 'movimientos', 'en', 'tu', 'cuenta'],
     'end_phrase' : ['con', 'estos', 'movimientos,'],
@@ -469,7 +469,7 @@ NU_DEBIT_PROPERTYS = {
     'amount_treshold_adjust' : False,
 }
 
-NU_CREDIT_PROPERTYS = {
+NU_CREDIT_PROPERTIES = {
     # Phrase properties
     'start_phrase' : ['transacciones'],
     'end_phrase' : ['saldo', 'final', 'del', 'periodo'],
@@ -507,10 +507,10 @@ NU_CREDIT_PROPERTYS = {
     'amount_treshold_adjust' : False
 }
 
-SANTANDER_DEBIT_PROPERTYS = {
+SANTANDER_DEBIT_PROPERTIES = {
     
 }
 
-SANTANDER_CREDIT_PROPERTYS = {
+SANTANDER_CREDIT_PROPERTIES = {
     
 }

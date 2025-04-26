@@ -4,15 +4,15 @@ import re
 import pandas as pd
 from config import BANKS, BANKS_CODES, STATEMENTS_TYPES
 from functools import cached_property
-from propertys_catalog import (
-    AMEX_CREDIT_PROPERTYS,
-    BANAMEX_DEBIT_PROPERTYS, BANAMEX_CREDIT_PROPERTYS, BANAMEX_NEW_CREDIT_FORMAT_PROPERTYS,
-    BANORTE_DEBIT_PROPERTYS, BANORTE_CREDIT_PROPERTYS, BANORTE_NEW_CREDIT_FORMAT_PROPERTYS,
-    BBVA_DEBIT_PROPERTYS, BBVA_CREDIT_PROPERTYS, BBVA_NEW_CREDIT_FORMAT_PROPERTYS,
-    HSBC_DEBIT_PROPERTYS, HSBC_CREDIT_PROPERTYS,
-    INBURSA_DEBIT_PROPERTYS, INBURSA_CREDIT_PROPERTYS,
-    NU_DEBIT_PROPERTYS, NU_CREDIT_PROPERTYS,
-    SANTANDER_DEBIT_PROPERTYS, SANTANDER_CREDIT_PROPERTYS
+from properties_catalog import (
+    AMEX_CREDIT_PROPERTIES,
+    BANAMEX_CREDIT_PROPERTIES, BANAMEX_DEBIT_PROPERTIES, BANAMEX_NEW_CREDIT_FORMAT_PROPERTIES,
+    BANORTE_CREDIT_PROPERTIES, BANORTE_DEBIT_PROPERTIES, BANORTE_NEW_CREDIT_FORMAT_PROPERTIES,
+    BBVA_CREDIT_PROPERTIES, BBVA_DEBIT_PROPERTIES, BBVA_NEW_CREDIT_FORMAT_PROPERTIES,
+    HSBC_CREDIT_PROPERTIES, HSBC_DEBIT_PROPERTIES,
+    INBURSA_CREDIT_PROPERTIES, INBURSA_DEBIT_PROPERTIES,
+    NU_CREDIT_PROPERTIES, NU_DEBIT_PROPERTIES,
+    SANTANDER_CREDIT_PROPERTIES, SANTANDER_DEBIT_PROPERTIES,
 )
 
 class DefaultBankDetector(BankDetector):
@@ -108,67 +108,67 @@ class DefaultBankDetector(BankDetector):
 
         match (bank, statement_type, new_credit_format):
             case ('amex', 'credit', False):
-                return AMEX_CREDIT_PROPERTYS
+                return AMEX_CREDIT_PROPERTIES
             
             case ('amex', 'credit', True):
                 return {}
 
             case ('banamex', 'debit', _):
-                return BANAMEX_DEBIT_PROPERTYS
+                return BANAMEX_DEBIT_PROPERTIES
 
             case ('banamex', 'credit', False):
-                return BANAMEX_CREDIT_PROPERTYS
+                return BANAMEX_CREDIT_PROPERTIES
             
             case ('banamex', 'credit', True):
-                return BANAMEX_NEW_CREDIT_FORMAT_PROPERTYS
+                return BANAMEX_NEW_CREDIT_FORMAT_PROPERTIES
 
             case ('banorte', 'debit', _):
-                return BANORTE_DEBIT_PROPERTYS
+                return BANORTE_DEBIT_PROPERTIES
 
             case ('banorte', 'credit', False):
-                return BANORTE_CREDIT_PROPERTYS
+                return BANORTE_CREDIT_PROPERTIES
             
             case ('banorte', 'credit', True):
-                return BANORTE_NEW_CREDIT_FORMAT_PROPERTYS
+                return BANORTE_NEW_CREDIT_FORMAT_PROPERTIES
 
             case ('bbva', 'debit', _):
-                return BBVA_DEBIT_PROPERTYS
+                return BBVA_DEBIT_PROPERTIES
 
             case ('bbva', 'credit', False):
-                return BBVA_CREDIT_PROPERTYS
+                return BBVA_CREDIT_PROPERTIES
             
             case ('bbva', 'credit', True):
-                return BBVA_NEW_CREDIT_FORMAT_PROPERTYS
+                return BBVA_NEW_CREDIT_FORMAT_PROPERTIES
 
             case ('hsbc', 'debit', _):
-                return HSBC_DEBIT_PROPERTYS
+                return HSBC_DEBIT_PROPERTIES
 
             case ('hsbc', 'credit', False):
-                return HSBC_CREDIT_PROPERTYS
+                return HSBC_CREDIT_PROPERTIES
             
             case ('hsbc', 'credit', True):
                 return {}
 
             case ('inbursa', 'debit', _):
-                return INBURSA_DEBIT_PROPERTYS
+                return INBURSA_DEBIT_PROPERTIES
 
             case ('inbursa', 'credit', False):
-                return INBURSA_CREDIT_PROPERTYS
+                return INBURSA_CREDIT_PROPERTIES
             
             case ('inbursa', 'credit', True):
                 return {}
 
             case ('nu', 'debit', _):
-                return NU_DEBIT_PROPERTYS
+                return NU_DEBIT_PROPERTIES
 
             case ('nu', 'credit', _):
-                return NU_CREDIT_PROPERTYS
+                return NU_CREDIT_PROPERTIES
 
             case ('santander', 'debit', _):
-                return SANTANDER_DEBIT_PROPERTYS
+                return SANTANDER_DEBIT_PROPERTIES
 
             case ('santander', 'credit', False):
-                return SANTANDER_CREDIT_PROPERTYS
+                return SANTANDER_CREDIT_PROPERTIES
             
             case ('santander', 'credit', True):
                 return {}
