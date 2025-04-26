@@ -15,7 +15,6 @@ from propertys_catalog import (
     SANTANDER_DEBIT_PROPERTYS, SANTANDER_CREDIT_PROPERTYS
 )
 
-
 class DefaultBankDetector(BankDetector):
     @cached_property
     def extracted_words(self) -> pd.DataFrame:
@@ -30,7 +29,7 @@ class DefaultBankDetector(BankDetector):
         """
         document_height = self.document_reader.get_height()
         
-        footer_percentage = 0.05
+        footer_percentage = 0.15
         footer_threshold = document_height * footer_percentage
 
         df_footer = self.extracted_words[self.extracted_words['bottom'] > document_height - footer_threshold]

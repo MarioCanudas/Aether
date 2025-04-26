@@ -8,7 +8,7 @@ class TransactionTableBoundaryDetector(TableBoundaryDetector):
     def df_corrected(self):
         df = self.extracted_words
         
-        amount_pattern = r'^\$(0|[1-9]\d{0,2}(?:,\d{3})*)\.\d{2}$'
+        amount_pattern = r'^\$?(0|[1-9]\d{0,2}(?:,\d{3})*)\.\d{2}$'
         date_pattern = self.statement_propertys['date_pattern']
         
         for i, row in df.iterrows():

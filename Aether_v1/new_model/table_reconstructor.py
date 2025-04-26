@@ -1,5 +1,6 @@
 from core import TableReconstructor
 import pandas as pd
+import re
 from functools import cached_property
 
 class TransactionTableReconstructor(TableReconstructor):
@@ -17,25 +18,37 @@ class TransactionTableReconstructor(TableReconstructor):
         
         for i, col in enumerate(columns):
             if col == date_column:
-                positions[col] = (0, x1_list[i])
+                positions[col] = (0, x1_list[i] + 10) if self.statement_propertys['date_treshold_adjust'] else (0, x1_list[i])
             elif col == description_column:
                 positions[col] = (x1_list[i - 1] + 1, x0_list[i + 1]- 25) # Adjusted for description column
             elif col in amounts_columns:
-                positions[col] = (x0_list[i] - 15, x1_list[i]) if not self.statement_propertys['amount_treshold_adjust'] else (x1_list[i - 1] + 10, x1_list[i] + 10)
+                positions[col] =   (x1_list[i - 1] + 10, x1_list[i] + 10) if self.statement_propertys['amount_treshold_adjust'] else (x0_list[i] - 15, x1_list[i])
             else:
                 positions[col] = (x0_list[i] - 10, x1_list[i])
         
         return positions
     
+    def is_amount(self, value: str) -> bool:
+        amount_pattern = r'^[+-]?\$?[+-]?(0|[1-9]\d{0,2}(?:,\d{3})*)\.\d{2}[-+]?$'
+
+        return bool(re.match(amount_pattern, value.strip()))
+
     def classify_columns(self, row) -> pd.Series:
         columns = {col: "" for col in self.column_positions.keys()}
-        
+        amount_columns = self.statement_propertys['amount_column']
+        description_column = self.statement_propertys['description_column']
+
         words = row['words']
 
         for i, (text, x0, x1) in enumerate(words):
             for col, (start_x, end_x) in self.column_positions.items():
                 if start_x <= x0 <= end_x:
-                    columns[col] += text + " "  # Append word to column
+                    if col in amount_columns and self.is_amount(text):
+                        columns[col] += text + " "
+                    elif col in amount_columns and not self.is_amount(text):
+                        columns[description_column] += text + " "
+                    else:
+                        columns[col] += text + " "  # Append word to column
 
         return pd.Series(columns)
     

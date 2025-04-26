@@ -34,6 +34,7 @@ AMEX_CREDIT_PROPERTYS = {
     
     # Trheshold properties
     'row_treshold_adjust' : False,
+    'date_treshold_adjust' : False,
     'amount_treshold_adjust' : False,
 }
 
@@ -68,6 +69,7 @@ BANORTE_DEBIT_PROPERTYS = {
     
     # Trheshold properties
     'row_treshold_adjust' : True,
+    'date_treshold_adjust' : False,
     'amount_treshold_adjust' : False,
 }
 
@@ -102,6 +104,7 @@ BANORTE_CREDIT_PROPERTYS = {
     
     # Trheshold properties
     'row_treshold_adjust' : False,
+    'date_treshold_adjust' : False,
     'amount_treshold_adjust' : False,
 }
 
@@ -136,6 +139,7 @@ BANORTE_NEW_CREDIT_FORMAT_PROPERTYS = {
     
     # Trheshold properties
     'row_treshold_adjust' : True,
+    'date_treshold_adjust' : False,
     'amount_treshold_adjust' : True,
 }
 
@@ -170,6 +174,7 @@ BBVA_DEBIT_PROPERTYS = {
     
     # Trheshold properties
     'row_treshold_adjust' : False,
+    'date_treshold_adjust' : False,
     'amount_treshold_adjust' : False,
 }
 
@@ -204,6 +209,7 @@ BBVA_CREDIT_PROPERTYS = {
     
     # Trheshold properties
     'row_treshold_adjust' : True,
+    'date_treshold_adjust' : False,
     'amount_treshold_adjust' : False,
 }
 
@@ -238,6 +244,7 @@ BBVA_NEW_CREDIT_FORMAT_PROPERTYS = {
     
     # Trheshold properties
     'row_treshold_adjust' : True,
+    'date_treshold_adjust' : False,
     'amount_treshold_adjust' : True,
 }
 
@@ -276,6 +283,7 @@ BANAMEX_CREDIT_PROPERTYS = {
     
     # Trheshold properties
     'row_treshold_adjust' : True,
+    'date_treshold_adjust' : False,
     'amount_treshold_adjust' : True,
 }
 
@@ -310,6 +318,7 @@ BANAMEX_NEW_CREDIT_FORMAT_PROPERTYS = {
     
     # Trheshold properties
     'row_treshold_adjust' : False,
+    'date_treshold_adjust' : False,
     'amount_treshold_adjust' : True,
 }
 
@@ -348,6 +357,7 @@ HSBC_CREDIT_PROPERTYS = {
     
     # Trheshold properties
     'row_treshold_adjust' : True,
+    'date_treshold_adjust' : False,
     'amount_treshold_adjust' : False,
 }
 
@@ -382,6 +392,7 @@ INBURSA_DEBIT_PROPERTYS = {
     
     # Trheshold properties
     'row_treshold_adjust' : True,
+    'date_treshold_adjust' : False,
     'amount_treshold_adjust' : True,
 }
 
@@ -416,15 +427,84 @@ INBURSA_CREDIT_PROPERTYS = {
     
     # Trheshold properties
     'row_treshold_adjust' : True,
+    'date_treshold_adjust' : False,
     'amount_treshold_adjust' : True,
 }
 
 NU_DEBIT_PROPERTYS = {
+    # Phrase properties
+    'start_phrase' : ['detalle', 'de', 'movimientos', 'en', 'tu', 'cuenta'],
+    'end_phrase' : ['con', 'estos', 'movimientos,'],
     
+    # Column distribution properties
+    'columns': [
+        'FECHA',
+        r'(DE) (\d{2}) (ENE|FEB|MAR|ABR|MAY|JUN|JUL|AGO|SEP|OCT|NOV|DIC) (A) (\d{2}) (ENE|FEB|MAR|ABR|MAY|JUN|JUL|AGO|SEP|OCT|NOV|DIC) (\(\d{2}) (DÍAS\))',
+        'MONTO EN PESOS MEXICANOS'
+    ],
+    'date_column' : 'FECHA',
+    'description_column' : r'(DE) (\d{2}) (ENE|FEB|MAR|ABR|MAY|JUN|JUL|AGO|SEP|OCT|NOV|DIC) (A) (\d{2}) (ENE|FEB|MAR|ABR|MAY|JUN|JUL|AGO|SEP|OCT|NOV|DIC) (\(\d{2}) (DÍAS\))',
+    'amount_column' : ['MONTO EN PESOS MEXICANOS'],
+    'income_column' : 'MONTO EN PESOS MEXICANOS',
+    'expense_column' : 'MONTO EN PESOS MEXICANOS',
+    'balance_column' : None,
+    
+    # Date properties
+    'date_pattern' : r"(\d{2}) (ENE|FEB|MAR|ABR|MAY|JUN|JUL|AGO|SEP|OCT|NOV|DIC) (20\d{2})",
+    'date_groups' : (3, 2, 1), # groups: (year, month, day)
+    'month_pattern' : inverted_numeric_month_patterns,
+    
+    # Amount properties
+    'income_sign': '+',
+    'expense_sign': '-',
+    
+    # Period properties
+    'period_phrase' : None,
+    'period_pattern' : None,
+    'year_group' : None,
+    
+    # Trheshold properties
+    'row_treshold_adjust' : False,
+    'date_treshold_adjust' : True,
+    'amount_treshold_adjust' : False,
 }
 
 NU_CREDIT_PROPERTYS = {
+    # Phrase properties
+    'start_phrase' : ['transacciones'],
+    'end_phrase' : ['saldo', 'final', 'del', 'periodo'],
     
+    # Column distribution properties
+    'columns': [
+        'TRANSACCIONES',
+        r'(DE) (\d{2}) (ENE|FEB|MAR|ABR|MAY|JUN|JUL|AGO|SEP|OCT|NOV|DIC) (A) (\d{2}) (ENE|FEB|MAR|ABR|MAY|JUN|JUL|AGO|SEP|OCT|NOV|DIC) (\(\d{2}) (DÍAS\))',
+        'MONTOS EN PESOS MEXICANOS'
+    ],
+    'date_column' : 'TRANSACCIONES',
+    'description_column' : r'(DE) (\d{2}) (ENE|FEB|MAR|ABR|MAY|JUN|JUL|AGO|SEP|OCT|NOV|DIC) (A) (\d{2}) (ENE|FEB|MAR|ABR|MAY|JUN|JUL|AGO|SEP|OCT|NOV|DIC) (\(\d{2}) (DÍAS\))',
+    'amount_column' : ['MONTOS EN PESOS MEXICANOS'],
+    'income_column' : 'MONTOS EN PESOS MEXICANOS',
+    'expense_column' : 'MONTOS EN PESOS MEXICANOS',
+    'balance_column' : None,
+    
+    # Date properties
+    'date_pattern' : r"(\d{2}) (ENE|FEB|MAR|ABR|MAY|JUN|JUL|AGO|SEP|OCT|NOV|DIC)",
+    'date_groups' : (None, 2, 1), # groups: (year, month, day)
+    'month_pattern' : inverted_numeric_month_patterns,
+    
+    # Amount properties
+    'income_sign': '-',
+    'expense_sign': None,
+    
+    # Period properties
+    'period_phrase' : ['fecha', 'de', 'corte'],
+    'period_pattern' : None,
+    'year_group' : None,
+    
+    # Trheshold properties
+    'row_treshold_adjust' : False,  
+    'date_treshold_adjust' : True,
+    'amount_treshold_adjust' : False
 }
 
 SANTANDER_DEBIT_PROPERTYS = {
