@@ -17,7 +17,7 @@ from models import (
     PDFReader
 )
 from utils import TableManager
-from config import INPUTS_FOLDER, OUTPUTS_FOLDER, DEFAULT_BANK, DEFAULT_STATEMENT_TYPE, MONTH_PATTERNS_ENG, MONTH_PATTERNS_SPA, NUMERIC_MONTH_PATTERNS
+from config import INPUTS_FOLDER, OUTPUTS_FOLDER, MONTH_PATTERNS_ENG, MONTH_PATTERNS_SPA, NUMERIC_MONTH_PATTERNS
 import os
 
 def get_bank_processor(bank_name, statement_type, pdf_path, month_patterns, format = 'old'):
