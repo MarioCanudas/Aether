@@ -4,7 +4,7 @@ import re
 import pandas as pd
 from config import BANKS, BANKS_CODES, STATEMENTS_TYPES
 from functools import cached_property
-from properties_catalog import (
+from .properties_catalog import (
     AMEX_CREDIT_PROPERTIES,
     BANAMEX_CREDIT_PROPERTIES, BANAMEX_DEBIT_PROPERTIES, BANAMEX_NEW_CREDIT_FORMAT_PROPERTIES,
     BANORTE_CREDIT_PROPERTIES, BANORTE_DEBIT_PROPERTIES, BANORTE_NEW_CREDIT_FORMAT_PROPERTIES,
