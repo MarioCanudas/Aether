@@ -1,8 +1,5 @@
 import pytest
-import os
 from core import BankDetector
-from new_model.document_reader import PDFReader
-from new_model.bank_detector import DefaultBankDetector
 
 # List of test cases with their expected bank and type: (filename, bank, type)
 BANK_TEST_CASES = [
@@ -44,19 +41,6 @@ BANK_TEST_CASES = [
     #('santander_credit_old.pdf', 'santander', 'credit'), ¡Model not working yet!
     #('santander_debit.pdf', 'santander', 'debit'),¡Model not working yet!
 ]
-
-@pytest.fixture
-def bank_detector_instance(test_data_input_dir, request):
-    """Creates a DefaultBankDetector instance for a given file path."""
-    file_path, expected_bank, expected_type  = request.param
-    pdf_path= os.path.join(test_data_input_dir, file_path)
-    
-    try:
-        reader = PDFReader(pdf_path)    
-        detector = DefaultBankDetector(reader)    
-        yield detector, expected_bank, expected_type
-    except Exception as e:
-        pytest.fail(f"Failed to initialize DefaultBankDetector for {pdf_path}: {str(e)}")
 
 @pytest.mark.parametrize('bank_detector_instance', BANK_TEST_CASES, indirect=True)
 def test_bank_detector_init(bank_detector_instance):

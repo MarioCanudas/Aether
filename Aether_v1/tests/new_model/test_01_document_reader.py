@@ -1,5 +1,4 @@
 import pytest
-import os
 import pandas as pd
 from new_model.document_reader import PDFReader
 
@@ -24,19 +23,6 @@ BANK_FILES = [
     'nu_credit.pdf',
     'nu_debit.pdf',
 ]
-
-@pytest.fixture
-def pdf_reader_instance(test_data_input_dir, request):
-    """Creates a PDFReader instance for a given file path."""
-    file_path = request.param
-    pdf_path = os.path.join(test_data_input_dir, file_path)
-    
-    try:
-        reader = PDFReader(pdf_path)    
-
-        yield reader, pdf_path
-    except Exception as e:
-        pytest.fail(f"Failed to initialize PDFReader for {pdf_path}: {str(e)}")
 
 # Parametrize each test function individually using the fixture indirectly
 # The 'indirect=True' tells pytest to pass the parameters to the fixture first

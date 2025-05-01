@@ -1,10 +1,6 @@
 import pytest
-import os
 import pandas as pd
 from core import TableBoundaryDetector
-from new_model.document_reader import PDFReader
-from new_model.bank_detector import DefaultBankDetector
-from new_model.table_boundary_detector import TransactionTableBoundaryDetector
 
 BANK_FILES = [
     #'amex_credit_new.pdf',
@@ -28,28 +24,10 @@ BANK_FILES = [
     'nu_debit.pdf',
 ]
 
-@pytest.fixture
-def table_boundary_detector_instance(test_data_input_dir, request):
-    """Creates a TransactionTableBoundaryDetector instance for a given file path."""
-    file_path  = request.param
-    pdf_path= os.path.join(test_data_input_dir, file_path)
-
-    reader = PDFReader(pdf_path)    
-    bank_detector = DefaultBankDetector(reader)
-
-    extracted_words = bank_detector.extracted_words
-    statement_properties = bank_detector.get_statement_properties()
-    
-    try:
-        table_boundary_detector = TransactionTableBoundaryDetector(extracted_words, statement_properties)    
-        yield table_boundary_detector, bank_detector, pdf_path
-    except Exception as e:
-        pytest.fail(f"Failed to initialize TransactionTableBoundaryDetector for {pdf_path}: {str(e)}")
-
 @pytest.mark.parametrize('table_boundary_detector_instance', BANK_FILES, indirect=True)
 def test_table_boundary_detector_init(table_boundary_detector_instance):
     """Tests if the TransactionTableBoundaryDetector initializes with the correct path."""
-    table_boundary_detector, _, _ = table_boundary_detector_instance
+    table_boundary_detector, _ = table_boundary_detector_instance
     try:
         assert isinstance(table_boundary_detector, TableBoundaryDetector), f"Expected TableBoundaryDetector instance, got {type(table_boundary_detector)}"
     except Exception as e:
@@ -58,7 +36,7 @@ def test_table_boundary_detector_init(table_boundary_detector_instance):
 @pytest.mark.parametrize('table_boundary_detector_instance', BANK_FILES, indirect=True)
 def test_df_corrected(table_boundary_detector_instance):
     """Tests the df_corrected property."""
-    table_boundary_detector, _, pdf_path = table_boundary_detector_instance
+    table_boundary_detector, pdf_path = table_boundary_detector_instance
     try:
         df_corrected = table_boundary_detector.df_corrected
         assert isinstance(df_corrected, pd.DataFrame), f"Expected DataFrame, got {type(df_corrected)}"
@@ -85,16 +63,10 @@ def test_df_corrected(table_boundary_detector_instance):
 @pytest.mark.parametrize('table_boundary_detector_instance', BANK_FILES, indirect=True)
 def test_start_idx(table_boundary_detector_instance):
     """Tests the start_idx property."""
-    table_boundary_detector, bank_detector, pdf_path = table_boundary_detector_instance
+    table_boundary_detector, pdf_path = table_boundary_detector_instance
 
     try:
         start_idx = table_boundary_detector.start_idx
-
-        if start_idx is None:
-            statement_properties = bank_detector.get_statement_properties(new_credit_format= True)
-            table_boundary_detector = TransactionTableBoundaryDetector(bank_detector.extracted_words, statement_properties)
-
-            start_idx = table_boundary_detector.start_idx
 
         assert isinstance(start_idx, int), f"Expected int, got {type(start_idx)} for {pdf_path}"
         assert start_idx >= 0, f"start_idx should be non-negative, got {start_idx} for {pdf_path}"
@@ -104,16 +76,10 @@ def test_start_idx(table_boundary_detector_instance):
 @pytest.mark.parametrize('table_boundary_detector_instance', BANK_FILES, indirect=True)
 def test_end_idx(table_boundary_detector_instance):
     """Tests the end_idx property."""
-    table_boundary_detector, bank_detector, pdf_path = table_boundary_detector_instance
+    table_boundary_detector, pdf_path = table_boundary_detector_instance
 
     try:
         end_idx = table_boundary_detector.end_idx
-
-        if end_idx is None:
-            statement_properties = bank_detector.get_statement_properties(new_credit_format= True)
-            table_boundary_detector = TransactionTableBoundaryDetector(bank_detector.extracted_words, statement_properties)
-
-            end_idx = table_boundary_detector.end_idx
 
         assert isinstance(end_idx, int), f"Expected int, got {type(end_idx)} for {pdf_path}"
         assert end_idx >= 0, f"end_idx should be non-negative, got {end_idx} for {pdf_path}"
@@ -123,11 +89,7 @@ def test_end_idx(table_boundary_detector_instance):
 @pytest.mark.parametrize('table_boundary_detector_instance', BANK_FILES, indirect=True)
 def test_get_filtered_table_words(table_boundary_detector_instance):
     """Tests the get_filtered_table_words method."""
-    table_boundary_detector, bank_detector, pdf_path = table_boundary_detector_instance
-
-    if table_boundary_detector.start_idx is None or table_boundary_detector.end_idx is None:
-        statement_properties = bank_detector.get_statement_properties(new_credit_format= True)
-        table_boundary_detector = TransactionTableBoundaryDetector(bank_detector.extracted_words, statement_properties)
+    table_boundary_detector, pdf_path = table_boundary_detector_instance
 
     try:
         filtered_table_words = table_boundary_detector.get_filtered_table_words()
