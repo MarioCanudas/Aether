@@ -40,6 +40,11 @@ class DefaultBankDetector(BankDetector):
             mask = footer_text.str.contains(f"\\b{re.escape(bank_lower)}\\b", regex=True)
             if mask.any():
                 return bank
+        
+        nu_phrase = ['nu', 'méxico', 'financiera,']
+        for i in range(len(self.extracted_words) - len(nu_phrase)):
+            if list(self.extracted_words["text"].iloc[i : i + len(nu_phrase)].str.lower()) == nu_phrase:
+                return 'nu'  
     
         return None
         

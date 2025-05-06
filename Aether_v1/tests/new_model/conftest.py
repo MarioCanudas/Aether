@@ -54,7 +54,7 @@ def _get_cached_bank_detector(file_path: str) -> Tuple[BankDetector, DataFrame, 
         pytest.fail(f"Failed to initialize DefaultBankDetector for {file_path}: {str(e)}")
 
 @lru_cache(maxsize=None)
-def _get_cached_table_boundary_detector(file_path: str) -> Tuple[TableBoundaryDetector, DataFrame]:
+def _get_cached_table_boundary_detector(file_path: str) -> Tuple[TableBoundaryDetector, DataFrame, dict]:
     """
     Creates a TransactionTableBoundaryDetector instance for a given file path.
     Uses caching to avoid re-initializing the detector for the same file.
@@ -77,7 +77,7 @@ def _get_cached_table_boundary_detector(file_path: str) -> Tuple[TableBoundaryDe
         
         filtered_table_words = table_boundary_detector.get_filtered_table_words()
 
-        return table_boundary_detector, filtered_table_words
+        return table_boundary_detector, filtered_table_words, properties
     except Exception as e:
         pytest.fail(f"Failed to initialize TransactionTableBoundaryDetector for {file_path}: {str(e)}")
 
@@ -88,8 +88,7 @@ def _get_cached_row_segmenter(file_path: str) -> Tuple[RowSegmenter, DataFrame, 
     Uses caching to avoid re-initializing the segmenter for the same file.
     """
     print(f"Creating TransactionRowSegmenter instance for {file_path}")
-    _, filtered_table_words = _get_cached_table_boundary_detector(file_path)
-    _, properties = _get_cached_bank_detector(file_path)
+    _, filtered_table_words, properties = _get_cached_table_boundary_detector(file_path)
     try:
         row_segmenter = TransactionRowSegmenter(filtered_table_words, properties)
 
@@ -108,7 +107,7 @@ def _get_cached_table_reconstructor(file_path: str) -> Tuple[TableReconstructor,
     """
     print(f"Creating TransactionTableReconstructor instance for {file_path}")
     _, grouped_rows, columns_positions= _get_cached_row_segmenter(file_path)
-    _, properties = _get_cached_bank_detector(file_path)
+    _, _, properties = _get_cached_table_boundary_detector(file_path)
 
     try:
         table_reconstructor = TransactionTableReconstructor(grouped_rows, columns_positions, properties)
@@ -127,7 +126,8 @@ def _get_cached_table_normalizer(file_path: str) -> Tuple[TableNormalizer, DataF
     """
     print(f"Creating TransactionTableNormalizer instance for {file_path}")
     _, reconstructed_table = _get_cached_table_reconstructor(file_path)
-    extracted_words, properties = _get_cached_bank_detector(file_path)
+    _, _, properties = _get_cached_table_boundary_detector(file_path)
+    _, extracted_words, _ = _get_cached_bank_detector(file_path)
 
     try:
         table_normalizer = TransactionTableNormalizer(reconstructed_table, extracted_words, properties)
@@ -186,7 +186,7 @@ def table_boundary_detector_instance(request):
     pdf_path= os.path.join(INPUTS_FOLDER, file_path)
 
     try:
-        table_boundary_detector, _ = _get_cached_table_boundary_detector(pdf_path)    
+        table_boundary_detector, _, _ = _get_cached_table_boundary_detector(pdf_path)    
         yield table_boundary_detector, pdf_path
     except Exception as e:
         pytest.fail(f"Failed to initialize TransactionTableBoundaryDetector for {pdf_path}: {str(e)}")

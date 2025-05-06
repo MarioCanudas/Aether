@@ -196,9 +196,9 @@ BBVA_CREDIT_PROPERTIES = {
     'expense_sign': None,
     
     # Period properties
-    'period_phrase' : ['Periodo'],
-    'period_pattern' : r"(\d{2})/(\d{2})/(\d{2})",
-    'year_group' : 3,
+    'period_phrase' : None,
+    'period_pattern' : None,
+    'year_group' : None,
     
     # Trheshold properties
     'row_treshold_adjust' : True,
@@ -484,7 +484,7 @@ NU_CREDIT_PROPERTIES = {
     'expense_sign': None,
     
     # Period properties
-    'period_phrase' : ['fecha', 'de', 'corte'],
+    'period_phrase' : ['periodo'],
     'period_pattern' : None,
     'year_group' : None,
     
