@@ -22,6 +22,7 @@ from new_model.table_normalizer import TransactionTableNormalizer
 from new_model.data_exporter import CsvExporter
 
 INPUTS_FOLDER = os.path.join(PROJECT_ROOT, 'tests', 'new_model', 'test_data', 'inputs')
+OUTPUTS_FOLDER = os.path.join(PROJECT_ROOT, 'tests', 'new_model', 'test_data', 'outputs')
 
 @lru_cache(maxsize=None)
 def _get_cached_reader(file_path: str) -> DocumentReader:
@@ -156,10 +157,28 @@ def _get_cached_data_exporter(file_path: str) -> DataExporter:
 
 # 
 @pytest.fixture(scope='session')
+def get_test_file(request):
+    """Creates a Test instance for a given file path."""
+    test_file_path = request.param
+    
+    pdf_path = os.path.join(INPUTS_FOLDER, test_file_path)
+    
+    yield pdf_path
+    
+@pytest.fixture(scope='session')
+def get_expected_file(request):
+    """Creates a Expected instance for a given file path."""
+    expected_file_path = request.param
+    
+    expected_file_path = os.path.join(OUTPUTS_FOLDER, expected_file_path)
+    
+    yield expected_file_path
+
+@pytest.fixture(scope='session')
 def pdf_reader_instance(request):
     """Creates a PDFReader instance for a given file path."""
     file_path = request.param
-    pdf_path = os.path.join(INPUTS_FOLDER, file_path)
+    pdf_path = get_test_file(file_path)
     
     try:
         reader = _get_cached_reader(pdf_path)    
