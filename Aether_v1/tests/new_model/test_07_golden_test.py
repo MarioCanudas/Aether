@@ -32,11 +32,15 @@ GOLDEN_FILES = [
     ('nu_debit.pdf', 'nu_debit_output.csv'),
 ]
 
-@pytest.mark.parametrize("get_test_file, get_expected_file", GOLDEN_FILES, indirect=True)
+@pytest.mark.parametrize("get_test_file,get_expected_file", GOLDEN_FILES, indirect=True)
 def test_golden_test(get_test_file, get_expected_file):
     test_file = get_test_file
     expected_file = get_expected_file
-    expected_df = pd.read_csv(expected_file)
+    
+    try:
+        expected_df = pd.read_csv(expected_file)
+    except FileNotFoundError:
+        pytest.fail(f"File {expected_file} not found")
     
     reader = PDFReader(test_file)
     bank_detector = DefaultBankDetector(reader)

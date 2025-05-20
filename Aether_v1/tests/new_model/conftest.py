@@ -178,7 +178,7 @@ def get_expected_file(request):
 def pdf_reader_instance(request):
     """Creates a PDFReader instance for a given file path."""
     file_path = request.param
-    pdf_path = get_test_file(file_path)
+    pdf_path = os.path.join(INPUTS_FOLDER, file_path)
     
     try:
         reader = _get_cached_reader(pdf_path)    
