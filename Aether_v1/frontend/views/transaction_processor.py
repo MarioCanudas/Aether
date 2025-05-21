@@ -5,15 +5,10 @@ from functions.tips import get_financial_tips
 from functions.bank_processor import get_bank_processor
 from functions.process import identify_pdf
 from utils.helper_functions import calculate_savings_and_validate_balances, delete_double_transactions
-from .cash_transaction import adding_cash_transaction
 import os
 from config import MONTH_PATTERNS_ENG, NUMERIC_MONTH_PATTERNS
 
 def show_transaction_processor():
-    with st.sidebar:
-        if st.button('Add cash transaction', type= 'primary'):
-            adding_cash_transaction()
-
     st.title("Transaction Processor")
 
     # Initialize session state for storing transactions

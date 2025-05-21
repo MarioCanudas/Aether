@@ -5,13 +5,13 @@ from functions.process import process_pdf_bytes
 from functions.calculations import calculate_savings_and_credit_card_expenses_by_month
 from functions.donut_chart import plot_savings_donut_chart
 from functions.tips import get_financial_tips
-from .cash_transaction import adding_cash_transaction
 
 def show_home():
     # Set the title
     st.title('Quick Financial Analysis')
     
-    adding_cash_transaction()
+    # Disable adding cash transaction pop up, because it's not implemented properly yet
+    # adding_cash_transaction()
 
     # Initialize session state variables if they don't exist
     if 'all_processed_data' not in st.session_state:
@@ -25,7 +25,7 @@ def show_home():
 
     # File uploader
     uploaded_files = st.file_uploader("Please upload your Bank Statement PDF files", accept_multiple_files=True, type="pdf")
-    if st.button('Add cash transaction', type= 'primary'):
+    if st.button('Add cash transaction', type= 'primary', disabled=True):
         st.rerun()
 
     if uploaded_files:
