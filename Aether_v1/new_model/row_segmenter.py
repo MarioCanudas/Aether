@@ -13,7 +13,8 @@ class TransactionRowSegmenter(RowSegmenter):
     def delimit_column_positions(self) -> dict:
         rows = self.sorted_df.to_dict(orient='records')
         
-        columns = self.statement_propertys['columns']
+        statement_properties = self.bank_detector.get_statement_properties()
+        columns = statement_properties['columns']
         
         header_row = {
             'columns': [],
@@ -67,6 +68,9 @@ class TransactionRowSegmenter(RowSegmenter):
     
     @cached_property
     def row_threshold(self) -> float:
+        statement_properties = self.bank_detector.get_statement_properties()
+        row_treshold_adjust = statement_properties['row_treshold_adjust']
+        
         top_diffs = self.sorted_df.groupby("page")["top"].diff()
         positive_diffs = top_diffs[top_diffs > 0].dropna()
 
@@ -79,7 +83,7 @@ class TransactionRowSegmenter(RowSegmenter):
 
         filtered_diffs = positive_diffs[(positive_diffs >= lower_bound) & (positive_diffs <= upper_bound)]
 
-        return filtered_diffs.mean() - 5 if self.statement_propertys['row_treshold_adjust'] else filtered_diffs.mean()
+        return filtered_diffs.mean() - 5 if row_treshold_adjust else filtered_diffs.mean()
     
     def group_rows(self) -> pd.DataFrame:
         sorted_df = self.sorted_df.copy()

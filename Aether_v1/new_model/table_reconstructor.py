@@ -18,20 +18,21 @@ class TransactionTableReconstructor(TableReconstructor):
         x0_list = self.column_delimitation['x0']
         x1_list = self.column_delimitation['x1']
         
-        date_column = self.statement_propertys['date_column']
-        description_column = self.statement_propertys['description_column']
-        amounts_columns = self.statement_propertys['amount_column']
-        columns = self.statement_propertys['columns']
+        statement_properties = self.bank_detector.get_statement_properties()
+        date_column = statement_properties['date_column']
+        description_column = statement_properties['description_column']
+        amounts_columns = statement_properties['amount_column']
+        columns = statement_properties['columns']
         
         positions = {}
         
         for i, col in enumerate(columns):
             if col == date_column:
-                positions[col] = (0, x1_list[i] + 10) if self.statement_propertys['date_treshold_adjust'] else (0, x1_list[i])
+                positions[col] = (0, x1_list[i] + 10) if statement_properties['date_treshold_adjust'] else (0, x1_list[i])
             elif col == description_column:
                 positions[col] = (x1_list[i - 1] + 1, x0_list[i + 1]- 25) # Adjusted for description column
             elif col in amounts_columns:
-                positions[col] =   (x1_list[i - 1] + 10, x1_list[i] + 10) if self.statement_propertys['amount_treshold_adjust'] else (x0_list[i] - 15, x1_list[i])
+                positions[col] =   (x1_list[i - 1] + 10, x1_list[i] + 10) if statement_properties['amount_treshold_adjust'] else (x0_list[i] - 15, x1_list[i])
             else:
                 positions[col] = (x0_list[i] - 10, x1_list[i])
         
@@ -40,11 +41,12 @@ class TransactionTableReconstructor(TableReconstructor):
     def classify_columns(self, row) -> pd.Series:
         columns = {col: "" for col in self.column_positions.keys()}
 
-        date_column = self.statement_propertys['date_column']
-        amount_columns = self.statement_propertys['amount_column']
-        description_column = self.statement_propertys['description_column']
+        statement_properties = self.bank_detector.get_statement_properties()
+        date_column = statement_properties['date_column']
+        amount_columns = statement_properties['amount_column']
+        description_column = statement_properties['description_column']
 
-        date_pattern = self.statement_propertys['date_pattern']
+        date_pattern = statement_properties['date_pattern']
 
         words = row['words']
 
@@ -76,10 +78,11 @@ class TransactionTableReconstructor(TableReconstructor):
         merged_rows = []
         current_row = None
         
-        description_column = self.statement_propertys['description_column']
-        date_column = self.statement_propertys['date_column']
-        amount_columns = self.statement_propertys['amount_column']
-        date_pattern = self.statement_propertys['date_pattern']
+        statement_properties = self.bank_detector.get_statement_properties()
+        description_column = statement_properties['description_column']
+        date_column = statement_properties['date_column']
+        amount_columns = statement_properties['amount_column']
+        date_pattern = statement_properties['date_pattern']
 
         for _, row in df_structured.iterrows():
             if row[date_column]!='':  # New transaction row

@@ -4,10 +4,15 @@ import pandas as pd
 from functools import cached_property
 from typing import List, Tuple
 
-class TransactionTableNormalizer(TableNormalizer):
+class TransactionTableNormalizer(TableNormalizer):  
+    def clean_amount(self, amount: str) -> str:
+        return amount.replace(',', '').replace('$', '').replace('+', '').replace('-','')
+    
     @cached_property
     def period_idx(self) -> int:
-        period_phrase = self.statement_properties['period_phrase']
+        df_extracted_words = self.bank_detector.get_extracted_words().copy()
+        statement_properties = self.bank_detector.get_statement_properties()
+        period_phrase = statement_properties['period_phrase']
 
         if not period_phrase:
             return None
@@ -15,9 +20,9 @@ class TransactionTableNormalizer(TableNormalizer):
         # Convert period_phrase to lowercase once for efficient comparison
         period_phrase_lower = [phrase.lower() for phrase in period_phrase]
 
-        for i in range(len(self.df_extracted_words) - len(period_phrase)):
+        for i in range(len(df_extracted_words) - len(period_phrase)):
             # Extract the window of words
-            window_words = self.df_extracted_words["text"].iloc[i : i + len(period_phrase)]
+            window_words = df_extracted_words["text"].iloc[i : i + len(period_phrase)]
             
             # Process words: lowercase and remove trailing colon
             processed_window = [word.lower().rstrip(':') for word in window_words]
@@ -28,8 +33,34 @@ class TransactionTableNormalizer(TableNormalizer):
 
         raise ValueError(f"Period phrase '{period_phrase}' not found in the extracted words.")
     
+    def get_initial_balance(self) -> float:
+        df_extracted_words = self.bank_detector.get_extracted_words().copy()
+        statement_properties = self.bank_detector.get_statement_properties()
+        initial_balance_phrase = statement_properties['initial_balance_phrase']
+        
+        if not initial_balance_phrase:
+            return initial_balance
+        
+        for i in range(len(df_extracted_words) - len(initial_balance_phrase)):
+            window_words = df_extracted_words["text"].iloc[i : i + len(initial_balance_phrase)]
+            
+            processed_window = [word.lower().rstrip(':') for word in window_words]
+            
+            if processed_window == initial_balance_phrase:
+                initial_balance = df_extracted_words["text"].iloc[i + len(initial_balance_phrase)]
+                initial_balance = self.clean_amount(initial_balance)
+                
+                try:
+                    return float(initial_balance)
+                except ValueError:
+                    return None
+
+        raise ValueError(f"Initial balance phrase '{initial_balance_phrase}' not found in the extracted words.")
+        
     @cached_property
     def years(self) -> List[int]:
+        df_extracted_words = self.bank_detector.get_extracted_words().copy()
+        statement_properties = self.bank_detector.get_statement_properties()
         detected_years = []
         
         # Check if period_idx is valid
@@ -37,15 +68,15 @@ class TransactionTableNormalizer(TableNormalizer):
             return detected_years
             
         # Get the text values after the period phrase
-        period_values = self.df_extracted_words.iloc[self.period_idx : self.period_idx + 15]
+        period_values = df_extracted_words.iloc[self.period_idx : self.period_idx + 15]
         
         for text in period_values['text']:
-            if self.statement_properties['period_pattern']:
-                year_match = re.search(self.statement_properties['period_pattern'], text)
+            if statement_properties['period_pattern']:
+                year_match = re.search(statement_properties['period_pattern'], text)
                 
                 if year_match:
                     try:
-                        year = int(year_match.group(self.statement_properties['year_group']))
+                        year = int(year_match.group(statement_properties['year_group']))
                         detected_years.append(year)  # Append the integer directly
                     except (ValueError, IndexError):
                         continue
@@ -119,9 +150,10 @@ class TransactionTableNormalizer(TableNormalizer):
             return ""  # No valid year found
             
     def normalize_dates(self, date_column: pd.Series) -> pd.Series:
-        date_pattern = self.statement_properties['date_pattern']
-        groups_date = self.statement_properties['date_groups']
-        month_pattern = self.statement_properties['month_pattern']
+        statement_properties = self.bank_detector.get_statement_properties()
+        date_pattern = statement_properties['date_pattern']
+        groups_date = statement_properties['date_groups']
+        month_pattern = statement_properties['month_pattern']
 
         have_year: bool = groups_date[0] is not None
         
@@ -135,9 +167,6 @@ class TransactionTableNormalizer(TableNormalizer):
             return date_column.apply(
                 lambda x: self.normalize_date_without_year(x, years, date_pattern, groups_date, month_pattern)
             )
-    
-    def clean_amount(self, amount: str) -> str:
-        return amount.replace(',', '').replace('$', '').replace('+', '').replace('-','')
     
     def normalize_amount_for_single_column(self, value: str, income_sign: str, expense_sign: str) -> float:
         amount = 0.0
@@ -213,26 +242,47 @@ class TransactionTableNormalizer(TableNormalizer):
         
         return pd.Series({'Amount': amount, 'Type': transaction_type})
         
-    def normalize_amounts(self, amount_columns: pd.Series | pd.DataFrame) -> pd.Series:    
+    def normalize_amounts(self, amount_columns: pd.Series | pd.DataFrame) -> pd.Series: 
+        statement_properties = self.bank_detector.get_statement_properties()
         if isinstance(amount_columns, pd.Series):
-            income_sign = self.statement_properties['income_sign']
-            expense_sign = self.statement_properties['expense_sign']
+            income_sign = statement_properties['income_sign']
+            expense_sign = statement_properties['expense_sign']
 
             return amount_columns.apply(lambda x: self.normalize_amount_for_single_column(x, income_sign, expense_sign))
         else:
-            income_column = self.statement_properties['income_column']
-            expense_column = self.statement_properties['expense_column']
-            balance_column = self.statement_properties['balance_column']
+            income_column = statement_properties['income_column']
+            expense_column = statement_properties['expense_column']
+            balance_column = statement_properties['balance_column']
 
             return amount_columns.apply(lambda x: self.normalize_amount_for_multiple_columns(x, income_column, expense_column, balance_column), axis=1)
+        
+    def add_initial_balance(self, df_table: pd.DataFrame) -> pd.DataFrame:
+        statement_type = self.bank_detector.detect_statement_type()
+        
+        if statement_type == 'credit':
+            return df_table
+                
+        statement_properties = self.bank_detector.get_statement_properties()
+        initial_balance_description = statement_properties['initial_balance_description']
+        
+        if (df_table['Description'] == initial_balance_description).any():
+            df_table.loc[df_table['Description'] == initial_balance_description, 'Type'] = 'Saldo Inicial'
+        else:
+            initial_balance_amount = self.get_initial_balance()
+            first_date = df_table['Date'].min()
+            initial_balance = {'Date': first_date, 'Description': 'Saldo Inicial', 'Amount': initial_balance_amount, 'Type': 'Saldo Inicial'}
+            df_table = pd.concat([df_table, pd.DataFrame([initial_balance])], ignore_index=True)
+            
+        return df_table
     
     def normalize_table(self) -> pd.DataFrame:
         df_table = self.df_table
-        df_normalized = pd.DataFrame()
+        df_normalized = pd.DataFrame()      
         
-        date_column = self.statement_properties['date_column']
-        description_column = self.statement_properties['description_column']
-        amount_column = self.statement_properties['amount_column']
+        statement_properties = self.bank_detector.get_statement_properties()
+        date_column = statement_properties['date_column']
+        description_column = statement_properties['description_column']
+        amount_column = statement_properties['amount_column']
         
         df_normalized['Date'] = self.normalize_dates(df_table[date_column])
         df_normalized['Description'] = df_table[description_column]
@@ -241,8 +291,9 @@ class TransactionTableNormalizer(TableNormalizer):
         
         df_normalized['Amount'] = df_amount['Amount']
         df_normalized['Type'] = df_amount['Type']
-        
-        
+                
         df_normalized['Date'] = pd.to_datetime(df_normalized['Date'])
         
-        return df_normalized
+        df_normalized = self.add_initial_balance(df_normalized)
+        
+        return df_normalized.sort_values(by='Date')

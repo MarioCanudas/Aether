@@ -3,8 +3,8 @@ from typing import Literal, List
 import re
 import pandas as pd
 from config import BANKS, BANKS_CODES, STATEMENTS_TYPES
-from functools import cached_property
-from .properties_catalog import (
+from functools import lru_cache
+from properties_catalog import (
     AMEX_CREDIT_PROPERTIES,
     BANAMEX_CREDIT_PROPERTIES, BANAMEX_DEBIT_PROPERTIES, BANAMEX_NEW_CREDIT_FORMAT_PROPERTIES,
     BANORTE_CREDIT_PROPERTIES, BANORTE_DEBIT_PROPERTIES, BANORTE_NEW_CREDIT_FORMAT_PROPERTIES,
@@ -16,8 +16,8 @@ from .properties_catalog import (
 )
 
 class DefaultBankDetector(BankDetector):
-    @cached_property
-    def extracted_words(self) -> pd.DataFrame:
+    @lru_cache(maxsize=None)
+    def get_extracted_words(self) -> pd.DataFrame:
         return self.document_reader.extract_words()
 
     def detect_bank_in_footer(self) -> Literal['amex', 'banorte', 'bbva', 'citibanamex', 'hsbc', 'inbursa', 'nu', 'santander']:
@@ -27,12 +27,13 @@ class DefaultBankDetector(BankDetector):
         Returns:
             str: The detected bank name if found, otherwise raises a ValueError.
         """
+        df_extracted_words = self.get_extracted_words().copy()
         document_height = self.document_reader.get_height()
         
         footer_percentage = 0.15
         footer_threshold = document_height * footer_percentage
 
-        df_footer = self.extracted_words[self.extracted_words['bottom'] > document_height - footer_threshold]
+        df_footer = df_extracted_words[df_extracted_words['bottom'] > document_height - footer_threshold]
 
         footer_text = df_footer['text'].apply(lambda x: x.lower())
         for bank in BANKS:
@@ -42,8 +43,8 @@ class DefaultBankDetector(BankDetector):
                 return bank
         
         nu_phrase = ['nu', 'méxico', 'financiera,']
-        for i in range(len(self.extracted_words) - len(nu_phrase)):
-            if list(self.extracted_words["text"].iloc[i : i + len(nu_phrase)].str.lower()) == nu_phrase:
+        for i in range(len(df_extracted_words) - len(nu_phrase)):
+            if list(df_extracted_words["text"].iloc[i : i + len(nu_phrase)].str.lower()) == nu_phrase:
                 return 'nu'  
     
         return None
@@ -55,7 +56,7 @@ class DefaultBankDetector(BankDetector):
         Returns:
             str: The detected bank name if found, otherwise None.
         """
-        df_extracted_words = self.extracted_words.copy()
+        df_extracted_words = self.get_extracted_words().copy()
     
         clabe_keyword = r'\bclabe\b'
         
@@ -84,6 +85,7 @@ class DefaultBankDetector(BankDetector):
                 
         return None
     
+    @lru_cache(maxsize=None)
     def detect_bank(self) -> Literal['amex', 'banorte', 'bbva', 'citibanamex', 'hsbc', 'inbursa', 'nu', 'santander']:
         bank = self.detect_bank_by_code()
         
@@ -93,9 +95,10 @@ class DefaultBankDetector(BankDetector):
         return bank
 
     def detect_statement_type(self) -> Literal['debit', 'credit']:
+        df_extracted_words = self.get_extracted_words().copy()
         credit_condition_phrase = ['límite', 'de', 'crédito']
 
-        text_column = self.extracted_words['text'].copy()
+        text_column = df_extracted_words['text'].copy()
 
         processed_text = text_column.str.lower().str.replace(':', '', regex=False)
 
@@ -107,6 +110,7 @@ class DefaultBankDetector(BankDetector):
 
         return 'debit'
 
+    @lru_cache(maxsize=None)
     def get_statement_properties(self, new_credit_format = False) -> dict:
         bank = self.detect_bank()
         statement_type = self.detect_statement_type()
