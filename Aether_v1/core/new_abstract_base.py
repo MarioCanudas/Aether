@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
-from typing import Literal, Dict, List, Tuple
+from typing import Literal, List
 import pandas as pd
+from io import BytesIO
 
 class NewDocumentReader(ABC):
     """
@@ -10,8 +11,8 @@ class NewDocumentReader(ABC):
         file_path (str): Path to the document file.
     """
 
-    def __init__(self, file_path: str):
-        self.file_path = file_path
+    def __init__(self, file: str | BytesIO):
+        self.file = file
         
     @abstractmethod
     def get_height(self) -> float:
