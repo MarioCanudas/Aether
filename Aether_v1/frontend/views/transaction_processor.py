@@ -2,18 +2,18 @@ import streamlit as st
 import pandas as pd
 from functions.donut_chart import plot_savings_donut_chart
 from functions.tips import get_financial_tips
-from functions.bank_processor import get_bank_processor
-from functions.process import identify_pdf
+from controllers import TransactionProcessorController
 from utils.helper_functions import calculate_savings_and_validate_balances, delete_double_transactions
 import os
-from config import MONTH_PATTERNS_ENG, NUMERIC_MONTH_PATTERNS
+
+controller = TransactionProcessorController()
 
 def show_transaction_processor():
     st.title("Transaction Processor")
 
     # Initialize session state for storing transactions
     if 'all_transactions' not in st.session_state:
-        st.session_state.all_transactions = []
+        st.session_state.all_transactions = [] # Type: List[pd.DataFrame]
 
     # Allow multiple file uploads
     uploaded_files = st.file_uploader("Upload Bank Statement PDF(s)", type="pdf", accept_multiple_files=True)
@@ -29,14 +29,12 @@ def show_transaction_processor():
 
             try:
                 # Identify bank from PDF
-                bank_info = identify_pdf(temp_file_path)
+                bank_info = controller.identify_pdf(temp_file_path)
                 bank_name = bank_info["bank"]
-                statement_type = bank_info["account_type"]
+                statement_type = bank_info["statement_type"]
                 st.info(f"Detected bank for {uploaded_file.name}: {bank_name} - {statement_type}")
 
-                month_patterns = NUMERIC_MONTH_PATTERNS if bank_name == 'BBVA' and statement_type == 'credit' else MONTH_PATTERNS_ENG
-                processor = get_bank_processor(bank_name, statement_type, temp_file_path, month_patterns)
-                transactions_df = processor.process_transactions()
+                transactions_df = controller.process_transactions(temp_file_path)
                 transactions_df['bank'] = bank_name
                 transactions_df['statement_type'] = statement_type
                 transactions_df['filename'] = uploaded_file.name
