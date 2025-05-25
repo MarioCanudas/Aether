@@ -1,4 +1,4 @@
-from .transaction_processor import TransactionProcessorController
+from .transaction_processor_controller import TransactionProcessorController
 
 __all__ = [
     "TransactionProcessorController"
