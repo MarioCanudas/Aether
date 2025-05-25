@@ -4,7 +4,7 @@ import re
 import pandas as pd
 from config import BANKS, BANKS_CODES, STATEMENTS_TYPES
 from functools import lru_cache
-from properties_catalog import (
+from .properties_catalog import (
     AMEX_CREDIT_PROPERTIES,
     BANAMEX_CREDIT_PROPERTIES, BANAMEX_DEBIT_PROPERTIES, BANAMEX_NEW_CREDIT_FORMAT_PROPERTIES,
     BANORTE_CREDIT_PROPERTIES, BANORTE_DEBIT_PROPERTIES, BANORTE_NEW_CREDIT_FORMAT_PROPERTIES,
@@ -111,7 +111,9 @@ class DefaultBankDetector(BankDetector):
         return 'debit'
 
     @lru_cache(maxsize=None)
-    def get_statement_properties(self, new_credit_format = False) -> dict:
+    def get_statement_properties(self) -> dict:
+        new_credit_format = self.new_credit_format
+        
         bank = self.detect_bank()
         statement_type = self.detect_statement_type()
 

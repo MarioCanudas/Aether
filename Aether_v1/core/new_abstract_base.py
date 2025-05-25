@@ -43,8 +43,9 @@ class BankDetector(ABC):
         extracted_words (pd.DataFrame): DataFrame containing the extracted words and their positions.
     """
 
-    def __init__(self, DocumentReader: NewDocumentReader):
+    def __init__(self, DocumentReader: NewDocumentReader, new_credit_format: bool = False):
         self.document_reader = DocumentReader
+        self.new_credit_format = new_credit_format
         
     @abstractmethod
     def get_extracted_words(self) -> pd.DataFrame:
