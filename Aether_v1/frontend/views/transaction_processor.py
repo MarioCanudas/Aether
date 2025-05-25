@@ -1,10 +1,5 @@
 import streamlit as st
-import pandas as pd
-from functions.donut_chart import plot_savings_donut_chart
-from functions.tips import get_financial_tips
 from controllers import TransactionProcessorController
-from utils.helper_functions import calculate_savings_and_validate_balances, delete_double_transactions
-import os
 
 controller = TransactionProcessorController()
 
@@ -12,48 +7,19 @@ def show_transaction_processor():
     st.title("Transaction Processor")
 
     # Initialize session state for storing transactions
-    if 'all_transactions' not in st.session_state:
-        st.session_state.all_transactions = [] # Type: List[pd.DataFrame]
+    controller.initialize_session_state()
 
     # Allow multiple file uploads
     uploaded_files = st.file_uploader("Upload Bank Statement PDF(s)", type="pdf", accept_multiple_files=True)
     if uploaded_files:
-        for uploaded_file in uploaded_files:
-            # Check if file was already processed (using name as identifier)
-            if any(uploaded_file.name == df['filename'].iloc[0] for df in st.session_state.all_transactions if not df.empty):
-                continue
-            # Save uploaded file to a temporary path for processing
-            temp_file_path = os.path.join("frontend", f"temp_uploaded_{uploaded_file.name}")
-            with open(temp_file_path, "wb") as f:
-                f.write(uploaded_file.getbuffer())
-
-            try:
-                # Identify bank from PDF
-                bank_info = controller.identify_pdf(temp_file_path)
-                bank_name = bank_info["bank"]
-                statement_type = bank_info["statement_type"]
-                st.info(f"Detected bank for {uploaded_file.name}: {bank_name} - {statement_type}")
-
-                transactions_df = controller.process_transactions(temp_file_path)
-                transactions_df['bank'] = bank_name
-                transactions_df['statement_type'] = statement_type
-                transactions_df['filename'] = uploaded_file.name
-                st.session_state.all_transactions.append(transactions_df)
-
-            except ValueError as e:
-                st.error(f"Error processing {uploaded_file.name}: {e}")
-            except Exception as e:
-                st.error(f"An unexpected error processing {uploaded_file.name}: {e}")
-
-            if os.path.exists(temp_file_path):
-                os.remove(temp_file_path)
+        controller.process_uploaded_files(uploaded_files)
 
         if st.session_state.all_transactions:
-            combined_df = pd.concat(st.session_state.all_transactions, ignore_index=True)
-
-            cleaned_df = delete_double_transactions(combined_df)
-            monthly_results = calculate_savings_and_validate_balances(cleaned_df)
-            st.session_state.monthly_results = monthly_results
+            combined_df = controller.get_combined_df()
+            cleaned_df = controller.get_cleaned_df()
+            monthly_results = controller.get_monthly_results()
+            
+            controller.update_monthly_results()
 
             st.subheader("Extracted Transactions")
             st.dataframe(combined_df)
@@ -64,9 +30,9 @@ def show_transaction_processor():
             st.subheader("Monthly Savings & Metrics")
             st.dataframe(monthly_results)
 
-            total_savings = monthly_results['savings'].sum()
-            avg_income_per_month = monthly_results['total_income'].mean()
-            avg_withdrawal_per_month = monthly_results['total_withdrawal'].mean()
+            total_savings = controller.get_total_savings()
+            avg_income_per_month = controller.get_avg_income_per_month()
+            avg_withdrawal_per_month = controller.get_avg_withdrawal_per_month()
 
             col1, col2, col3 = st.columns(3)
             with col1:
@@ -76,16 +42,15 @@ def show_transaction_processor():
             with col3:
                 st.metric(label="Avg Withdrawal/Month", value=f"${avg_withdrawal_per_month:,.2f}")
 
-            fig, label = plot_savings_donut_chart(total_savings, avg_income_per_month)
+            fig, label = controller.get_plot_savings_donut_chart(total_savings, avg_income_per_month)
             st.pyplot(fig)
             st.markdown(f"<h2 style='text-align: center;'>Financial Health: {label}</h2>", unsafe_allow_html=True)
 
-            tips = get_financial_tips(label)
+            tips = controller.get_financial_tips(label)
             st.subheader("Tips")
             for tip in tips:
                 st.write(f"- {tip}")
 
     if st.button("Clear All Transactions"):
-        st.session_state.all_transactions = []
-        st.session_state.monthly_results = pd.DataFrame()
+        controller.clear_all_transactions()
         st.rerun()
