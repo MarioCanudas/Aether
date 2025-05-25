@@ -31,6 +31,11 @@ def calculate_savings_and_validate_balances(data: pd.DataFrame) -> pd.DataFrame:
     :param data: DataFrame containing transaction data with 'Date', 'Description', 'Amount', 'Balance', and 'Type' columns.
     :return: A DataFrame with monthly savings and balance validation results.
     """
+    # If the 'Balance' column is not present, add it with all values as None
+    # Temporary fix for implementation of new model
+    if not 'Balance' in data.columns:
+        data['Balance'] = None
+    
     # Ensure the 'Date' column is in datetime format
     data['Date'] = pd.to_datetime(data['Date'], format='%Y-%m-%d')
 
@@ -48,7 +53,7 @@ def calculate_savings_and_validate_balances(data: pd.DataFrame) -> pd.DataFrame:
         group = group.sort_values(by='Date')
 
         # Extract the initial balance from "Saldo inicial"
-        initial_balance_row = group[group['Description'].str.contains('Saldo inicial', case=False, na=False)]
+        initial_balance_row = group[group['Type'] == 'Saldo Inicial']
         initial_balance = initial_balance_row['Balance'].values[0] if not initial_balance_row.empty else None
 
         # Calculate total income and withdrawals
