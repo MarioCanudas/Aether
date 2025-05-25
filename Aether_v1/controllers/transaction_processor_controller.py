@@ -23,6 +23,15 @@ class TransactionProcessorController:
 
         if 'all_monthly_results' not in st.session_state:
             st.session_state.all_monthly_results = pd.DataFrame()
+            
+        if 'files_uploaded' not in st.session_state:
+            st.session_state.files_uploaded = False
+            
+    def reset_session_state(self):
+        st.session_state.all_transactions = []
+        st.session_state.all_processed_data = pd.DataFrame()
+        st.session_state.all_monthly_results = pd.DataFrame()
+        st.session_state.files_uploaded = False
     
     def process_transactions(self, bank_detector: DefaultBankDetector) -> pd.DataFrame:
         reader = bank_detector.document_reader
@@ -77,7 +86,8 @@ class TransactionProcessorController:
                 
     def get_combined_df(self) -> pd.DataFrame:
         if st.session_state.all_transactions:
-            return pd.concat(st.session_state.all_transactions, ignore_index=True)
+            df = pd.concat(st.session_state.all_transactions, ignore_index=True)
+            return df.sort_values(by='Date', ascending=True)
         else:
             return pd.DataFrame()
         
@@ -87,22 +97,26 @@ class TransactionProcessorController:
     
     def get_monthly_results(self) -> pd.DataFrame:
         cleaned_df = self.get_cleaned_df()
-        return calculate_savings_and_validate_balances(cleaned_df)
-                
-    def update_monthly_results(self) -> None:
-        st.session_state.monthly_results = self.get_monthly_results()
+        df = calculate_savings_and_validate_balances(cleaned_df)
+        return df.sort_values(by='Month', ascending=True)
+    
+    def update_all_processed_data(self) -> None:
+        st.session_state.all_processed_data = self.get_combined_df()
+        
+    def update_all_monthly_results(self) -> None:
+        st.session_state.all_monthly_results = self.get_monthly_results()
         
     def get_total_savings(self) -> float:
-        monthly_results = st.session_state.monthly_results
-        return monthly_results['savings'].sum()
+        all_monthly_results = st.session_state.all_monthly_results
+        return all_monthly_results['savings'].sum()
     
     def get_avg_income_per_month(self) -> float:
-        monthly_results = st.session_state.monthly_results
-        return monthly_results['total_income'].mean()
+        all_monthly_results = st.session_state.all_monthly_results
+        return all_monthly_results['total_income'].mean()
     
     def get_avg_withdrawal_per_month(self) -> float:
-        monthly_results = st.session_state.monthly_results
-        return monthly_results['total_withdrawal'].mean()
+        all_monthly_results = st.session_state.all_monthly_results
+        return all_monthly_results['total_withdrawal'].mean()
     
     def get_plot_savings_donut_chart(self, total_savings, avg_income_per_month):
         """
