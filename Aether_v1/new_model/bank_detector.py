@@ -4,7 +4,7 @@ import re
 import pandas as pd
 from config import BANKS, BANKS_CODES, STATEMENTS_TYPES
 from functools import cached_property
-from properties_catalog import (
+from .properties_catalog import (
     AMEX_CREDIT_PROPERTIES,
     BANAMEX_CREDIT_PROPERTIES, BANAMEX_DEBIT_PROPERTIES, BANAMEX_NEW_CREDIT_FORMAT_PROPERTIES,
     BANORTE_CREDIT_PROPERTIES, BANORTE_DEBIT_PROPERTIES, BANORTE_NEW_CREDIT_FORMAT_PROPERTIES,
@@ -40,6 +40,11 @@ class DefaultBankDetector(BankDetector):
             mask = footer_text.str.contains(f"\\b{re.escape(bank_lower)}\\b", regex=True)
             if mask.any():
                 return bank
+        
+        nu_phrase = ['nu', 'méxico', 'financiera,']
+        for i in range(len(self.extracted_words) - len(nu_phrase)):
+            if list(self.extracted_words["text"].iloc[i : i + len(nu_phrase)].str.lower()) == nu_phrase:
+                return 'nu'  
     
         return None
         

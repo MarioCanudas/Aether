@@ -3,6 +3,15 @@ import pandas as pd
 import re
 from functools import cached_property
 
+def is_amount(value: str) -> bool:
+    # Ignore the empty strings
+    if value == '':
+        return True
+    
+    amount_pattern = r'^[+-]?\$?[+-]?(0|[1-9]\d{0,2}(?:,\d{3})*)\.\d{2}[-+]?$'
+
+    return bool(re.match(amount_pattern, value.strip()))
+
 class TransactionTableReconstructor(TableReconstructor):
     @cached_property
     def column_positions(self) -> dict:
@@ -27,28 +36,31 @@ class TransactionTableReconstructor(TableReconstructor):
                 positions[col] = (x0_list[i] - 10, x1_list[i])
         
         return positions
-    
-    def is_amount(self, value: str) -> bool:
-        amount_pattern = r'^[+-]?\$?[+-]?(0|[1-9]\d{0,2}(?:,\d{3})*)\.\d{2}[-+]?$'
-
-        return bool(re.match(amount_pattern, value.strip()))
 
     def classify_columns(self, row) -> pd.Series:
         columns = {col: "" for col in self.column_positions.keys()}
+
+        date_column = self.statement_propertys['date_column']
         amount_columns = self.statement_propertys['amount_column']
         description_column = self.statement_propertys['description_column']
 
+        date_pattern = self.statement_propertys['date_pattern']
+
         words = row['words']
 
-        for i, (text, x0, x1) in enumerate(words):
+        for text, x0, x1 in words:
             for col, (start_x, end_x) in self.column_positions.items():
                 if start_x <= x0 <= end_x:
-                    if col in amount_columns and self.is_amount(text):
+                    if col in amount_columns and is_amount(text):
                         columns[col] += text + " "
-                    elif col in amount_columns and not self.is_amount(text):
+                        break
+                    elif col in amount_columns and not is_amount(text):
                         columns[description_column] += text + " "
+                        break
                     else:
                         columns[col] += text + " "  # Append word to column
+                        break
+                    
 
         return pd.Series(columns)
     

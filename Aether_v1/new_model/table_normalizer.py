@@ -8,12 +8,25 @@ class TransactionTableNormalizer(TableNormalizer):
     @cached_property
     def period_idx(self) -> int:
         period_phrase = self.statement_properties['period_phrase']
+
+        if not period_phrase:
+            return None
         
+        # Convert period_phrase to lowercase once for efficient comparison
+        period_phrase_lower = [phrase.lower() for phrase in period_phrase]
+
         for i in range(len(self.df_extracted_words) - len(period_phrase)):
-            if list(self.df_extracted_words["text"].iloc[i : i + len(period_phrase)].str.lower()) == period_phrase:
+            # Extract the window of words
+            window_words = self.df_extracted_words["text"].iloc[i : i + len(period_phrase)]
+            
+            # Process words: lowercase and remove trailing colon
+            processed_window = [word.lower().rstrip(':') for word in window_words]
+            
+            # Compare the processed window with the lowercase period_phrase
+            if processed_window == period_phrase_lower:
                 return i + len(period_phrase)  # First word after match
 
-        return None
+        raise ValueError(f"Period phrase '{period_phrase}' not found in the extracted words.")
     
     @cached_property
     def years(self) -> List[int]:
@@ -63,17 +76,13 @@ class TransactionTableNormalizer(TableNormalizer):
             month = date_match.group(month_group)
             day = date_match.group(day_group)
             
-            try:
-                month = int(month)
-            except:
-                month = month_pattern[month]
+            month = month if month.isnumeric() else month_pattern[month]
             
             return f"{year}-{month}-{day}" if len(year) == 4 else f"20{year}-{month}-{day}"
         else:
             return ""
         
-    def normalize_date_without_year(self, date: str, date_pattern: str, groups_date: Tuple[int], month_pattern: dict) -> str:
-        years = self.years
+    def normalize_date_without_year(self, date: str, years: List[int], date_pattern: str, groups_date: Tuple[None, int, int], month_pattern: dict) -> str:
         _, month_group, day_group = groups_date
         
         date_match = re.match(date_pattern, date)
@@ -106,28 +115,31 @@ class TransactionTableNormalizer(TableNormalizer):
                     return f"{year2}-{month}-{day}"
             else:
                 return ""
+        else:
+            return ""  # No valid year found
             
     def normalize_dates(self, date_column: pd.Series) -> pd.Series:
         date_pattern = self.statement_properties['date_pattern']
         groups_date = self.statement_properties['date_groups']
         month_pattern = self.statement_properties['month_pattern']
+
+        have_year: bool = groups_date[0] is not None
         
-        if groups_date[0]:
+        if have_year:
             return date_column.apply(
                 lambda x: self.normalize_date_with_year(x, date_pattern, groups_date, month_pattern)
             )
         else:
+            years = self.years
+
             return date_column.apply(
-                lambda x: self.normalize_date_without_year(x, date_pattern, groups_date, month_pattern)
+                lambda x: self.normalize_date_without_year(x, years, date_pattern, groups_date, month_pattern)
             )
     
     def clean_amount(self, amount: str) -> str:
         return amount.replace(',', '').replace('$', '').replace('+', '').replace('-','')
     
-    def normalize_amount_for_single_column(self, value: str) -> float:
-        income_sign = self.statement_properties['income_sign']
-        expense_sign = self.statement_properties['expense_sign']
-        
+    def normalize_amount_for_single_column(self, value: str, income_sign: str, expense_sign: str) -> float:
         amount = 0.0
         transaction_type = None
         
@@ -157,48 +169,62 @@ class TransactionTableNormalizer(TableNormalizer):
                 
         return pd.Series({'Amount': amount, 'Type': transaction_type})
     
-    def normalize_amount_for_multiple_columns(self, row) -> float:
-        income_column = self.statement_properties['income_column']
-        expense_column = self.statement_properties['expense_column']
-        balance_column = self.statement_properties['balance_column']
-        
+    def normalize_amount_for_multiple_columns(self, row, income_column: str, expense_column: str, balance_column: str) -> pd.Series:
         amount = 0.0
         transaction_type = None
-        
-        if not pd.isna(row[income_column]) and row[income_column] != '' and row[expense_column] == '':
+
+        income_val = row[income_column]
+        expense_val = row[expense_column]
+
+        # Check if income_val is present (not NA and not empty string)
+        is_income_present = not pd.isna(income_val) and income_val != ''
+        # Check if expense_val is present (not NA and not empty string)
+        is_expense_present = not pd.isna(expense_val) and expense_val != ''
+
+        # Check if income_val is effectively empty (NA or empty string)
+        is_income_effectively_empty = pd.isna(income_val) or income_val == ''
+        # Check if expense_val is effectively empty (NA or empty string)
+        is_expense_effectively_empty = pd.isna(expense_val) or expense_val == ''
+
+        if is_income_present and is_expense_effectively_empty:
             try:
-                amount = float(self.clean_amount(row[income_column]))
+                amount = float(self.clean_amount(income_val))
                 transaction_type = 'Abono'
             except ValueError:
-                pass
+                pass # Keep amount = 0.0, transaction_type = None
             
-        elif not pd.isna(row[expense_column]) and row[expense_column] != '' and row[income_column] == '':
+        elif is_expense_present and is_income_effectively_empty:
             try:
-                amount = float(self.clean_amount(row[expense_column])) * -1
+                amount = float(self.clean_amount(expense_val)) * -1
                 transaction_type = 'Cargo'
             except ValueError:
-                pass
+                pass # Keep amount = 0.0, transaction_type = None
         
-        elif balance_column:
-            if not pd.isna(row[balance_column]) and row[income_column] == '' and row[expense_column] == '':
+        elif balance_column and is_income_effectively_empty and is_expense_effectively_empty:
+            balance_val = row[balance_column]
+            # Check if balance_val is present (not NA and not empty string)
+            is_balance_present = not pd.isna(balance_val) and balance_val != ''
+            if is_balance_present:
                 try:
-                    amount = float(self.clean_amount(row[balance_column]))
+                    amount = float(self.clean_amount(balance_val))
                     transaction_type = 'Saldo'
                 except ValueError:
-                    pass
+                    pass # Keep amount = 0.0, transaction_type = None
         
         return pd.Series({'Amount': amount, 'Type': transaction_type})
         
-    def normalize_amounts(self, amount_columns: pd.Series | pd.DataFrame) -> pd.Series:
+    def normalize_amounts(self, amount_columns: pd.Series | pd.DataFrame) -> pd.Series:    
         if isinstance(amount_columns, pd.Series):
-            return amount_columns.apply(self.normalize_amount_for_single_column)
-        else: 
-            column_names = amount_columns.columns.tolist()
-        
-            if len(column_names) == 1:
-                return amount_columns[column_names[0]].apply(self.normalize_amount_for_single_column)
-            else:
-                return amount_columns.apply(self.normalize_amount_for_multiple_columns, axis=1)
+            income_sign = self.statement_properties['income_sign']
+            expense_sign = self.statement_properties['expense_sign']
+
+            return amount_columns.apply(lambda x: self.normalize_amount_for_single_column(x, income_sign, expense_sign))
+        else:
+            income_column = self.statement_properties['income_column']
+            expense_column = self.statement_properties['expense_column']
+            balance_column = self.statement_properties['balance_column']
+
+            return amount_columns.apply(lambda x: self.normalize_amount_for_multiple_columns(x, income_column, expense_column, balance_column), axis=1)
     
     def normalize_table(self) -> pd.DataFrame:
         df_table = self.df_table

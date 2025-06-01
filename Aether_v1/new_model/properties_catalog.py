@@ -9,8 +9,6 @@ AMEX_CREDIT_PROPERTIES = {
     
     # Column distribution properties
     'columns': [],
-    #'columns_pattern' : [],
-    'columns_row' : [],
     'date_column' : '',
     'description_column' : '',
     'amount_column' : [],
@@ -45,7 +43,6 @@ BANORTE_DEBIT_PROPERTIES = {
     
     # Column distribution properties
     'columns': ['FECHA', 'DESCRIPCIÓN / ESTABLECIMIENTO', 'MONTO DEL DEPOSITO', 'MONTO DEL RETIRO', 'SALDO'],
-    'columns_row' : ['FECHA', 'DESCRIPCIÓN / ESTABLECIMIENTO', 'MONTO DEL DEPOSITO', 'MONTO DEL RETIRO', 'SALDO'],
     'date_column' : 'FECHA',
     'description_column' : 'DESCRIPCIÓN / ESTABLECIMIENTO',
     'amount_column' : ['MONTO DEL DEPOSITO', 'MONTO DEL RETIRO', 'SALDO'],
@@ -80,7 +77,6 @@ BANORTE_CREDIT_PROPERTIES = {
     
     # Column distribution properties
     'columns': ['Fecha', 'Concepto', 'RFC/CURP', 'Tipo de transacción', 'Importe'],
-    'columns_row' : ['Fecha', 'Concepto', 'RFC/CURP', 'Tipo de transacción', 'Importe'],
     'date_column' : 'Fecha',
     'description_column' : 'Concepto',
     'amount_column' : ['Importe'],
@@ -115,7 +111,6 @@ BANORTE_NEW_CREDIT_FORMAT_PROPERTIES = {
     
     # Column distribution properties
     'columns': ['Fecha de la operación', 'Fecha de cargo', 'Descripción del movimiento', 'Monto'],
-    'columns_row' : None,
     'date_column' : 'Fecha de la operación',
     'description_column' : 'Descripción del movimiento',
     'amount_column' : ['Monto'],
@@ -150,7 +145,6 @@ BBVA_DEBIT_PROPERTIES = {
     
     # Column distribution properties
     'columns': ['OPER', 'LIQ', 'DESCRIPCION', 'REFERENCIA', 'CARGOS', 'ABONOS', 'OPERACION', 'LIQUIDACION'],
-    'columns_row' : ['OPER', 'LIQ', 'DESCRIPCION', 'REFERENCIA', 'CARGOS', 'ABONOS', 'OPERACION', 'LIQUIDACION'],
     'date_column' : 'OPER',
     'description_column' : 'DESCRIPCION',
     'amount_column' : ['CARGOS', 'ABONOS', 'LIQUIDACION'],
@@ -185,7 +179,6 @@ BBVA_CREDIT_PROPERTIES = {
     
     # Column distribution properties
     'columns': ['FECHA AUTORIZACION', 'FECHA APLICACION', 'CONCEPTO', 'R.F.C.', 'REFERENCIA', 'IMPORTE CARGOS', 'IMPORTE ABONOS'],
-    'columns_row' : ['AUTORIZACION', 'APLICACION', 'CARGOS', 'ABONOS'],
     'date_column' : 'FECHA AUTORIZACION',
     'description_column' : 'CONCEPTO',
     'amount_column' : ['IMPORTE CARGOS', 'IMPORTE ABONOS'],
@@ -203,9 +196,9 @@ BBVA_CREDIT_PROPERTIES = {
     'expense_sign': None,
     
     # Period properties
-    'period_phrase' : ['Periodo'],
-    'period_pattern' : r"(\d{2})/(\d{2})/(\d{2})",
-    'year_group' : 3,
+    'period_phrase' : None,
+    'period_pattern' : None,
+    'year_group' : None,
     
     # Trheshold properties
     'row_treshold_adjust' : True,
@@ -220,7 +213,6 @@ BBVA_NEW_CREDIT_FORMAT_PROPERTIES = {
     
     # Column distribution properties
     'columns': ['Fecha de la operación', 'Fecha de cargo', 'Descripción del movimiento', 'Monto'],
-    'columns_row' : None,
     'date_column' : 'Fecha de la operación',
     'description_column' : 'Descripción del movimiento',
     'amount_column' : ['Monto'],
@@ -259,7 +251,6 @@ BANAMEX_CREDIT_PROPERTIES = {
     
     # Column distribution properties
     'columns': ['Fecha', 'Concepto/Giro de Negocio Mensualidad * / Tipos de Cambio', 'Población / RFC Moneda Ext.', 'Otras Divisas', 'Pesos'],
-    'columns_row' : ['Fecha', 'Concepto/Giro de Negocio', 'Población / RFC', 'Otras', 'Pesos'],
     'date_column' : 'Fecha',
     'description_column' : 'Concepto/Giro de Negocio Mensualidad * / Tipos de Cambio',
     'amount_column' : ['Pesos'],
@@ -294,7 +285,6 @@ BANAMEX_NEW_CREDIT_FORMAT_PROPERTIES = {
     
     # Column distribution properties
     'columns': ['Fecha de la operación', 'Fecha de cargo', 'Descripción del movimiento', 'Monto'],
-    'columns_row' : None,
     'date_column' : 'Fecha de la operación',
     'description_column' : 'Descripción del movimiento',
     'amount_column' : ['Monto'],
@@ -333,7 +323,6 @@ HSBC_CREDIT_PROPERTIES = {
     
     # Column distribution properties
     'columns': ['Fecha', 'Concepto', 'Importe'],
-    'columns_row' : ['Fecha', 'Concepto', 'Importe'],
     'date_column' : 'Fecha',
     'description_column' : 'Concepto',
     'amount_column' : ['Importe'],
@@ -368,7 +357,6 @@ INBURSA_DEBIT_PROPERTIES = {
     
     # Column distribution properties
     'columns': ['FECHA', 'REFERENCIA', 'CONCEPTO', 'CARGOS', 'ABONOS', 'SALDO'],
-    'columns_row' : ['FECHA', 'REFERENCIA', 'CONCEPTO', 'CARGOS', 'ABONOS', 'SALDO'],
     'date_column' : 'FECHA',
     'description_column' : 'CONCEPTO',
     'amount_column' : ['CARGOS', 'ABONOS', 'SALDO'],
@@ -403,7 +391,6 @@ INBURSA_CREDIT_PROPERTIES = {
     
     # Column distribution properties
     'columns': ['Fecha', 'Descripción', 'Cantidad (pesos)'],
-    'columns_row' : ['Cantidad', 'Fecha', 'Descripción', '(pesos)'],
     'date_column' : 'Fecha',
     'description_column' : 'Descripción',
     'amount_column' : ['Cantidad (pesos)'],
@@ -497,7 +484,7 @@ NU_CREDIT_PROPERTIES = {
     'expense_sign': None,
     
     # Period properties
-    'period_phrase' : ['fecha', 'de', 'corte'],
+    'period_phrase' : ['periodo'],
     'period_pattern' : None,
     'year_group' : None,
     
