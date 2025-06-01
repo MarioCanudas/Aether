@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
-from typing import Literal, Dict, List, Tuple
+from typing import Literal, List
 import pandas as pd
+from io import BytesIO
 
 class NewDocumentReader(ABC):
     """
@@ -10,8 +11,8 @@ class NewDocumentReader(ABC):
         file_path (str): Path to the document file.
     """
 
-    def __init__(self, file_path: str):
-        self.file_path = file_path
+    def __init__(self, file: str | BytesIO):
+        self.file = file
         
     @abstractmethod
     def get_height(self) -> float:
@@ -42,12 +43,12 @@ class BankDetector(ABC):
         extracted_words (pd.DataFrame): DataFrame containing the extracted words and their positions.
     """
 
-    def __init__(self, DocumentReader: NewDocumentReader):
+    def __init__(self, DocumentReader: NewDocumentReader, new_credit_format: bool = False):
         self.document_reader = DocumentReader
+        self.new_credit_format = new_credit_format
         
-    @property
     @abstractmethod
-    def extracted_words(self) -> pd.DataFrame:
+    def get_extracted_words(self) -> pd.DataFrame:
         """
         Extract words from the document using the DocumentReader.
 
@@ -95,9 +96,8 @@ class TableBoundaryDetector(ABC):
         statement_properties (dict): Dictionary with the statement's metadata.
     """
 
-    def __init__(self, extracted_words: pd.DataFrame, statement_propertys: dict):
-        self.extracted_words = extracted_words.copy()
-        self.statement_propertys = statement_propertys
+    def __init__(self, bank_detector: BankDetector):
+        self.bank_detector = bank_detector
         
     @property    
     @abstractmethod
@@ -150,9 +150,9 @@ class RowSegmenter(ABC):
         df_table (pd.DataFrame): DataFrame containing the transaction table.
     """
 
-    def __init__(self, df_table: pd.DataFrame, statement_propertys: dict):
+    def __init__(self, df_table: pd.DataFrame, bank_detector: BankDetector):
         self.df_table = df_table.copy()
-        self.statement_propertys = statement_propertys
+        self.bank_detector = bank_detector
 
     @property
     @abstractmethod
@@ -198,10 +198,10 @@ class TableReconstructor(ABC):
         grouped_rows (pd.DataFrame): DataFrame with words grouped by row.
     """
 
-    def __init__(self, grouped_rows: pd.DataFrame, column_delimitation: dict, statement_propertys: dict):
+    def __init__(self, grouped_rows: pd.DataFrame, column_delimitation: dict, bank_detector: BankDetector):
         self.grouped_rows = grouped_rows
         self.column_delimitation = column_delimitation
-        self.statement_propertys = statement_propertys
+        self.bank_detector = bank_detector
         
     @property
     @abstractmethod
@@ -257,10 +257,9 @@ class TableNormalizer(ABC):
         statement_properties (dict): Dictionary with the statement's metadata.
     """
     
-    def __init__(self, df_table: pd.DataFrame, df_extracted_words: pd.DataFrame, statement_properties: dict):
+    def __init__(self, df_table: pd.DataFrame, bank_detector: BankDetector):
         self.df_table = df_table.copy()
-        self.df_extracted_words = df_extracted_words.copy()
-        self.statement_properties = statement_properties
+        self.bank_detector = bank_detector
         
     @property
     @abstractmethod

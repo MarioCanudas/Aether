@@ -16,6 +16,7 @@ from views.transaction_processor import show_transaction_processor  # Import the
 st.logo("frontend/assets/eli-logo.png", size= 'large', icon_image= "frontend/assets/eli-logo.png")
 if not 'all_transactions' in st.session_state:
     st.session_state.all_transactions = []
+    
 # -- Page Navigation --
 PAGES = {
     'Eli Alpha Version v0.0': [
@@ -27,5 +28,11 @@ PAGES = {
     ],
 }
 
+# -- Sidebar configuration --
+with st.sidebar:
+    # Disable adding cash transaction button, because it's not implemented properly yet
+    if st.button('Add cash transaction', type= 'primary', disabled=True):
+        adding_cash_transaction()
+        
 page = st.navigation(PAGES)
 page.run()

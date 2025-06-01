@@ -6,10 +6,11 @@ import re
 class TransactionTableBoundaryDetector(TableBoundaryDetector):
     @cached_property
     def df_corrected(self):
-        df = self.extracted_words
+        df = self.bank_detector.get_extracted_words().copy()
+        statement_properties = self.bank_detector.get_statement_properties()
         
         amount_pattern = r'^\$?(0|[1-9]\d{0,2}(?:,\d{3})*)\.\d{2}$'
-        date_pattern = self.statement_propertys['date_pattern']
+        date_pattern = statement_properties['date_pattern']
         
         for i, row in df.iterrows():
             text = str(row['text']).strip()
@@ -42,7 +43,8 @@ class TransactionTableBoundaryDetector(TableBoundaryDetector):
     @cached_property
     def start_idx(self) -> int:
         df = self.df_corrected
-        start_phrase = self.statement_propertys['start_phrase']
+        statement_properties = self.bank_detector.get_statement_properties()
+        start_phrase = statement_properties['start_phrase']
         
         for i in range(len(df) - len(start_phrase)):
             if list(df["text"].iloc[i : i + len(start_phrase)].str.lower()) == start_phrase:
@@ -59,7 +61,8 @@ class TransactionTableBoundaryDetector(TableBoundaryDetector):
         if start_idx is None:
             return None
         
-        end_phrase = self.statement_propertys['end_phrase']
+        statement_properties = self.bank_detector.get_statement_properties()
+        end_phrase = statement_properties['end_phrase']
         
         for i in range(start_idx, len(df) - len(end_phrase)):
             if list(df["text"].iloc[i : i + len(end_phrase)].str.lower()) == end_phrase:

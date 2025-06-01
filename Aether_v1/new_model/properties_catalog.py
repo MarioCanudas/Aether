@@ -40,6 +40,8 @@ BANORTE_DEBIT_PROPERTIES = {
     # Phrase properties
     'start_phrase' : ['detalle', 'de', 'movimientos', '(pesos)▼'],
     'end_phrase' : ['inversión', 'enlace', 'personal'],
+    'initial_balance_phrase' : ['saldo', 'inicial', 'del', 'periodo'],
+    'initial_balance_description' : 'SALDO ANTERIOR',
     
     # Column distribution properties
     'columns': ['FECHA', 'DESCRIPCIÓN / ESTABLECIMIENTO', 'MONTO DEL DEPOSITO', 'MONTO DEL RETIRO', 'SALDO'],
@@ -142,6 +144,8 @@ BBVA_DEBIT_PROPERTIES = {
     # Phrase properties
     'start_phrase' : ["detalle", "de", "movimientos", "realizados"],
     'end_phrase' : ["le", "informamos", "que", "puede"],
+    'initial_balance_phrase' : ['saldo', 'anterior'],
+    'initial_balance_description' : None,
     
     # Column distribution properties
     'columns': ['OPER', 'LIQ', 'DESCRIPCION', 'REFERENCIA', 'CARGOS', 'ABONOS', 'OPERACION', 'LIQUIDACION'],
@@ -354,6 +358,8 @@ INBURSA_DEBIT_PROPERTIES = {
     # Phrase properties
     'start_phrase' : ['detalle', 'de', 'movimientos'],
     'end_phrase' : ['movimientos', 'por', 'aclaracion'],
+    'initial_balance_phrase' : ['saldo', 'anterior'],
+    'initial_balance_description' : 'BALANCE INICIAL',
     
     # Column distribution properties
     'columns': ['FECHA', 'REFERENCIA', 'CONCEPTO', 'CARGOS', 'ABONOS', 'SALDO'],
@@ -422,6 +428,8 @@ NU_DEBIT_PROPERTIES = {
     # Phrase properties
     'start_phrase' : ['detalle', 'de', 'movimientos', 'en', 'tu', 'cuenta'],
     'end_phrase' : ['con', 'estos', 'movimientos,'],
+    'initial_balance_phrase' : ['saldo', 'inicial'],
+    'initial_balance_description' : None,
     
     # Column distribution properties
     'columns': [
