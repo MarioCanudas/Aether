@@ -3,7 +3,7 @@ from typing import Literal, List
 import pandas as pd
 from io import BytesIO
 
-class NewDocumentReader(ABC):
+class DocumentReader(ABC):
     """
     Base class for reading documents and extracting text data with positional information.
 
@@ -43,7 +43,7 @@ class BankDetector(ABC):
         extracted_words (pd.DataFrame): DataFrame containing the extracted words and their positions.
     """
 
-    def __init__(self, DocumentReader: NewDocumentReader, new_credit_format: bool = False):
+    def __init__(self, DocumentReader: DocumentReader, new_credit_format: bool = False):
         self.document_reader = DocumentReader
         self.new_credit_format = new_credit_format
         

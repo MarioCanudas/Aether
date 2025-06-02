@@ -1,9 +1,9 @@
 import pdfplumber
 import pandas as pd
 from io import BytesIO
-from core import NewDocumentReader
+from core import DocumentReader
 
-class PDFReader(NewDocumentReader):
+class PDFReader(DocumentReader):
     def _is_bytes_io(self) -> bool:
         """
         Check if self.file is a BytesIO object.

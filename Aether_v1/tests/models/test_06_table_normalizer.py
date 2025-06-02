@@ -2,9 +2,9 @@ import pytest
 import pandas as pd
 from typing import Tuple, List
 from core import TableNormalizer
-from new_model.table_normalizer import TransactionTableNormalizer
+from models.table_normalizer import TransactionTableNormalizer
 # Import patterns from properties_catalog for realistic testing
-from new_model.properties_catalog import NUMERIC_MONTH_PATTERNS, inverted_numeric_month_patterns
+from models.properties_catalog import NUMERIC_MONTH_PATTERNS, inverted_numeric_month_patterns
 
 dummy_df = pd.DataFrame(columns=['Date', 'Description', 'Amount', 'Type'])
 dummy_normalizer = TransactionTableNormalizer(dummy_df, dummy_df, {})

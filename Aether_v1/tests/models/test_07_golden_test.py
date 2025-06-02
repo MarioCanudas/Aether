@@ -1,12 +1,12 @@
 import os
 import pytest
 import pandas as pd
-from new_model.document_reader import PDFReader
-from new_model.bank_detector import DefaultBankDetector
-from new_model.table_boundary_detector import TransactionTableBoundaryDetector
-from new_model.row_segmenter import TransactionRowSegmenter
-from new_model.table_reconstructor import TransactionTableReconstructor
-from new_model.table_normalizer import TransactionTableNormalizer
+from models.document_reader import PDFReader
+from models.bank_detector import DefaultBankDetector
+from models.table_boundary_detector import TransactionTableBoundaryDetector
+from models.row_segmenter import TransactionRowSegmenter
+from models.table_reconstructor import TransactionTableReconstructor
+from models.table_normalizer import TransactionTableNormalizer
 
 OUTPUTS_FOLDER = os.path.join('tests', 'new_model', 'test_data', 'outputs')
 

@@ -2,7 +2,7 @@ import pytest
 import pandas as pd
 import re
 from core import TableReconstructor
-from new_model.table_reconstructor import is_amount
+from models.table_reconstructor import is_amount
 
 BANK_FILES = [
     #'amex_credit_new.pdf',
