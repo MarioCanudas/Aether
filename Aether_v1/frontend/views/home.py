@@ -53,3 +53,7 @@ def show_home():
         st.subheader("Tips")
         for tip in tips:
             st.write(f"- {tip}")
+            
+        if st.button('Clear all transactions'):
+            controller.clear_all_transactions()
+            st.rerun()

@@ -6,7 +6,10 @@ from services import DataProcessingService, FinancialAnalysisService, PlottingSe
 class TransactionProcessorController:   
     def __init__(self):
         self.data_processing_service = DataProcessingService()
-        self.financial_analysis_service = FinancialAnalysisService(session_state.all_monthly_results)
+        if 'all_monthly_results' in session_state:
+            self.financial_analysis_service = FinancialAnalysisService(session_state.all_monthly_results)
+        else:
+            self.financial_analysis_service = FinancialAnalysisService(DataFrame())
         self.plotting_service = PlottingService()
         
     def initialize_session_state(self) -> None:
@@ -43,9 +46,13 @@ class TransactionProcessorController:
         
     def clear_all_transactions(self) -> None:
         session_state.all_transactions = []
-        session_state.monthly_results = DataFrame()
+        session_state.all_processed_data = DataFrame()
+        session_state.all_monthly_results = DataFrame()
         
     def get_financial_analysis(self) -> dict:
+        # Update the financial analysis service with the latest monthly results
+        self.financial_analysis_service = FinancialAnalysisService(session_state.all_monthly_results)
+        
         total_savings = self.financial_analysis_service.get_total_savings()
         avg_income_per_month = self.financial_analysis_service.get_avg_income_per_month()
         avg_withdrawal_per_month = self.financial_analysis_service.get_avg_withdrawal_per_month()
