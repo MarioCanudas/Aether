@@ -1,6 +1,7 @@
 import pandas as pd
 from io import BytesIO
 import os
+from typing import Literal
 from new_model import (
     PDFReader, 
     DefaultBankDetector, 
@@ -221,3 +222,23 @@ class DataProcessingService:
         # Convert results to DataFrame
         results_df = pd.DataFrame(results)
         return results_df
+    
+    def process_daily_data_by_category(self, data: pd.DataFrame, category: Literal['Income', 'Expenses']) -> pd.Series:
+        """
+        Process daily data by calculating the average income and expenses per day.
+
+        Args:
+            data (pd.DataFrame): A DataFrame containing transaction data with 'Date', 'Income', and 'Withdrawal' columns.
+
+        Returns:
+            pd.DataFrame: A DataFrame with the average income and expenses per day.
+        """
+        data['Date'] = pd.to_datetime(data['Date'])
+        
+        filtered_data = data[data['Income'] > 0] if category == 'Income' else data[data['Withdrawal'] > 0]
+        filtered_data['Day'] = filtered_data['Date'].dt.day
+        
+        # Average income by day of the month
+        avg_per_day = filtered_data.groupby('Day')['Income'].mean().reindex(range(1, 32), fill_value=0)
+        
+        return avg_per_day    

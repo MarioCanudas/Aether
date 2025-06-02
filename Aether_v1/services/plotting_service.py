@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+from pandas import DataFrame, Series
 
 class PlottingService:
     def get_savings_donut_chart_config(self, total_savings, avg_income_per_month):
@@ -41,3 +42,61 @@ class PlottingService:
         ax.set_aspect('equal')
 
         return fig, label
+    
+    def bar_chart_monthly_total_expenses(self, monthly_results: DataFrame):
+        expenses_bar_chart, ax_expenses = plt.subplots()
+
+        # Plot the data
+        ax_expenses.bar(monthly_results['Month'], monthly_results['total_withdrawal'], color='orange')
+
+        # Transparent background, Y-axis grid only, and white labels
+        expenses_bar_chart.patch.set_alpha(0)  # Transparent background
+        ax_expenses.set_facecolor('none')  # Transparent axes background
+        ax_expenses.grid(True, color='gray', linestyle='-', linewidth=0.5, axis='y')
+        ax_expenses.set_xticklabels(monthly_results['Month'], rotation=90, color='white')
+        ax_expenses.set_yticklabels(ax_expenses.get_yticks(), color='white')
+        
+        return expenses_bar_chart
+    
+    def bar_chart_monthly_total_income(self, monthly_results: DataFrame):
+        income_bar_chart, ax_income = plt.subplots()
+
+        # Plot the data
+        ax_income.bar(monthly_results['Month'], monthly_results['total_income'], color='blue')
+
+        # Transparent background, white grid on Y-axis only, and white labels
+        income_bar_chart.patch.set_alpha(0)
+        ax_income.set_facecolor('none')
+        ax_income.grid(True, color='gray', linestyle='-', linewidth=0.5, axis='y')
+        ax_income.set_xticklabels(monthly_results['Month'], rotation=90, color='white')
+        ax_income.set_yticklabels(ax_income.get_yticks(), color='white')
+
+        return income_bar_chart
+    
+    def bar_chart_daily_total_expenses(self, avg_expenses_per_day: Series) -> plt.figure:
+        expenses_bar_chart, ax_avg_expenses_per_day = plt.subplots()
+        ax_avg_expenses_per_day.bar(avg_expenses_per_day.index, avg_expenses_per_day, color='red')
+
+        # Transparent background, Y-axis grid only, and white labels
+        expenses_bar_chart.patch.set_alpha(0)
+        ax_avg_expenses_per_day.set_facecolor('none')
+        ax_avg_expenses_per_day.grid(True, color='gray', linestyle='-', linewidth=0.5, axis='y')
+        ax_avg_expenses_per_day.set_xticks(range(1, 32))
+        ax_avg_expenses_per_day.set_xticklabels(range(1, 32), rotation=90, color='white')
+        ax_avg_expenses_per_day.set_yticklabels(ax_avg_expenses_per_day.get_yticks(), color='white')
+
+        return expenses_bar_chart
+    
+    def bar_chart_daily_total_income(self, avg_income_per_day: Series) -> plt.figure:
+        income_bar_chart, ax_avg_income_per_day = plt.subplots()
+        ax_avg_income_per_day.bar(avg_income_per_day.index, avg_income_per_day, color='green')
+
+        # Transparent background, Y-axis grid only, and white labels
+        income_bar_chart.patch.set_alpha(0)
+        ax_avg_income_per_day.set_facecolor('none')
+        ax_avg_income_per_day.grid(True, color='gray', linestyle='-', linewidth=0.5, axis='y')
+        ax_avg_income_per_day.set_xticks(range(1, 32))
+        ax_avg_income_per_day.set_xticklabels(range(1, 32), rotation=90, color='white')
+        ax_avg_income_per_day.set_yticklabels(ax_avg_income_per_day.get_yticks(), color='white')
+        
+        return income_bar_chart
