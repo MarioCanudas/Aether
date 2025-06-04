@@ -2,7 +2,7 @@ import pandas as pd
 from io import BytesIO
 import os
 from typing import Literal
-from new_model import (
+from models import (
     PDFReader, 
     DefaultBankDetector, 
     TransactionTableBoundaryDetector, 

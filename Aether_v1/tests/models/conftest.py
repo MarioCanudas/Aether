@@ -13,13 +13,13 @@ from config import PROJECT_ROOT
 from core import DocumentReader, BankDetector, TableBoundaryDetector, RowSegmenter, TableReconstructor, TableNormalizer, DataExporter
 
 # Classes to be tested
-from new_model.document_reader import PDFReader
-from new_model.bank_detector import DefaultBankDetector
-from new_model.table_boundary_detector import TransactionTableBoundaryDetector
-from new_model.row_segmenter import TransactionRowSegmenter
-from new_model.table_reconstructor import TransactionTableReconstructor
-from new_model.table_normalizer import TransactionTableNormalizer
-from new_model.data_exporter import CsvExporter
+from models.document_reader import PDFReader
+from models.bank_detector import DefaultBankDetector
+from models.table_boundary_detector import TransactionTableBoundaryDetector
+from models.row_segmenter import TransactionRowSegmenter
+from models.table_reconstructor import TransactionTableReconstructor
+from models.table_normalizer import TransactionTableNormalizer
+from models.data_exporter import CsvExporter
 
 INPUTS_FOLDER = os.path.join(PROJECT_ROOT, 'tests', 'new_model', 'test_data', 'inputs')
 OUTPUTS_FOLDER = os.path.join(PROJECT_ROOT, 'tests', 'new_model', 'test_data', 'outputs')

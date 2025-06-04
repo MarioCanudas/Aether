@@ -1,69 +1,52 @@
-import fitz
-import easyocr as ocr
-import numpy as np
 import pdfplumber
 import pandas as pd
+from io import BytesIO
 from core import DocumentReader
-from typing import List, Tuple
-
 
 class PDFReader(DocumentReader):
-    def extract_text_by_page(self) -> List[str]:
-        with fitz.open(self.file_path) as doc:
-            return [page.get_text() for page in doc]
+    def _is_bytes_io(self) -> bool:
+        """
+        Check if self.file is a BytesIO object.
 
-    def extract_words_with_coordinates(self) -> List[List[Tuple[float, float, str]]]:
-        words_from_page = []
+        Returns:
+            bool: True if self.file is BytesIO, False if it's a path.
+        """
+        return isinstance(self.file, BytesIO)
+
+    def get_height(self) -> float:
+        """
+        Get the height of the first page of the PDF.
+
+        Returns:
+            float: Height of the first page.
+        """
+        file = self.file if not self._is_bytes_io() else BytesIO(self.file)
+        with pdfplumber.open(file) as pdf:
+            return pdf.pages[0].height
+        
+    def get_width(self) -> float:
+        """
+        Get the width of the first page of the PDF.
+
+        Returns:
+            float: Width of the first page.
+        """
+        file = self.file if not self._is_bytes_io() else BytesIO(self.file)
+        with pdfplumber.open(file) as pdf:
+            return pdf.pages[0].width
+    
+    def extract_words(self) -> pd.DataFrame:
         extracted_words = []
-        with fitz.open(self.file_path) as doc:
-            for page in doc:
-                words = page.get_text('words')
-                for word in words:
-                    words_from_page.append((word[0], word[1], word[4])) # (x initial coordinate, y initial coordinate, text)
-                extracted_words.append(words_from_page)
-                words_from_page = []
-
-        return extracted_words
-
-    def extract_words_with_coordinates_with_ocr(self) -> List[List[Tuple[float, float, str]]]:
-        reader = ocr.Reader(['es', 'en'])
-
-        words_from_page = []
-        extracted_words = []
-
-        with fitz.open(self.file_path) as doc:
-            for page in doc:
-                words_from_page = []
-                pix = page.get_pixmap(dpi= 150)
-
-                img = np.frombuffer(pix.samples, dtype=np.uint8).reshape(pix.height, pix.width, pix.n)
-
-                results = reader.readtext(img)
-
-                for result in results:
-                    bbox, text, conf = result
-
-                    x, y = bbox[0]
-
-                    words_from_page.append((float(x), float(y), text))
-
-                extracted_words.append(words_from_page)
-
-        return extracted_words
-
-    def extract_words_from_pdf(self) -> pd.DataFrame:
-        extracted_words = []
-
-        with pdfplumber.open(self.file_path) as pdf:
+        
+        file = self.file if not self._is_bytes_io() else BytesIO(self.file)
+        with pdfplumber.open(file) as pdf:
             for page_number, page in enumerate(pdf.pages, start= 1):
                 words = page.extract_words()
-                page_height = page.height
-
+                
                 for word in words:
                     extracted_words.append(
                         {
                             'page' : page_number,
-                            'page_height' : page_height,
                             'text' : word['text'],
                             "x0": word["x0"],  # Left coordinate
                             "top": word["top"],  # Top coordinate
@@ -71,5 +54,5 @@ class PDFReader(DocumentReader):
                             "bottom": word["bottom"],  # Bottom coordinate
                         }
                     )
-
+                    
         return pd.DataFrame(extracted_words)

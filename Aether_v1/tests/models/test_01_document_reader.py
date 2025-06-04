@@ -1,6 +1,6 @@
 import pytest
 import pandas as pd
-from new_model.document_reader import PDFReader
+from models.document_reader import PDFReader
 
 BANK_FILES = [
     #'amex_credit_new.pdf',
