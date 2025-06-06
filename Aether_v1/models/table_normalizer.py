@@ -350,13 +350,11 @@ class TransactionTableNormalizer(TableNormalizer):
         df_normalized = pd.DataFrame()      
         
         statement_properties = self.bank_detector.get_statement_properties()
-        date_column = 'Date'
-        description_column = 'Description'
         amount_column = statement_properties['amount_column']
         
         # Normalize each column type
-        df_normalized['Date'] = self.normalize_dates(df_table[date_column])
-        df_normalized['Description'] = df_table[description_column]
+        df_normalized['Date'] = self.normalize_dates('Date')
+        df_normalized['Description'] = df_table['Description']
         
         # Handle single vs multiple amount columns
         df_amount = self.normalize_amounts(df_table[amount_column]) if len(amount_column) > 1 else self.normalize_amounts(df_table[amount_column[0]])
