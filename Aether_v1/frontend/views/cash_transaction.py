@@ -1,8 +1,14 @@
 import streamlit as st
+from controllers import TransactionProcessorController
+import pandas as pd
+
+controller = TransactionProcessorController()
 
 @st.dialog('Add a cash transaction')
 def adding_cash_transaction():
     with st.form(key= 'adding a cash transaction', border=False):
+        controller.initialize_session_state()
+        
         date = st.date_input(
             label= 'Date',
         )
@@ -11,7 +17,7 @@ def adding_cash_transaction():
         
         transaction_type = left.pills(
             label= 'Type',
-            options= ['Income', 'Expense'],
+            options= ['Abono', 'Cargo'],
             selection_mode= 'single',
         )
         
@@ -25,20 +31,19 @@ def adding_cash_transaction():
             max_chars= 200
         )
         
-        transaction_data = {
-                'date': date,
-                'description': description,
-                'amount': transaction_amount,
-                'type': transaction_type,
-                'bank': 'Cash',
-                'statement_type': 'Cash',
-                'filename': None
-            }
-        
         if st.form_submit_button(label= 'Sumbit'):
-            if not 'all_transactions' in st.session_state:
-                st.session_state.all_transactions = []
-                
-            st.session_state.all_transactions.append(transaction_data)
+            transaction_data = pd.DataFrame([{
+                'Date': date,
+                'Description': description,
+                'Amount': transaction_amount if transaction_type == 'Abono' else -1 * transaction_amount,
+                'Type': transaction_type,
+                'bank': 'Cash',
+                'statement_type': 'debit',
+                'filename': None
+            }])
+            
+            controller.append_transactions(transaction_data)
+            controller.update_all_processed_data()
+            controller.update_all_monthly_results()
             
             st.rerun()
