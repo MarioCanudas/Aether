@@ -1,7 +1,5 @@
-from .helper_functions import get_min_month, calculate_savings_and_validate_balances, eliminate_ocr_errors_for_amounts
-from .tablemanager import TableManager
+from .helper_functions import get_min_month, eliminate_ocr_errors_for_amounts, search_phrase_in_df
 
 __all__ = [
-    'get_min_month', 'calculate_savings_and_validate_balances', 'eliminate_ocr_errors_for_amounts',
-    'TableManager'
+    'get_min_month', 'eliminate_ocr_errors_for_amounts', 'search_phrase_in_df'
 ]
