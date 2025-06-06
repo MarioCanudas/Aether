@@ -12,7 +12,7 @@ def show_income_analysis():
 
         # Bar chart for Total Income
         st.subheader('Total Income by Month')
-        income_chart = analysis_controller.get_bar_chart_monthly_total_by_category('Income')
+        income_chart = analysis_controller.get_bar_chart_monthly_total_by_category('Abono')
 
         st.pyplot(income_chart)
 
@@ -20,7 +20,7 @@ def show_income_analysis():
         if 'all_processed_data' in st.session_state and not st.session_state.all_processed_data.empty:
             st.subheader('Average Income by Day')
             
-            income_chart = analysis_controller.get_bar_chart_daily_total_by_category('Income')
+            income_chart = analysis_controller.get_bar_chart_daily_total_by_category('Abono')
 
             st.pyplot(income_chart)
     else:

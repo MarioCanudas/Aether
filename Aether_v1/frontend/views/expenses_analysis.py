@@ -12,7 +12,7 @@ def show_expenses_analysis():
 
         # Bar chart for Total Expenses
         st.subheader('Total Expenses by Month')
-        expenses_chart = controller.get_bar_chart_monthly_total_by_category('Expenses')
+        expenses_chart = controller.get_bar_chart_monthly_total_by_category('Cargo')
 
         # Display the plot
         st.pyplot(expenses_chart)
@@ -21,7 +21,7 @@ def show_expenses_analysis():
         if 'all_processed_data' in st.session_state and not st.session_state.all_processed_data.empty:
             st.subheader('Average Expenses by Day')
             
-            expenses_chart = controller.get_bar_chart_daily_total_by_category('Expenses')
+            expenses_chart = controller.get_bar_chart_daily_total_by_category('Cargo')
             
             # Display the plot
             st.pyplot(expenses_chart)

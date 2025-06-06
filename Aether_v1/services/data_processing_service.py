@@ -223,7 +223,7 @@ class DataProcessingService:
         results_df = pd.DataFrame(results)
         return results_df
     
-    def process_daily_data_by_category(self, data: pd.DataFrame, category: Literal['Income', 'Expenses']) -> pd.Series:
+    def process_daily_data_by_category(self, data: pd.DataFrame, category: Literal['Abono', 'Cargo']) -> pd.Series:
         """
         Process daily data by calculating the average income and expenses per day.
 
@@ -235,10 +235,11 @@ class DataProcessingService:
         """
         data['Date'] = pd.to_datetime(data['Date'])
         
-        filtered_data = data[data['Income'] > 0] if category == 'Income' else data[data['Withdrawal'] > 0]
+        filtered_data = data[data['Type'] == category]
+        
         filtered_data['Day'] = filtered_data['Date'].dt.day
         
         # Average income by day of the month
-        avg_per_day = filtered_data.groupby('Day')['Income'].mean().reindex(range(1, 32), fill_value=0)
+        avg_per_day = filtered_data.groupby('Day')['Amount'].mean().reindex(range(1, 32), fill_value=0)
         
         return avg_per_day    
