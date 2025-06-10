@@ -88,3 +88,50 @@ def search_phrase_in_df(df: pd.DataFrame | pd.Series, phrase: List[str], type_re
     elif type_return == 'bool':
         return False  # Return False when phrase is not found
 
+def is_amount(value: str) -> bool:
+    """
+    Checks if a string is a valid amount.
+    
+    Args:
+        value (str): The string to check.
+        
+    Returns:
+        bool: True if the string is a valid amount, False otherwise.
+    """
+    # Ignore the empty strings
+    if value == '':
+        return True
+    
+    amount_pattern = r'^[+-]?\$?[+-]?(0|[1-9]\d{0,2}(?:,\d{3})*)\.\d{2}[-+]?$'
+
+    return bool(re.match(amount_pattern, value.strip()))
+
+def classify_words(date_pattern: str, text: str) -> Literal['date', 'amount', 'description']:
+    """
+    Classifies a word into a category based on its content, based on the date pattern and the amount pattern.
+    
+    Args:
+        date_pattern (str): The pattern to match dates.
+        text (str): The word to classify.
+        
+    Returns:
+        str: The category of the word.
+    """
+    if re.match(date_pattern, text):
+        return 'date'
+    elif is_amount(text):
+        return 'amount'
+    else:
+        return 'description'
+    
+def clean_amount(amount: str) -> str:
+    """
+    Cleans an amount string by removing commas, dollar signs, plus signs, and minus signs.
+    
+    Args:
+        amount (str): The amount string to clean.
+        
+    Returns:
+        str: The cleaned amount string.
+    """
+    return amount.replace(',', '').replace('$', '').replace('+', '').replace('-','')
