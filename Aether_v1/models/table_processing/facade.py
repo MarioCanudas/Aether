@@ -20,12 +20,16 @@ class TableProcessingFacade:
         return DefaultRowSegmenter(filtered_table_words)
     
     def get_reconstructor(self) -> TableReconstructor:
-        grouped_rows = self.row_segmenter.group_rows()
-        column_delimitation = self.column_segmenter.delimit_column_positions()
+        column_segmenter = self.get_column_segmenter()
+        row_segmenter = self.get_row_segmenter()
+        
+        grouped_rows = row_segmenter.group_rows()
+        column_delimitation = column_segmenter.delimit_column_positions()
         
         return TableReconstructor(grouped_rows, column_delimitation, self.statement_properties)
     
     def reconstruct_table(self) -> pd.DataFrame:
-        reconstructed_table = self.reconstructor.reconstruct_table()
+        reconstructor = self.get_reconstructor()
+        reconstructed_table = reconstructor.reconstruct_table()
         
         return reconstructed_table

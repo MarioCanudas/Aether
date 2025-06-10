@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Literal
+from typing import Literal, List
 import pandas as pd
 
 class Reader(ABC):
@@ -139,12 +139,12 @@ class MetadataExtractor(ABC):
         pass
     
     @abstractmethod
-    def get_years(self) -> list[int]:
+    def get_years(self) -> List[int]:
         """Gets the years of the statement."""
         pass
     
     @abstractmethod
-    def get_months(self) -> list[str]:
+    def get_months(self) -> List[str]:
         """Gets the months of the statement."""
         pass
     
@@ -166,7 +166,7 @@ class TableNormalizer(ABC):
         self.amount_normalizer = amount_normalizer
     
     @abstractmethod
-    def normalize_table(self, initial_balance: float) -> pd.DataFrame:
+    def normalize_table(self, years: List[int], initial_balance: float) -> pd.DataFrame:
         """Normalizes the table into a consistent format."""
         pass
     

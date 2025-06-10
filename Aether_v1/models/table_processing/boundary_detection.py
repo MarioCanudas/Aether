@@ -4,6 +4,7 @@ from _core import TableBoundaryDetector
 from utils import search_phrase_in_df
 
 class DefaultBoundaryDetector(TableBoundaryDetector):
+    @cache
     def get_start_idx(self) -> int:
         extracted_words = self.corrected_extracted_words
         start_phrase = self.statement_properties['start_phrase']
@@ -13,8 +14,9 @@ class DefaultBoundaryDetector(TableBoundaryDetector):
         except:
             return None
 
+    @cache
     def get_end_idx(self) -> int:
-        start_idx = self.start_idx
+        start_idx = self.get_start_idx()
         
         if start_idx is None:
             return None

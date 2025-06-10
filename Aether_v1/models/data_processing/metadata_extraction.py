@@ -103,4 +103,4 @@ class DefaultMetadataExtractor(MetadataExtractor):
         return sorted(list(set(detected_years)))
     
     def get_months(self) -> List[str]:
-        pass
+        return None

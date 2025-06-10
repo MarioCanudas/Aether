@@ -83,8 +83,6 @@ class DefaultTextProcessor(TextProcessor):
                     
         if idx_to_drop:
             corrected_extracted_words = corrected_extracted_words.drop(idx_to_drop)
-            
-        self.reader.extract_words.cache_clear()
                 
         return corrected_extracted_words
     
