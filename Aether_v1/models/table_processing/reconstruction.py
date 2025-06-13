@@ -3,7 +3,7 @@ import numpy as np
 from sklearn.cluster import KMeans
 from functools import cache
 from typing import List, Tuple
-from _core import Reconstructor
+from ..core import Reconstructor
 from utils import classify_words
 
 class TableReconstructor(Reconstructor):
@@ -144,7 +144,7 @@ class TableReconstructor(Reconstructor):
         if n_amount_columns == 1:
             amount_column = amount_columns[0]
             
-            return classified_columns.rename(columns={'Amount': amount_column}, inplace=True)
+            return classified_columns.rename(columns={'Amount': amount_column})
         
         # Complex case: multiple amount columns - use clustering        
         column_centroids = self.get_amount_columns_centroids(self.column_delimitation, amount_columns)
@@ -179,20 +179,23 @@ class TableReconstructor(Reconstructor):
 
         # Merge rows that belong to the same transaction
         for _, row in df_structured.iterrows():
-            if row['Date'] is not None:  # New transaction starts
-                if current_row is not None:
-                    merged_rows.append(current_row)
-                current_row = row.copy()
-            else:  # Continuation of current transaction
-                # Fill missing amounts from continuation rows
-                for col in amount_columns:
-                    if row[col] != '' and current_row[col] == '':
-                        current_row[col] = row[col]
-                # Append description fragments
-                try:
-                    current_row['Description'] += " " + row['Description'] + " "
-                except:
-                    continue
+            try:
+                if row['Date'] is not None:  # New transaction starts
+                    if current_row is not None:
+                        merged_rows.append(current_row)
+                    current_row = row.copy()
+                else:  # Continuation of current transaction
+                    # Fill missing amounts from continuation rows
+                    for col in amount_columns:
+                        if (row[col] != '' or row[col] is not None) and (current_row[col] == '' or current_row[col] is None):
+                            current_row[col] = row[col]
+                    # Append description fragments
+                    try:
+                        current_row['Description'] += " " + row['Description'] + " "
+                    except:
+                        continue
+            except TypeError:
+                continue
 
         if current_row is not None:
             merged_rows.append(current_row)

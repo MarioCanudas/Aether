@@ -1,7 +1,7 @@
 import re
 from typing import List
 from functools import cache
-from _core import MetadataExtractor
+from ..core import MetadataExtractor
 from utils import clean_amount
 
 class DefaultMetadataExtractor(MetadataExtractor):
@@ -38,6 +38,9 @@ class DefaultMetadataExtractor(MetadataExtractor):
         Extracts the initial balance amount from the statement text.
         Searches for the initial balance phrase and returns the following numeric value.
         """
+        if self.statement_properties['statement_type'] == 'credit':
+            return None
+        
         df_extracted_words = self.corrected_extracted_words.copy()
         initial_balance_phrase = self.statement_properties['initial_balance_phrase']
         

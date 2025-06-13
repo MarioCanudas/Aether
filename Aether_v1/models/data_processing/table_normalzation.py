@@ -1,7 +1,7 @@
 import pandas as pd
 import re
 from typing import List, Tuple
-from _core import ColumnNormalizer, TableNormalizer
+from ..core import ColumnNormalizer, TableNormalizer
 from utils import clean_amount
 
 class DateNormalizer(ColumnNormalizer):

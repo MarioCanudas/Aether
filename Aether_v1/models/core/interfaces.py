@@ -1,9 +1,12 @@
 from abc import ABC, abstractmethod
 from typing import Literal, List
 import pandas as pd
+from io import BytesIO
 
 class Reader(ABC):
     """Reads and extracts information from documents."""
+    def __init__(self, file: str | BytesIO):
+        self.file = file
     
     @abstractmethod
     def get_height(self) -> float: 

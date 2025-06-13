@@ -1,5 +1,5 @@
 import pandas as pd
-from _core import ColumnSegmenter, RowSegmenter
+from ..core import ColumnSegmenter, RowSegmenter
 
 class DefaultColumnSegmenter(ColumnSegmenter):
     def delimit_column_positions(self) -> dict:
