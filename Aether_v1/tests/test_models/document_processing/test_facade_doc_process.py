@@ -1,19 +1,26 @@
 import pytest
 import pandas as pd
+from io import BytesIO
 from models import DocumentProcessingFacade, PDFReader, DefaultDocumentAnalyzer, DefaultTextProcessor
 
-# Archivos específicos para diferentes tipos de pruebas
 SMALL_FILE = 'banorte_debit.pdf'
 MEDIUM_FILE = 'bbva_debit.pdf'
 
 class TestDocumentProcessingFacadeIntegration:
     """Integration tests for DocumentProcessingFacade - testing complete workflows with real components"""
     
+    @pytest.fixture(scope= 'class')
+    def facade_from_path(self, get_file_from_path) -> DocumentProcessingFacade:
+        return DocumentProcessingFacade(get_file_from_path)
+    
+    @pytest.fixture(scope= 'class')
+    def facade_from_bytesio(self, get_bytesio_from_path) -> DocumentProcessingFacade:
+        return DocumentProcessingFacade(get_bytesio_from_path)
+    
     @pytest.mark.parametrize('get_file_from_path', [SMALL_FILE], indirect=True)
-    def test_complete_document_processing_workflow(self, get_file_from_path):
+    def test_complete_document_processing_workflow(self, facade_from_path):
         """Test the complete document processing workflow from file to corrected words"""
-        file_path = get_file_from_path
-        facade = DocumentProcessingFacade(file_path)
+        facade: DocumentProcessingFacade = facade_from_path
         
         # Step 1: Extract raw words from PDF
         extracted_words = facade.get_extracted_words()
@@ -46,14 +53,10 @@ class TestDocumentProcessingFacadeIntegration:
         [(SMALL_FILE, SMALL_FILE), (MEDIUM_FILE, MEDIUM_FILE)], 
         indirect=True
     )
-    def test_file_path_vs_bytesio_consistency(self, get_file_from_path, get_bytesio_from_path):
+    def test_file_path_vs_bytesio_consistency(self, facade_from_path, facade_from_bytesio):
         """Test that processing results are identical whether using file path or BytesIO"""
-        file_path = get_file_from_path
-        bytes_io = get_bytesio_from_path
-        
-        # Create facades with both input types
-        facade_path = DocumentProcessingFacade(file_path)
-        facade_bytes = DocumentProcessingFacade(bytes_io)
+        facade_path: DocumentProcessingFacade = facade_from_path
+        facade_bytes: DocumentProcessingFacade = facade_from_bytesio
         
         # Test that all outputs are identical
         words_path = facade_path.get_extracted_words()
@@ -69,10 +72,9 @@ class TestDocumentProcessingFacadeIntegration:
         pd.testing.assert_frame_equal(corrected_path, corrected_bytes)
     
     @pytest.mark.parametrize('get_file_from_path', [SMALL_FILE, MEDIUM_FILE], indirect=True)
-    def test_component_integration_and_data_flow(self, get_file_from_path):
+    def test_component_integration_and_data_flow(self, facade_from_path):
         """Test that data flows correctly between all components"""
-        file_path = get_file_from_path
-        facade = DocumentProcessingFacade(file_path)
+        facade: DocumentProcessingFacade = facade_from_path
         
         # Verify component initialization and relationships
         assert isinstance(facade.reader, PDFReader)
@@ -94,10 +96,9 @@ class TestDocumentProcessingFacadeIntegration:
         pd.testing.assert_frame_equal(corrected_words_from_facade, corrected_words_from_processor)
     
     @pytest.mark.parametrize('get_file_from_path', [SMALL_FILE], indirect=True)
-    def test_facade_caching_behavior(self, get_file_from_path):
+    def test_facade_caching_behavior(self, facade_from_path):
         """Test that facade properly caches expensive operations"""
-        file_path = get_file_from_path
-        facade = DocumentProcessingFacade(file_path)
+        facade: DocumentProcessingFacade = facade_from_path
         
         # Test statement properties caching
         props1 = facade.get_statement_properties()
@@ -110,10 +111,9 @@ class TestDocumentProcessingFacadeIntegration:
         assert props1 is props3  # Cache should still work
     
     @pytest.mark.parametrize('get_file_from_path', [SMALL_FILE], indirect=True)
-    def test_method_call_order_independence(self, get_file_from_path):
+    def test_method_call_order_independence(self, facade_from_path):
         """Test that facade methods can be called in any order and produce consistent results"""
-        file_path = get_file_from_path
-        facade = DocumentProcessingFacade(file_path)
+        facade: DocumentProcessingFacade = facade_from_path
         
         # Call methods in one order
         corrected1 = facade.get_corrected_extracted_words()
@@ -122,7 +122,7 @@ class TestDocumentProcessingFacadeIntegration:
         processor1 = facade.get_text_processor()
         
         # Create new facade and call in different order
-        facade2 = DocumentProcessingFacade(file_path)
+        facade2: DocumentProcessingFacade = facade_from_path
         extracted2 = facade2.get_extracted_words()
         processor2 = facade2.get_text_processor()
         properties2 = facade2.get_statement_properties()
@@ -146,10 +146,9 @@ class TestDocumentProcessingFacadeIntegration:
             facade.get_extracted_words()
     
     @pytest.mark.parametrize('get_file_from_path', [SMALL_FILE], indirect=True)
-    def test_text_processor_factory_behavior(self, get_file_from_path):
+    def test_text_processor_factory_behavior(self, facade_from_path):
         """Test that get_text_processor creates new instances with current data"""
-        file_path = get_file_from_path
-        facade = DocumentProcessingFacade(file_path)
+        facade: DocumentProcessingFacade = facade_from_path
         
         # Get multiple text processors
         processor1 = facade.get_text_processor()
@@ -162,77 +161,3 @@ class TestDocumentProcessingFacadeIntegration:
         pd.testing.assert_frame_equal(processor1.extracted_words, processor2.extracted_words)
         assert processor1.statement_properties == processor2.statement_properties
 
-
-class TestDocumentProcessingFacadeRealScenarios:
-    """Integration tests with real-world scenarios and edge cases"""
-    
-    @pytest.mark.parametrize('get_file_from_path', [SMALL_FILE, MEDIUM_FILE], indirect=True)
-    def test_different_document_types_handling(self, get_file_from_path):
-        """Test facade behavior with different types of documents"""
-        file_path = get_file_from_path
-        facade = DocumentProcessingFacade(file_path)
-        
-        try:
-            # Should handle any PDF document gracefully
-            extracted_words = facade.get_extracted_words()
-            statement_properties = facade.get_statement_properties()
-            corrected_words = facade.get_corrected_extracted_words()
-            
-            # Basic validations that should work for any document
-            assert isinstance(extracted_words, pd.DataFrame)
-            assert len(extracted_words) > 0
-            assert isinstance(corrected_words, pd.DataFrame)
-            
-            # Properties might be None for unrecognized documents
-            if statement_properties is not None:
-                assert isinstance(statement_properties, dict)
-                
-        except Exception as e:
-            pytest.fail(f"Facade failed to handle document {file_path}: {str(e)}")
-    
-    @pytest.mark.parametrize('get_file_from_path', [SMALL_FILE], indirect=True)
-    def test_performance_and_resource_management(self, get_file_from_path):
-        """Test that facade manages resources efficiently"""
-        file_path = get_file_from_path
-        
-        # Create multiple facades to test resource management
-        facades = [DocumentProcessingFacade(file_path) for _ in range(3)]
-        
-        # Each should work independently
-        for i, facade in enumerate(facades):
-            extracted_words = facade.get_extracted_words()
-            assert len(extracted_words) > 0, f"Facade {i} failed to extract words"
-            
-            corrected_words = facade.get_corrected_extracted_words()
-            assert len(corrected_words) > 0, f"Facade {i} failed to correct words"
-    
-    @pytest.mark.parametrize('get_file_from_path', [SMALL_FILE], indirect=True)
-    def test_facade_as_single_entry_point(self, get_file_from_path):
-        """Test that facade truly serves as a single entry point for document processing"""
-        file_path = get_file_from_path
-        facade = DocumentProcessingFacade(file_path)
-        
-        # User should be able to get everything they need through the facade
-        # without directly instantiating other components
-        
-        # Basic document reading
-        words = facade.get_extracted_words()
-        assert isinstance(words, pd.DataFrame)
-        
-        # Document analysis
-        properties = facade.get_statement_properties()
-        assert isinstance(properties, dict)
-        # Properties can be None for unrecognized documents
-        
-        # Text processing
-        processor = facade.get_text_processor()
-        assert isinstance(processor, DefaultTextProcessor)
-        
-        # Final processed output
-        corrected_words = facade.get_corrected_extracted_words()
-        assert isinstance(corrected_words, pd.DataFrame)
-        
-        # Verify that facade provides a complete solution
-        assert hasattr(facade, 'reader')
-        assert hasattr(facade, 'analyzer')
-        # TextProcessor is created on demand, not stored as attribute

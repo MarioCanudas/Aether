@@ -4,6 +4,8 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import pytest
+import pandas as pd
+import re
 from io import BytesIO
 from config import PROJECT_ROOT
 
@@ -20,3 +22,14 @@ def get_bytesio_from_path(request) -> BytesIO:
     file_path = os.path.join(INPUTS_FOLDER, request.param)
     with open(file_path, 'rb') as file:
         return BytesIO(file.read())
+    
+@pytest.fixture(scope= 'session')
+def get_input_data_from_path(request) -> pd.DataFrame:
+    file_path = os.path.join(INPUTS_FOLDER, request.param)
+    
+    if re.match(r'.*\.csv$', file_path):
+        return pd.read_csv(file_path), file_path
+    else:
+        raise ValueError(f"Unsupported file type: {file_path}")
+    
+    

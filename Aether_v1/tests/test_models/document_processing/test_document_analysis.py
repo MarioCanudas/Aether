@@ -3,10 +3,9 @@ import pandas as pd
 from unittest.mock import Mock, patch
 from models import DefaultDocumentAnalyzer, PDFReader
 
-SMALL_FILE = 'banorte_debit.pdf'
-MEDIUM_FILE = 'bbva_debit.pdf'
-OLD_CREDIT_FILE = 'banorte_credit_old.pdf'
-NEW_CREDIT_FILE = 'banorte_credit_new.pdf'
+DEBIT_FILE = 'bbva_debit_extracted_words.csv'
+OLD_CREDIT_FILE = 'banorte_credit_old_extracted_words.csv'
+NEW_CREDIT_FILE = 'banorte_credit_new_extracted_words.csv'
 
 TEST_BANKS = ['banorte', 'bbva']
 TEST_BANK_CODES = {
@@ -17,10 +16,9 @@ TEST_BANK_CODES = {
 class TestDefaultDocumentAnalyzerInitialization:
     """Test cases for DefaultDocumentAnalyzer initialization"""
     
-    @pytest.mark.parametrize('get_file_from_path', [SMALL_FILE], indirect=True)
-    def test_init_with_reader(self, get_file_from_path):
+    def test_init_with_reader(self):
         """Test DefaultDocumentAnalyzer initialization with PDFReader"""
-        file_path = get_file_from_path
+        file_path = 'bbva_debit.pdf'
         reader = PDFReader(file_path)
         analyzer = DefaultDocumentAnalyzer(reader)
         
@@ -490,37 +488,36 @@ class TestDocumentAnalyzerErrorHandling:
 class TestDocumentAnalyzerRealFileScenarios:
     """Test cases using real file scenarios"""
     
-    @pytest.mark.parametrize('get_file_from_path', [SMALL_FILE], indirect=True)
-    def test_real_file_basic_functionality(self, get_file_from_path):
+    @pytest.mark.parametrize('get_input_data_from_path', [DEBIT_FILE], indirect=True)
+    def test_real_file_basic_functionality(self, get_input_data_from_path):
         """Test analyzer with real file - basic functionality"""
-        file_path = get_file_from_path
-        reader = PDFReader(file_path)
-        analyzer = DefaultDocumentAnalyzer(reader)
+        extracted_words, file_path = get_input_data_from_path
+        mock_reader = Mock()
+        
+        mock_reader.extract_words.return_value = extracted_words
+        mock_reader.get_height.return_value = 900  # Mock height for footer detection
+        
+        analyzer = DefaultDocumentAnalyzer(mock_reader)
         
         try:
-            # Test basic methods
-            bank = analyzer.detect_bank()
-            statement_type = analyzer.detect_statement_type()
             properties = analyzer.get_statement_properties()
             
-            # Verify results are reasonable
-            if bank is not None:
-                assert bank in TEST_BANKS
-            
-            assert statement_type in ['debit', 'credit']
-            
-            if properties is not None:
-                assert isinstance(properties, dict)
+            assert properties['bank'] == 'bbva'
+            assert properties['statement_type'] == 'debit'
+            assert properties['new_format'] is None
                 
         except Exception as e:
             pytest.fail(f"Failed to analyze {file_path}: {str(e)}")
     
-    @pytest.mark.parametrize('get_file_from_path', [OLD_CREDIT_FILE, NEW_CREDIT_FILE], indirect=True)
-    def test_real_file_credit_detection(self, get_file_from_path):
+    @pytest.mark.parametrize('get_input_data_from_path', [OLD_CREDIT_FILE, NEW_CREDIT_FILE], indirect=True)
+    def test_real_file_credit_detection(self, get_input_data_from_path):
         """Test analyzer with real credit file"""
-        file_path = get_file_from_path
-        reader = PDFReader(file_path)
-        analyzer = DefaultDocumentAnalyzer(reader)
+        extracted_words, file_path = get_input_data_from_path
+        mock_reader = Mock()
+        mock_reader.extract_words.return_value = extracted_words
+        mock_reader.get_height.return_value = 900  # Mock height for footer detection
+        
+        analyzer = DefaultDocumentAnalyzer(mock_reader)
         
         try:
             properties = analyzer.get_statement_properties()

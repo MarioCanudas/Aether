@@ -47,7 +47,8 @@ class DefaultDocumentAnalyzer(DocumentAnalyzer):
             # \b = word boundary to avoid partial matches
             # re.escape() escapes special characters in the bank name
             # regex=True enables the use of regular expressions
-            mask = footer_text.str.contains(f"\\b{re.escape(bank)}\\b", regex=True)
+            # na=False ensures that NaN values are treated as False instead of NaN
+            mask = footer_text.str.contains(f"\\b{re.escape(bank)}\\b", regex=True, na=False)
             
             # If at least one match of the bank is found in the footer
             if mask.any():
@@ -73,7 +74,8 @@ class DefaultDocumentAnalyzer(DocumentAnalyzer):
         clabe_pattern = r'(\d{3})(\d{7,15})?'
         
         # Create a boolean Series (mask) that searches for the CLABE keyword in the text column
-        mask = df_extracted_words['text'].str.contains(clabe_keyword, regex=True, case=False)
+        # na=False ensures that NaN values are treated as False instead of NaN
+        mask = df_extracted_words['text'].str.contains(clabe_keyword, regex=True, case=False, na=False)
         
         if mask.any():
             # Get the indices of the rows where the CLABE keyword is found
