@@ -1,0 +1,41 @@
+[project]
+name = "aether-statement-processor"
+version = "0.1.0"
+description = "An application to process and analyze bank statements from PDF files."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [
+    { name = "Mario", email = "mario.cz24@outlook.com" },
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Framework :: Streamlit",
+    "Intended Audience :: Developers",
+    "Topic :: Office/Business :: Financial",
+]
+
+# Production dependencies: required for the application to run.
+dependencies = [
+    "streamlit==1.44.1",
+    "pandas==2.2.3",
+    "matplotlib==3.10.1",
+    "easyocr==1.7.2",
+    "pdfplumber==0.11.6",
+    "scikit-learn==1.6.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "poe-the-poet>=0.24.0", # Task runner
+]
+test = [
+    "pytest>=7.0.0",         # Testing framework
+]
+
+[tool.poe.tasks]
+run-tests = "pytest -v --tb=short Aether_v1/tests/test_models/document_processing/ Aether_v1/tests/test_models/table_processing/ Aether_v1/tests/test_models/data_processing/ Aether_v1/tests/test_services/ Aether_v1/tests/test_controllers/"
+run-app = { cmd = "streamlit run frontend/app.py", cwd = "Aether_v1" }
