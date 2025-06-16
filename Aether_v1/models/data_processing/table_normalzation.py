@@ -103,6 +103,9 @@ class AmountNormalizer(ColumnNormalizer):
         amount = 0.0
         transaction_type = None
         
+        # Convert value to string to handle both string and float inputs
+        value = str(value)
+        
         # Handle different sign indicator combinations
         if income_sign and not expense_sign:
             if income_sign in value:
@@ -151,14 +154,14 @@ class AmountNormalizer(ColumnNormalizer):
         # Process based on which columns have values
         if is_income_present and is_expense_effectively_empty:
             try:
-                amount = float(clean_amount(income_val))
+                amount = float(clean_amount(str(income_val)))
                 transaction_type = 'Abono'
             except ValueError:
                 pass
             
         elif is_expense_present and is_income_effectively_empty:
             try:
-                amount = float(clean_amount(expense_val)) * -1
+                amount = float(clean_amount(str(expense_val))) * -1
                 transaction_type = 'Cargo'
             except ValueError:
                 pass
@@ -169,7 +172,7 @@ class AmountNormalizer(ColumnNormalizer):
             is_balance_present = not pd.isna(balance_val) and balance_val != ''
             if is_balance_present:
                 try:
-                    amount = float(clean_amount(balance_val))
+                    amount = float(clean_amount(str(balance_val)))
                     transaction_type = 'Saldo'
                 except ValueError:
                     pass
@@ -177,8 +180,8 @@ class AmountNormalizer(ColumnNormalizer):
         # Handle conflicting amounts (both income and expense present)        
         elif is_income_present and is_expense_present:
             try:
-                income_amount = float(clean_amount(income_val))
-                expense_amount = float(clean_amount(expense_val))
+                income_amount = float(clean_amount(str(income_val)))
+                expense_amount = float(clean_amount(str(expense_val)))
                 
                 if income_amount > expense_amount:
                     amount = income_amount - expense_amount
@@ -247,6 +250,10 @@ class DefaultTableNormalizer(TableNormalizer):
         Normalizes dates and amounts, adds initial balance, and sorts by date.
         """
         reconstructed_table = self.reconstructed_table
+        
+        if reconstructed_table.empty:
+            raise ValueError("Reconstructed table is empty")
+        
         df_normalized = pd.DataFrame()      
         
         amount_column = self.statement_properties['amount_column']

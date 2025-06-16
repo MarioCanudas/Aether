@@ -14,7 +14,7 @@ class DefaultMetadataExtractor(MetadataExtractor):
         df_extracted_words = self.corrected_extracted_words.copy()
         period_phrase = self.statement_properties['period_phrase']
 
-        if not period_phrase:
+        if not period_phrase or df_extracted_words.empty:
             return None
         
         # Convert period_phrase to lowercase once for efficient comparison
@@ -44,7 +44,7 @@ class DefaultMetadataExtractor(MetadataExtractor):
         df_extracted_words = self.corrected_extracted_words.copy()
         initial_balance_phrase = self.statement_properties['initial_balance_phrase']
         
-        if not initial_balance_phrase:
+        if not initial_balance_phrase or df_extracted_words.empty:
             return None
         
         # Search for initial balance phrase and extract the amount that follows
@@ -75,7 +75,7 @@ class DefaultMetadataExtractor(MetadataExtractor):
         year_group = self.statement_properties['year_group']
         detected_years = []
         
-        if period_idx is None:
+        if period_idx is None or df_extracted_words.empty:
             return detected_years
             
         # Search for years in the period section (limited window after period phrase)
