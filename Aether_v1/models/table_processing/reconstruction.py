@@ -7,6 +7,7 @@ from ..core import Reconstructor
 from utils import classify_words
 
 class TableReconstructor(Reconstructor):
+    @cache
     def classify_columns(self) -> pd.DataFrame:
         # Get the grouped rows DataFrame to process each row of detected words
         df_structured = self.grouped_rows
@@ -49,7 +50,10 @@ class TableReconstructor(Reconstructor):
             reconstructed_table.append(current_row)
         
         # Return the reconstructed table as a DataFrame
-        return pd.DataFrame(reconstructed_table) 
+        if reconstructed_table:
+            return pd.DataFrame(reconstructed_table) 
+        else:
+            return pd.DataFrame(columns=['Date', 'Description', 'Amount'])
     
     @staticmethod
     def get_amount_columns_centroids(delimitation: dict, amount_columns: List[str]) -> np.array:
@@ -170,11 +174,14 @@ class TableReconstructor(Reconstructor):
         Combines description fragments and fills missing amounts from continuation rows.
         """
         df_structured = self.get_structured_table()
+        amount_columns = self.statement_properties['amount_column']
+        
+        if df_structured.empty:
+            return pd.DataFrame(columns=['Date', 'Description'] + amount_columns)
         
         merged_rows = []
         current_row = None
         
-        amount_columns = self.statement_properties['amount_column']
         date_pattern = self.statement_properties['date_pattern']
 
         # Merge rows that belong to the same transaction
