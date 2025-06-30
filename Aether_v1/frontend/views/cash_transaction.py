@@ -37,7 +37,7 @@ def adding_cash_transaction():
                 'Description': description,
                 'Amount': transaction_amount if transaction_type == 'Abono' else -1 * transaction_amount,
                 'Type': transaction_type,
-                'bank': 'Cash',
+                'bank': 'cash',
                 'statement_type': 'debit',
                 'filename': None
             }])
