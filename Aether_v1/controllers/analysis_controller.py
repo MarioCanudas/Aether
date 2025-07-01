@@ -2,9 +2,11 @@ from streamlit import session_state
 import pandas as pd
 from typing import Literal
 from services import PlottingService, DataProcessingService
+from .base_controller import BaseController
 
-class AnalysisController:
+class AnalysisController(BaseController):
     def __init__(self):
+        super().__init__()
         self.data_processing_service = DataProcessingService()
         self.plotting_service = PlottingService()
     
