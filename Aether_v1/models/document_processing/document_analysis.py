@@ -1,7 +1,7 @@
 import re
 from functools import cache
 from typing import Literal
-from _core import DocumentAnalyzer
+from ..core import DocumentAnalyzer
 from config import BANKS, BANKS_CODES
 from utils import search_phrase_in_df
 from .banks_properties import (
@@ -47,7 +47,8 @@ class DefaultDocumentAnalyzer(DocumentAnalyzer):
             # \b = word boundary to avoid partial matches
             # re.escape() escapes special characters in the bank name
             # regex=True enables the use of regular expressions
-            mask = footer_text.str.contains(f"\\b{re.escape(bank)}\\b", regex=True)
+            # na=False ensures that NaN values are treated as False instead of NaN
+            mask = footer_text.str.contains(f"\\b{re.escape(bank)}\\b", regex=True, na=False)
             
             # If at least one match of the bank is found in the footer
             if mask.any():
@@ -73,7 +74,8 @@ class DefaultDocumentAnalyzer(DocumentAnalyzer):
         clabe_pattern = r'(\d{3})(\d{7,15})?'
         
         # Create a boolean Series (mask) that searches for the CLABE keyword in the text column
-        mask = df_extracted_words['text'].str.contains(clabe_keyword, regex=True, case=False)
+        # na=False ensures that NaN values are treated as False instead of NaN
+        mask = df_extracted_words['text'].str.contains(clabe_keyword, regex=True, case=False, na=False)
         
         if mask.any():
             # Get the indices of the rows where the CLABE keyword is found
@@ -137,9 +139,12 @@ class DefaultDocumentAnalyzer(DocumentAnalyzer):
         # Otherwise, return 'debit'
         return 'debit'
     
-    def detect_new_credit_format(self, statement_properties: dict) -> bool:
+    def is_new_credit_format(self, statement_properties: dict) -> bool:
         """
-        Detects if the statement is in the new credit format.
+        Detects if the statement is in the new credit format. Given the old format statement properties,
+        it checks if the start and end phrases are found in the document.
+        - If the start and end phrases are found, it returns False, indicating that the statement is in the old format.
+        - If the start and end phrases are not found, it returns True, indicating that the statement is in the new format.
         
         Returns:
             bool: True if the statement is in the new credit format, False otherwise.
@@ -154,7 +159,10 @@ class DefaultDocumentAnalyzer(DocumentAnalyzer):
         start_phrase_found = search_phrase_in_df(extracted_words, start_phrase, type_return='bool')
         end_phrase_found = search_phrase_in_df(extracted_words, end_phrase, type_return='bool')
         
-        return start_phrase_found and end_phrase_found
+        if not start_phrase_found or not end_phrase_found:
+            return True
+        else:   
+            return False
         
     @cache
     def get_statement_properties(self) -> dict:
@@ -169,7 +177,7 @@ class DefaultDocumentAnalyzer(DocumentAnalyzer):
 
         match (bank, statement_type):
             case ('amex', 'credit'):
-                if self.detect_new_credit_format(AMEX_CREDIT_PROPERTIES):
+                if self.is_new_credit_format(AMEX_CREDIT_PROPERTIES):
                     return {} # TODO: Get new credit format properties
                 else:
                     return AMEX_CREDIT_PROPERTIES
@@ -178,7 +186,7 @@ class DefaultDocumentAnalyzer(DocumentAnalyzer):
                 return BANAMEX_DEBIT_PROPERTIES
 
             case ('banamex', 'credit'):
-                if self.detect_new_credit_format(BANAMEX_CREDIT_PROPERTIES):
+                if self.is_new_credit_format(BANAMEX_CREDIT_PROPERTIES):
                     return BANAMEX_NEW_CREDIT_FORMAT_PROPERTIES
                 else:
                     return BANAMEX_CREDIT_PROPERTIES
@@ -187,8 +195,8 @@ class DefaultDocumentAnalyzer(DocumentAnalyzer):
                 return BANORTE_DEBIT_PROPERTIES
 
             case ('banorte', 'credit'):
-                if self.detect_new_credit_format(BANORTE_CREDIT_PROPERTIES):
-                    return BANAMEX_NEW_CREDIT_FORMAT_PROPERTIES
+                if self.is_new_credit_format(BANORTE_CREDIT_PROPERTIES):
+                    return BANORTE_NEW_CREDIT_FORMAT_PROPERTIES
                 else:
                     return BANORTE_CREDIT_PROPERTIES
 
@@ -196,7 +204,7 @@ class DefaultDocumentAnalyzer(DocumentAnalyzer):
                 return BBVA_DEBIT_PROPERTIES
 
             case ('bbva', 'credit'):
-                if self.detect_new_credit_format(BBVA_CREDIT_PROPERTIES):
+                if self.is_new_credit_format(BBVA_CREDIT_PROPERTIES):
                     return BBVA_NEW_CREDIT_FORMAT_PROPERTIES
                 else: 
                     return BBVA_CREDIT_PROPERTIES
@@ -205,7 +213,7 @@ class DefaultDocumentAnalyzer(DocumentAnalyzer):
                 return HSBC_DEBIT_PROPERTIES
 
             case ('hsbc', 'credit'):
-                if self.detect_new_credit_format(HSBC_CREDIT_PROPERTIES):
+                if self.is_new_credit_format(HSBC_CREDIT_PROPERTIES):
                     return {} # TODO: Get new credit format properties
                 else:
                     return HSBC_CREDIT_PROPERTIES
@@ -214,7 +222,7 @@ class DefaultDocumentAnalyzer(DocumentAnalyzer):
                 return INBURSA_DEBIT_PROPERTIES
 
             case ('inbursa', 'credit'):
-                if self.detect_new_credit_format(INBURSA_CREDIT_PROPERTIES):
+                if self.is_new_credit_format(INBURSA_CREDIT_PROPERTIES):
                     return {} # TODO: Get new credit format properties
                 else:
                     return INBURSA_CREDIT_PROPERTIES
@@ -229,7 +237,7 @@ class DefaultDocumentAnalyzer(DocumentAnalyzer):
                 return SANTANDER_DEBIT_PROPERTIES
 
             case ('santander', 'credit'):
-                if self.detect_new_credit_format(SANTANDER_CREDIT_PROPERTIES):
+                if self.is_new_credit_format(SANTANDER_CREDIT_PROPERTIES):
                     return {} # TODO: Get new credit format properties
                 else:
                     return SANTANDER_CREDIT_PROPERTIES

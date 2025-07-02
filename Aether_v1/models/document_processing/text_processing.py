@@ -1,7 +1,7 @@
 import pandas as pd
 import re
 from functools import cache
-from _core import TextProcessor
+from ..core import TextProcessor
 
 class DefaultTextProcessor(TextProcessor):
     @cache
@@ -24,6 +24,8 @@ class DefaultTextProcessor(TextProcessor):
         amount_pattern = r'^\$?(0|[1-9]\d{0,2}(?:,\d{3})*)\.\d{2}$'  # Matches currency amounts like $1,234.56
         date_pattern = self.statement_properties['date_pattern']  # Bank-specific date pattern
         
+        idx_to_drop = []
+        
         # Iterate through each row to identify and correct parsing issues
         for i, row in extracted_words.iterrows():
             text = str(row['text']).strip()
@@ -35,8 +37,6 @@ class DefaultTextProcessor(TextProcessor):
             next_date_match = re.match(date_pattern, f'{text} {next_text}') if next_text else None
             next_next_date_match = re.match(date_pattern, f'{text} {next_text} {next_next_text}') if next_next_text else None
             amount_match = re.match(amount_pattern, text)
-            
-            idx_to_drop = []
             
             # Handle date correction: split dates that have extra text attached
             if date_match:
@@ -74,7 +74,7 @@ class DefaultTextProcessor(TextProcessor):
                 
             # Handle amount correction: combine separated signs with amounts
             elif amount_match:
-                previous_text = extracted_words.loc[i - 1, 'text']
+                previous_text = extracted_words.loc[i - 1, 'text'] if i - 1 >= 0 else None
                 # If the previous cell contains a standalone + or - sign
                 if previous_text == '+' or previous_text == '-':
                     # Combine the sign with the current amount

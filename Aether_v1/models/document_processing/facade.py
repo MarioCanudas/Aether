@@ -7,6 +7,9 @@ from .text_processing import DefaultTextProcessor
 
 class DocumentProcessingFacade:
     def __init__(self, file: str | BytesIO):
+        if not isinstance(file, (str, BytesIO)):
+            raise ValueError("File must be a string or a BytesIO object")
+
         self.reader = PDFReader(file)
         self.analyzer = DefaultDocumentAnalyzer(self.reader)
         

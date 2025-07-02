@@ -1,7 +1,7 @@
 import re
 from typing import List
 from functools import cache
-from _core import MetadataExtractor
+from ..core import MetadataExtractor
 from utils import clean_amount
 
 class DefaultMetadataExtractor(MetadataExtractor):
@@ -14,7 +14,7 @@ class DefaultMetadataExtractor(MetadataExtractor):
         df_extracted_words = self.corrected_extracted_words.copy()
         period_phrase = self.statement_properties['period_phrase']
 
-        if not period_phrase:
+        if not period_phrase or df_extracted_words.empty:
             return None
         
         # Convert period_phrase to lowercase once for efficient comparison
@@ -38,10 +38,13 @@ class DefaultMetadataExtractor(MetadataExtractor):
         Extracts the initial balance amount from the statement text.
         Searches for the initial balance phrase and returns the following numeric value.
         """
+        if self.statement_properties['statement_type'] == 'credit':
+            return None
+        
         df_extracted_words = self.corrected_extracted_words.copy()
         initial_balance_phrase = self.statement_properties['initial_balance_phrase']
         
-        if not initial_balance_phrase:
+        if not initial_balance_phrase or df_extracted_words.empty:
             return None
         
         # Search for initial balance phrase and extract the amount that follows
@@ -72,7 +75,7 @@ class DefaultMetadataExtractor(MetadataExtractor):
         year_group = self.statement_properties['year_group']
         detected_years = []
         
-        if period_idx is None:
+        if period_idx is None or df_extracted_words.empty:
             return detected_years
             
         # Search for years in the period section (limited window after period phrase)

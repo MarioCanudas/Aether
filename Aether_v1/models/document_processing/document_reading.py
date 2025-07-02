@@ -3,8 +3,9 @@ import pandas as pd
 from io import BytesIO
 import re
 from functools import cache
+from ..core import Reader
 
-class PDFReader:
+class PDFReader(Reader):
     """
     A class that reads a PDF file and can return file metadata and extracted words.
     This class is a wrapper around the pdfplumber library.
@@ -12,9 +13,6 @@ class PDFReader:
     Args:
         file (str | BytesIO): The path to the PDF file or a BytesIO object.
     """
-    def __init__(self, file: str | BytesIO):
-        self.file = file
-    
     def _is_bytes_io(self) -> bool:
         """
         Check if self.file is a BytesIO object.
@@ -31,8 +29,10 @@ class PDFReader:
         Returns:
             bool: True if self.file is a path, False if it's a BytesIO object.
         """
+    
         pdf_pattern = r'.*\.pdf$'
-        return bool(re.match(pdf_pattern, self.file))
+        return bool(re.match(pdf_pattern, self.file)) if isinstance(self.file, str) else False
+        
     
     def get_valid_file(self) -> str | BytesIO:
         """
@@ -44,10 +44,8 @@ class PDFReader:
         Raises:
             ValueError: If the file is not a path or a BytesIO object.
         """
-        if self._is_path():
+        if self._is_path() or self._is_bytes_io():
             return self.file
-        elif self._is_bytes_io():
-            return BytesIO(self.file)
         else:
             raise ValueError("Invalid file type")
     

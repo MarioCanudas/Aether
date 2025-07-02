@@ -1,6 +1,6 @@
 import pandas as pd
 from functools import cache
-from _core import TableBoundaryDetector
+from ..core import TableBoundaryDetector
 from utils import search_phrase_in_df
 
 class DefaultBoundaryDetector(TableBoundaryDetector):

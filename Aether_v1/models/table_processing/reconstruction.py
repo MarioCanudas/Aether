@@ -3,10 +3,11 @@ import numpy as np
 from sklearn.cluster import KMeans
 from functools import cache
 from typing import List, Tuple
-from _core import Reconstructor
+from ..core import Reconstructor
 from utils import classify_words
 
 class TableReconstructor(Reconstructor):
+    @cache
     def classify_columns(self) -> pd.DataFrame:
         # Get the grouped rows DataFrame to process each row of detected words
         df_structured = self.grouped_rows
@@ -49,7 +50,10 @@ class TableReconstructor(Reconstructor):
             reconstructed_table.append(current_row)
         
         # Return the reconstructed table as a DataFrame
-        return pd.DataFrame(reconstructed_table) 
+        if reconstructed_table:
+            return pd.DataFrame(reconstructed_table) 
+        else:
+            return pd.DataFrame(columns=['Date', 'Description', 'Amount'])
     
     @staticmethod
     def get_amount_columns_centroids(delimitation: dict, amount_columns: List[str]) -> np.array:
@@ -144,7 +148,7 @@ class TableReconstructor(Reconstructor):
         if n_amount_columns == 1:
             amount_column = amount_columns[0]
             
-            return classified_columns.rename(columns={'Amount': amount_column}, inplace=True)
+            return classified_columns.rename(columns={'Amount': amount_column})
         
         # Complex case: multiple amount columns - use clustering        
         column_centroids = self.get_amount_columns_centroids(self.column_delimitation, amount_columns)
@@ -170,29 +174,35 @@ class TableReconstructor(Reconstructor):
         Combines description fragments and fills missing amounts from continuation rows.
         """
         df_structured = self.get_structured_table()
+        amount_columns = self.statement_properties['amount_column']
+        
+        if df_structured.empty:
+            return pd.DataFrame(columns=['Date', 'Description'] + amount_columns)
         
         merged_rows = []
         current_row = None
         
-        amount_columns = self.statement_properties['amount_column']
         date_pattern = self.statement_properties['date_pattern']
 
         # Merge rows that belong to the same transaction
         for _, row in df_structured.iterrows():
-            if row['Date'] is not None:  # New transaction starts
-                if current_row is not None:
-                    merged_rows.append(current_row)
-                current_row = row.copy()
-            else:  # Continuation of current transaction
-                # Fill missing amounts from continuation rows
-                for col in amount_columns:
-                    if row[col] != '' and current_row[col] == '':
-                        current_row[col] = row[col]
-                # Append description fragments
-                try:
-                    current_row['Description'] += " " + row['Description'] + " "
-                except:
-                    continue
+            try:
+                if row['Date'] is not None:  # New transaction starts
+                    if current_row is not None:
+                        merged_rows.append(current_row)
+                    current_row = row.copy()
+                else:  # Continuation of current transaction
+                    # Fill missing amounts from continuation rows
+                    for col in amount_columns:
+                        if (row[col] != '' or row[col] is not None) and (current_row[col] == '' or current_row[col] is None):
+                            current_row[col] = row[col]
+                    # Append description fragments
+                    try:
+                        current_row['Description'] += " " + row['Description'] + " "
+                    except:
+                        continue
+            except TypeError:
+                continue
 
         if current_row is not None:
             merged_rows.append(current_row)

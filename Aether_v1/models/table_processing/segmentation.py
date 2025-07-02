@@ -1,5 +1,5 @@
 import pandas as pd
-from _core import ColumnSegmenter, RowSegmenter
+from ..core import ColumnSegmenter, RowSegmenter
 
 class DefaultColumnSegmenter(ColumnSegmenter):
     def delimit_column_positions(self) -> dict:
@@ -64,7 +64,7 @@ class DefaultRowSegmenter(RowSegmenter):
         filtered_words = self.filtered_table_words
         
         top_diffs = filtered_words.groupby("page")["top"].diff()
-        positive_diffs = top_diffs[top_diffs > 0].dropna()
+        positive_diffs = top_diffs[top_diffs >= 0].dropna()
 
         q1 = positive_diffs.quantile(0.25)
         q3 = positive_diffs.quantile(0.75)
