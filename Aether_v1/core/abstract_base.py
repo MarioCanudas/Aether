@@ -23,7 +23,17 @@ class DocumentReader(ABC):
             float: Height of the document.
         """
         pass
+    
+    @abstractmethod
+    def get_width(self) -> float:
+        """
+        Get the width of the document.
 
+        Returns:
+            float: Width of the document.
+        """
+        pass
+    
     @abstractmethod
     def extract_words(self) -> pd.DataFrame:
         """
@@ -40,7 +50,8 @@ class BankDetector(ABC):
     Base class for detecting the bank and statement type from extracted words.
 
     Attributes:
-        extracted_words (pd.DataFrame): DataFrame containing the extracted words and their positions.
+        document_reader (DocumentReader): A document reader object.
+        new_credit_format (bool): Whether the statement is in the new credit format.
     """
 
     def __init__(self, DocumentReader: DocumentReader, new_credit_format: bool = False):
@@ -203,27 +214,13 @@ class TableReconstructor(ABC):
         self.column_delimitation = column_delimitation
         self.bank_detector = bank_detector
         
-    @property
     @abstractmethod
-    def column_positions(self) -> dict:
+    def classify_columns(self) -> pd.DataFrame:
         """
-        Get the positions of the columns based on the header row.
-
-        Returns:
-            dict: A dictionary with column names as keys and their x-coordinates as values.
-        """
-        pass
+        Classify words into columns based on the words classification, based on the date pattern and the amount pattern.
         
-    @abstractmethod
-    def classify_columns(self, row) -> pd.Series:
-        """
-        Classify words into the corresponding columns based on the x-coordinate.
-
-        Args:
-            row (pd.Series): A row from the DataFrame with grouped words.
-
         Returns:
-            pd.Series: A Series with words classified by columns.
+            pd.DataFrame: DataFrame with words classified by columns.
         """
         pass
 

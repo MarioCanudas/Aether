@@ -9,8 +9,6 @@ AMEX_CREDIT_PROPERTIES = {
     
     # Column distribution properties
     'columns': [],
-    'date_column' : '',
-    'description_column' : '',
     'amount_column' : [],
     'income_column' : '',
     'expense_column' : '',
@@ -29,11 +27,6 @@ AMEX_CREDIT_PROPERTIES = {
     'period_phrase' : [],
     'period_pattern' : r"",
     'year_group' : None,
-    
-    # Trheshold properties
-    'row_treshold_adjust' : False,
-    'date_treshold_adjust' : False,
-    'amount_treshold_adjust' : False,
 }
 
 BANORTE_DEBIT_PROPERTIES = {
@@ -45,8 +38,6 @@ BANORTE_DEBIT_PROPERTIES = {
     
     # Column distribution properties
     'columns': ['FECHA', 'DESCRIPCIÓN / ESTABLECIMIENTO', 'MONTO DEL DEPOSITO', 'MONTO DEL RETIRO', 'SALDO'],
-    'date_column' : 'FECHA',
-    'description_column' : 'DESCRIPCIÓN / ESTABLECIMIENTO',
     'amount_column' : ['MONTO DEL DEPOSITO', 'MONTO DEL RETIRO', 'SALDO'],
     'income_column' : 'MONTO DEL DEPOSITO',
     'expense_column' : 'MONTO DEL RETIRO',
@@ -66,10 +57,6 @@ BANORTE_DEBIT_PROPERTIES = {
     'period_pattern' : r"(\d{2})/(Enero|Febrero|Marzo|Abril|Mayo|Junio|Julio|Agosto|Septiembre|Octubre|Noviembre|Diciembre)/(\d{4})",
     'year_group' : 3,
     
-    # Trheshold properties
-    'row_treshold_adjust' : True,
-    'date_treshold_adjust' : False,
-    'amount_treshold_adjust' : False,
 }
 
 BANORTE_CREDIT_PROPERTIES = {
@@ -79,8 +66,6 @@ BANORTE_CREDIT_PROPERTIES = {
     
     # Column distribution properties
     'columns': ['Fecha', 'Concepto', 'RFC/CURP', 'Tipo de transacción', 'Importe'],
-    'date_column' : 'Fecha',
-    'description_column' : 'Concepto',
     'amount_column' : ['Importe'],
     'income_column' : 'Importe',
     'expense_column' : 'Importe',
@@ -100,10 +85,6 @@ BANORTE_CREDIT_PROPERTIES = {
     'period_pattern' : None,
     'year_group' : None,
     
-    # Trheshold properties
-    'row_treshold_adjust' : False,
-    'date_treshold_adjust' : False,
-    'amount_treshold_adjust' : False,
 }
 
 BANORTE_NEW_CREDIT_FORMAT_PROPERTIES = {
@@ -113,8 +94,6 @@ BANORTE_NEW_CREDIT_FORMAT_PROPERTIES = {
     
     # Column distribution properties
     'columns': ['Fecha de la operación', 'Fecha de cargo', 'Descripción del movimiento', 'Monto'],
-    'date_column' : 'Fecha de la operación',
-    'description_column' : 'Descripción del movimiento',
     'amount_column' : ['Monto'],
     'income_column' : None,
     'expense_column' : None,
@@ -134,10 +113,6 @@ BANORTE_NEW_CREDIT_FORMAT_PROPERTIES = {
     'period_pattern' : None,
     'year_group' : None,
     
-    # Trheshold properties
-    'row_treshold_adjust' : True,
-    'date_treshold_adjust' : False,
-    'amount_treshold_adjust' : True,
 }
 
 BBVA_DEBIT_PROPERTIES = {
@@ -149,9 +124,7 @@ BBVA_DEBIT_PROPERTIES = {
     
     # Column distribution properties
     'columns': ['OPER', 'LIQ', 'DESCRIPCION', 'REFERENCIA', 'CARGOS', 'ABONOS', 'OPERACION', 'LIQUIDACION'],
-    'date_column' : 'OPER',
-    'description_column' : 'DESCRIPCION',
-    'amount_column' : ['CARGOS', 'ABONOS', 'LIQUIDACION'],
+    'amount_column' : ['CARGOS', 'ABONOS', 'OPERACION', 'LIQUIDACION'],
     'income_column' : 'ABONOS',
     'expense_column' : 'CARGOS',
     'balance_column' : 'LIQUIDACION',
@@ -170,10 +143,6 @@ BBVA_DEBIT_PROPERTIES = {
     'period_pattern' : r"(\d{2})/(\d{2})/(\d{4})",
     'year_group' : 3, 
     
-    # Trheshold properties
-    'row_treshold_adjust' : False,
-    'date_treshold_adjust' : False,
-    'amount_treshold_adjust' : False,
 }
 
 BBVA_CREDIT_PROPERTIES = {
@@ -183,8 +152,6 @@ BBVA_CREDIT_PROPERTIES = {
     
     # Column distribution properties
     'columns': ['FECHA AUTORIZACION', 'FECHA APLICACION', 'CONCEPTO', 'R.F.C.', 'REFERENCIA', 'IMPORTE CARGOS', 'IMPORTE ABONOS'],
-    'date_column' : 'FECHA AUTORIZACION',
-    'description_column' : 'CONCEPTO',
     'amount_column' : ['IMPORTE CARGOS', 'IMPORTE ABONOS'],
     'income_column' : 'IMPORTE ABONOS',
     'expense_column' : 'IMPORTE CARGOS',
@@ -204,10 +171,6 @@ BBVA_CREDIT_PROPERTIES = {
     'period_pattern' : None,
     'year_group' : None,
     
-    # Trheshold properties
-    'row_treshold_adjust' : True,
-    'date_treshold_adjust' : False,
-    'amount_treshold_adjust' : False,
 }
 
 BBVA_NEW_CREDIT_FORMAT_PROPERTIES = {
@@ -217,8 +180,6 @@ BBVA_NEW_CREDIT_FORMAT_PROPERTIES = {
     
     # Column distribution properties
     'columns': ['Fecha de la operación', 'Fecha de cargo', 'Descripción del movimiento', 'Monto'],
-    'date_column' : 'Fecha de la operación',
-    'description_column' : 'Descripción del movimiento',
     'amount_column' : ['Monto'],
     'income_column' : None,
     'expense_column' : None,
@@ -238,10 +199,6 @@ BBVA_NEW_CREDIT_FORMAT_PROPERTIES = {
     'period_pattern' : None,
     'year_group' : None,
     
-    # Trheshold properties
-    'row_treshold_adjust' : True,
-    'date_treshold_adjust' : False,
-    'amount_treshold_adjust' : True,
 }
 
 BANAMEX_DEBIT_PROPERTIES = {
@@ -255,8 +212,6 @@ BANAMEX_CREDIT_PROPERTIES = {
     
     # Column distribution properties
     'columns': ['Fecha', 'Concepto/Giro de Negocio Mensualidad * / Tipos de Cambio', 'Población / RFC Moneda Ext.', 'Otras Divisas', 'Pesos'],
-    'date_column' : 'Fecha',
-    'description_column' : 'Concepto/Giro de Negocio Mensualidad * / Tipos de Cambio',
     'amount_column' : ['Pesos'],
     'income_column' : 'Pesos',
     'expense_column' : 'Pesos',
@@ -276,10 +231,6 @@ BANAMEX_CREDIT_PROPERTIES = {
     'period_pattern' : None,
     'year_group' : None,
     
-    # Trheshold properties
-    'row_treshold_adjust' : True,
-    'date_treshold_adjust' : False,
-    'amount_treshold_adjust' : True,
 }
 
 BANAMEX_NEW_CREDIT_FORMAT_PROPERTIES = {
@@ -289,8 +240,6 @@ BANAMEX_NEW_CREDIT_FORMAT_PROPERTIES = {
     
     # Column distribution properties
     'columns': ['Fecha de la operación', 'Fecha de cargo', 'Descripción del movimiento', 'Monto'],
-    'date_column' : 'Fecha de la operación',
-    'description_column' : 'Descripción del movimiento',
     'amount_column' : ['Monto'],
     'income_column' : None,
     'expense_column' : None,
@@ -310,10 +259,6 @@ BANAMEX_NEW_CREDIT_FORMAT_PROPERTIES = {
     'period_pattern' : None,
     'year_group' : None,
     
-    # Trheshold properties
-    'row_treshold_adjust' : False,
-    'date_treshold_adjust' : False,
-    'amount_treshold_adjust' : True,
 }
 
 HSBC_DEBIT_PROPERTIES = {
@@ -326,9 +271,7 @@ HSBC_CREDIT_PROPERTIES = {
     'end_phrase' : ['información', "spei´s", 'recibidos'],
     
     # Column distribution properties
-    'columns': ['Fecha', 'Concepto', 'Importe'],
-    'date_column' : 'Fecha',
-    'description_column' : 'Concepto',
+    'columns': ['Fecha', 'Concepto', 'Importe'],    
     'amount_column' : ['Importe'],
     'income_column' : 'Importe',
     'expense_column' : 'Importe',
@@ -348,10 +291,6 @@ HSBC_CREDIT_PROPERTIES = {
     'period_pattern' : None,
     'year_group' : None,
     
-    # Trheshold properties
-    'row_treshold_adjust' : True,
-    'date_treshold_adjust' : False,
-    'amount_treshold_adjust' : False,
 }
 
 INBURSA_DEBIT_PROPERTIES = {
@@ -363,8 +302,6 @@ INBURSA_DEBIT_PROPERTIES = {
     
     # Column distribution properties
     'columns': ['FECHA', 'REFERENCIA', 'CONCEPTO', 'CARGOS', 'ABONOS', 'SALDO'],
-    'date_column' : 'FECHA',
-    'description_column' : 'CONCEPTO',
     'amount_column' : ['CARGOS', 'ABONOS', 'SALDO'],
     'income_column' : 'ABONOS',
     'expense_column' : 'CARGOS',
@@ -384,10 +321,6 @@ INBURSA_DEBIT_PROPERTIES = {
     'period_pattern' : None,
     'year_group' : None,
     
-    # Trheshold properties
-    'row_treshold_adjust' : True,
-    'date_treshold_adjust' : False,
-    'amount_treshold_adjust' : True,
 }
 
 INBURSA_CREDIT_PROPERTIES = {
@@ -397,8 +330,6 @@ INBURSA_CREDIT_PROPERTIES = {
     
     # Column distribution properties
     'columns': ['Fecha', 'Descripción', 'Cantidad (pesos)'],
-    'date_column' : 'Fecha',
-    'description_column' : 'Descripción',
     'amount_column' : ['Cantidad (pesos)'],
     'income_column' : 'Cantidad (pesos)',
     'expense_column' : 'Cantidad (pesos)',
@@ -417,11 +348,7 @@ INBURSA_CREDIT_PROPERTIES = {
     'period_phrase' : ['resumen', 'del', 'periodo'],
     'period_pattern' : None,
     'year_group' : None,
-    
-    # Trheshold properties
-    'row_treshold_adjust' : True,
-    'date_treshold_adjust' : False,
-    'amount_treshold_adjust' : True,
+
 }
 
 NU_DEBIT_PROPERTIES = {
@@ -437,8 +364,6 @@ NU_DEBIT_PROPERTIES = {
         r'(DE) (\d{2}) (ENE|FEB|MAR|ABR|MAY|JUN|JUL|AGO|SEP|OCT|NOV|DIC) (A) (\d{2}) (ENE|FEB|MAR|ABR|MAY|JUN|JUL|AGO|SEP|OCT|NOV|DIC) (\(\d{2}) (DÍAS\))',
         'MONTO EN PESOS MEXICANOS'
     ],
-    'date_column' : 'FECHA',
-    'description_column' : r'(DE) (\d{2}) (ENE|FEB|MAR|ABR|MAY|JUN|JUL|AGO|SEP|OCT|NOV|DIC) (A) (\d{2}) (ENE|FEB|MAR|ABR|MAY|JUN|JUL|AGO|SEP|OCT|NOV|DIC) (\(\d{2}) (DÍAS\))',
     'amount_column' : ['MONTO EN PESOS MEXICANOS'],
     'income_column' : 'MONTO EN PESOS MEXICANOS',
     'expense_column' : 'MONTO EN PESOS MEXICANOS',
@@ -458,10 +383,6 @@ NU_DEBIT_PROPERTIES = {
     'period_pattern' : None,
     'year_group' : None,
     
-    # Trheshold properties
-    'row_treshold_adjust' : False,
-    'date_treshold_adjust' : True,
-    'amount_treshold_adjust' : False,
 }
 
 NU_CREDIT_PROPERTIES = {
@@ -475,8 +396,6 @@ NU_CREDIT_PROPERTIES = {
         r'(DE) (\d{2}) (ENE|FEB|MAR|ABR|MAY|JUN|JUL|AGO|SEP|OCT|NOV|DIC) (A) (\d{2}) (ENE|FEB|MAR|ABR|MAY|JUN|JUL|AGO|SEP|OCT|NOV|DIC) (\(\d{2}) (DÍAS\))',
         'MONTOS EN PESOS MEXICANOS'
     ],
-    'date_column' : 'TRANSACCIONES',
-    'description_column' : r'(DE) (\d{2}) (ENE|FEB|MAR|ABR|MAY|JUN|JUL|AGO|SEP|OCT|NOV|DIC) (A) (\d{2}) (ENE|FEB|MAR|ABR|MAY|JUN|JUL|AGO|SEP|OCT|NOV|DIC) (\(\d{2}) (DÍAS\))',
     'amount_column' : ['MONTOS EN PESOS MEXICANOS'],
     'income_column' : 'MONTOS EN PESOS MEXICANOS',
     'expense_column' : 'MONTOS EN PESOS MEXICANOS',
@@ -496,10 +415,6 @@ NU_CREDIT_PROPERTIES = {
     'period_pattern' : None,
     'year_group' : None,
     
-    # Trheshold properties
-    'row_treshold_adjust' : False,  
-    'date_treshold_adjust' : True,
-    'amount_treshold_adjust' : False
 }
 
 SANTANDER_DEBIT_PROPERTIES = {

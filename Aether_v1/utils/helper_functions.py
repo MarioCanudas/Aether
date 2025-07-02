@@ -1,5 +1,6 @@
-from typing import List
+from typing import List, Literal
 import re
+import pandas as pd
 
 def get_min_month(months: List[str]) -> str:
     """
@@ -51,3 +52,39 @@ def eliminate_ocr_errors_for_amounts(value: str) -> str:
         value = f"{''.join(int_parts)}.{decimal_part}"
 
     return value
+
+def search_phrase_in_df(df: pd.DataFrame | pd.Series, phrase: List[str], type_return: Literal['idx', 'bool'] = 'idx') -> int | bool:
+    """
+    Search for a phrase in a DataFrame.
+    The phrase must be in lower case.
+
+    Args:
+        df (pd.DataFrame): The DataFrame to search in.
+        phrase (List[str]): The phrase to search for.
+        type_return (Literal['idx', 'bool']): The type of return.
+
+    Returns:
+        int | bool: The index of the phrase if type_return is 'idx', True if the phrase is found, False otherwise.
+    """
+    
+    # Iterate through the DataFrame, stopping before we run out of rows to compare
+    # We subtract len(phrase) to ensure we don't go beyond the DataFrame bounds
+    for i in range(len(df) - len(phrase)):
+        # Extract a slice of text from the current position with the same length as the phrase
+        # Convert all text to lowercase for case-insensitive comparison
+        current_slice = list(df['text'].iloc[i : i + len(phrase)].str.lower()) if isinstance(df, pd.DataFrame) else list(df.iloc[i : i + len(phrase)].str.lower())
+        
+        # Check if the current slice exactly matches the target phrase
+        if current_slice == phrase:
+            # Return based on the requested return type
+            if type_return == 'idx':
+                return i  # Return the starting index where the phrase was found
+            elif type_return == 'bool':
+                return True  # Return True indicating the phrase was found
+    
+    # If no match was found, return appropriate default value based on return type
+    if type_return == 'idx':
+        return None  # Return None when no index is found
+    elif type_return == 'bool':
+        return False  # Return False when phrase is not found
+
