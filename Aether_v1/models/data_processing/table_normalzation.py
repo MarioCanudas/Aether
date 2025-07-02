@@ -1,112 +1,12 @@
-from core import TableNormalizer
-import re
 import pandas as pd
-from functools import cached_property
+import re
 from typing import List, Tuple
+from _core import ColumnNormalizer, TableNormalizer
+from utils import clean_amount
 
-def clean_amount(amount: str) -> str:
-    return amount.replace(',', '').replace('$', '').replace('+', '').replace('-','')
-
-class TransactionTableNormalizer(TableNormalizer):  
-    @cached_property
-    def period_idx(self) -> int:
-        """
-        Finds the index position where the statement period information starts.
-        Searches for a specific phrase and returns the index after the match.
-        """
-        df_extracted_words = self.bank_detector.get_extracted_words().copy()
-        statement_properties = self.bank_detector.get_statement_properties()
-        period_phrase = statement_properties['period_phrase']
-
-        if not period_phrase:
-            return None
-        
-        # Convert period_phrase to lowercase once for efficient comparison
-        period_phrase_lower = [phrase.lower() for phrase in period_phrase]
-
-        # Search for the period phrase in the extracted words
-        for i in range(len(df_extracted_words) - len(period_phrase)):
-            window_words = df_extracted_words["text"].iloc[i : i + len(period_phrase)]
-            processed_window = [word.lower().rstrip(':') for word in window_words]
-            
-            if processed_window == period_phrase_lower:
-                return i + len(period_phrase)  # First word after match
-
-        raise ValueError(f"Period phrase '{period_phrase}' not found in the extracted words.")
-    
-    def get_initial_balance(self) -> float:
-        """
-        Extracts the initial balance amount from the statement text.
-        Searches for the initial balance phrase and returns the following numeric value.
-        """
-        df_extracted_words = self.bank_detector.get_extracted_words().copy()
-        statement_properties = self.bank_detector.get_statement_properties()
-        initial_balance_phrase = statement_properties['initial_balance_phrase']
-        
-        if not initial_balance_phrase:
-            return None
-        
-        # Search for initial balance phrase and extract the amount that follows
-        for i in range(len(df_extracted_words) - len(initial_balance_phrase)):
-            window_words = df_extracted_words["text"].iloc[i : i + len(initial_balance_phrase)]
-            processed_window = [word.lower().rstrip(':') for word in window_words]
-            
-            if processed_window == initial_balance_phrase:
-                initial_balance = df_extracted_words["text"].iloc[i + len(initial_balance_phrase)]
-                initial_balance = clean_amount(initial_balance)
-                
-                try:
-                    return float(initial_balance)
-                except ValueError:
-                    return None
-
-        raise ValueError(f"Initial balance phrase '{initial_balance_phrase}' not found in the extracted words.")
-        
-    @cached_property
-    def years(self) -> List[int]:
-        """
-        Extracts year information from the statement period section.
-        Uses regex patterns to identify and collect valid years.
-        """
-        df_extracted_words = self.bank_detector.get_extracted_words().copy()
-        statement_properties = self.bank_detector.get_statement_properties()
-        detected_years = []
-        
-        if self.period_idx is None:
-            return detected_years
-            
-        # Search for years in the period section (limited window after period phrase)
-        period_values = df_extracted_words.iloc[self.period_idx : self.period_idx + 15]
-        
-        for text in period_values['text']:
-            # Use custom pattern if available, otherwise fallback to generic year pattern
-            if statement_properties['period_pattern']:
-                year_match = re.search(statement_properties['period_pattern'], text)
-                
-                if year_match:
-                    try:
-                        year = int(year_match.group(statement_properties['year_group']))
-                        detected_years.append(year)
-                    except (ValueError, IndexError):
-                        continue
-                    
-            else:
-                year_match = re.search(r'\b20\d{2}\b', text)
-                
-                if year_match:
-                    try:
-                        year = int(year_match.group())
-                        detected_years.append(year)
-                    except ValueError:
-                        continue
-                    
-        return sorted(list(set(detected_years)))
-    
-    @cached_property
-    def months(self) -> str:
-        pass
-    
-    def normalize_date_with_year(self, date: str, date_pattern: str, groups_date: Tuple[int], month_pattern: dict) -> str:
+class DateNormalizer(ColumnNormalizer):
+    @staticmethod
+    def normalize_date_with_year(date: str, date_pattern: str, groups_date: Tuple[int], month_pattern: dict) -> str:
         """
         Normalizes dates that already contain year information to ISO format (YYYY-MM-DD).
         Handles both numeric and text month formats.
@@ -127,8 +27,9 @@ class TransactionTableNormalizer(TableNormalizer):
             return f"{year}-{month}-{day}" if len(year) == 4 else f"20{year}-{month}-{day}"
         else:
             return ""
-        
-    def normalize_date_without_year(self, date: str, years: List[int], date_pattern: str, groups_date: Tuple[None, int, int], month_pattern: dict) -> str:
+    
+    @staticmethod
+    def normalize_date_without_year(date: str, years: List[int], date_pattern: str, groups_date: Tuple[None, int, int], month_pattern: dict) -> str:
         """
         Normalizes dates without year by inferring the year from the statement period.
         Handles single-year and cross-year periods with month-based logic.
@@ -171,15 +72,14 @@ class TransactionTableNormalizer(TableNormalizer):
         else:
             return ""  # No valid year found
             
-    def normalize_dates(self, date_column: pd.Series) -> pd.Series:
+    def normalize_column(self, date_column: pd.Series, years: List[int]) -> pd.Series:
         """
         Normalizes all dates in a column to ISO format based on date pattern analysis.
         Routes to appropriate normalization method based on year presence.
         """
-        statement_properties = self.bank_detector.get_statement_properties()
-        date_pattern = statement_properties['date_pattern']
-        groups_date = statement_properties['date_groups']
-        month_pattern = statement_properties['month_pattern']
+        date_pattern = self.statement_properties['date_pattern']
+        groups_date = self.statement_properties['date_groups']
+        month_pattern = self.statement_properties['month_pattern']
 
         have_year: bool = groups_date[0] is not None
         
@@ -189,13 +89,13 @@ class TransactionTableNormalizer(TableNormalizer):
                 lambda x: self.normalize_date_with_year(x, date_pattern, groups_date, month_pattern)
             )
         else:
-            years = self.years
-
             return date_column.apply(
                 lambda x: self.normalize_date_without_year(x, years, date_pattern, groups_date, month_pattern)
             )
-    
-    def normalize_amount_for_single_column(self, value: str, income_sign: str, expense_sign: str) -> float:
+        
+class AmountNormalizer(ColumnNormalizer):
+    @staticmethod
+    def normalize_amount_for_single_column(value: str, income_sign: str, expense_sign: str) -> float:
         """
         Normalizes amounts from a single column using sign indicators.
         Determines transaction type and applies appropriate sign based on income/expense indicators.
@@ -230,7 +130,8 @@ class TransactionTableNormalizer(TableNormalizer):
                 
         return pd.Series({'Amount': amount, 'Type': transaction_type})
     
-    def normalize_amount_for_multiple_columns(self, row, income_column: str, expense_column: str, balance_column: str) -> pd.Series:
+    @staticmethod
+    def normalize_amount_for_multiple_columns(row, income_column: str, expense_column: str, balance_column: str) -> pd.Series:
         """
         Normalizes amounts from separate income/expense columns.
         Handles various combinations including balance-only transactions and conflicting amounts.
@@ -290,12 +191,12 @@ class TransactionTableNormalizer(TableNormalizer):
         
         return pd.Series({'Amount': amount, 'Type': transaction_type})
         
-    def normalize_amounts(self, amount_columns: pd.Series | pd.DataFrame) -> pd.Series:
+    def normalize_column(self, amount_columns: pd.Series | pd.DataFrame) -> pd.Series:
         """
         Routes amount normalization based on column structure.
         Uses single-column method for unified amounts or multi-column method for separate income/expense.
         """
-        statement_properties = self.bank_detector.get_statement_properties()
+        statement_properties = self.statement_properties
         
         # Route based on input type
         if isinstance(amount_columns, pd.Series):
@@ -309,61 +210,59 @@ class TransactionTableNormalizer(TableNormalizer):
             balance_column = statement_properties['balance_column']
 
             return amount_columns.apply(lambda x: self.normalize_amount_for_multiple_columns(x, income_column, expense_column, balance_column), axis=1)
-        
-    def add_initial_balance(self, df_table: pd.DataFrame) -> pd.DataFrame:
+
+class DefaultTableNormalizer(TableNormalizer):
+    def add_initial_balance(self, reconstructed_table: pd.DataFrame, initial_balance: float) -> pd.DataFrame:
         """
         Adds initial balance row to the transaction table.
         Either marks existing balance entry or creates new initial balance record.
         """
-        statement_type = self.bank_detector.detect_statement_type()
+        statement_type = self.statement_properties['statement_type']
         
         # Skip initial balance for credit statements
         if statement_type == 'credit':
-            return df_table
+            return reconstructed_table
                 
-        statement_properties = self.bank_detector.get_statement_properties()
-        initial_balance_description = statement_properties['initial_balance_description']
+        initial_balance_description = self.statement_properties['initial_balance_description']
         
         # Try to find and mark existing initial balance entry
         if initial_balance_description is not None:
             normalized_target = initial_balance_description.strip().lower()
-            condition = df_table['Description'].str.strip().str.lower() == normalized_target
+            condition = reconstructed_table['Description'].str.strip().str.lower() == normalized_target
             
             if condition.any():
-                df_table.loc[condition, 'Type'] = 'Saldo Inicial'
-                return df_table
+                reconstructed_table.loc[condition, 'Type'] = 'Saldo Inicial'
+                return reconstructed_table
         
         # Create new initial balance entry if not found
-        initial_balance_amount = self.get_initial_balance()
-        first_date = df_table['Date'].min()
-        initial_balance = {'Date': first_date, 'Description': 'Saldo Inicial', 'Amount': initial_balance_amount, 'Type': 'Saldo Inicial'}
-        df_table = pd.concat([df_table, pd.DataFrame([initial_balance])], ignore_index=True)
+        first_date = reconstructed_table['Date'].min()
+        initial_balance_row = {'Date': first_date, 'Description': 'Saldo Inicial', 'Amount': initial_balance, 'Type': 'Saldo Inicial'}
+        reconstructed_table = pd.concat([reconstructed_table, pd.DataFrame([initial_balance_row])], ignore_index=True)
             
-        return df_table
+        return reconstructed_table
     
-    def normalize_table(self) -> pd.DataFrame:
+    def normalize_table(self, years: List[int], initial_balance: float) -> pd.DataFrame:
         """
         Main method that orchestrates the complete table normalization process.
         Normalizes dates and amounts, adds initial balance, and sorts by date.
         """
-        df_table = self.df_table
+        reconstructed_table = self.reconstructed_table
         df_normalized = pd.DataFrame()      
         
-        statement_properties = self.bank_detector.get_statement_properties()
-        amount_column = statement_properties['amount_column']
+        amount_column = self.statement_properties['amount_column']
         
         # Normalize each column type
-        df_normalized['Date'] = self.normalize_dates('Date')
-        df_normalized['Description'] = df_table['Description']
+        df_normalized['Date'] = self.date_normalizer.normalize_column(reconstructed_table['Date'], years)
+        df_normalized['Description'] = reconstructed_table['Description']
         
         # Handle single vs multiple amount columns
-        df_amount = self.normalize_amounts(df_table[amount_column]) if len(amount_column) > 1 else self.normalize_amounts(df_table[amount_column[0]])
+        df_amount = self.amount_normalizer.normalize_column(reconstructed_table[amount_column]) if len(amount_column) > 1 else self.amount_normalizer.normalize_column(reconstructed_table[amount_column[0]])
         
         df_normalized['Amount'] = df_amount['Amount']
         df_normalized['Type'] = df_amount['Type']
         
         # Convert dates and finalize
         df_normalized['Date'] = pd.to_datetime(df_normalized['Date'])
-        df_normalized = self.add_initial_balance(df_normalized)
+        df_normalized = self.add_initial_balance(df_normalized, initial_balance)
         
         return df_normalized.sort_values(by='Date')

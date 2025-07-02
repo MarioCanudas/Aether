@@ -1,11 +1,10 @@
-from core import BankDetector
-from typing import Literal
 import re
-import pandas as pd
+from functools import cache
+from typing import Literal
+from _core import DocumentAnalyzer
 from config import BANKS, BANKS_CODES
 from utils import search_phrase_in_df
-from functools import cache
-from .properties_catalog import (
+from .banks_properties import (
     AMEX_CREDIT_PROPERTIES,
     BANAMEX_CREDIT_PROPERTIES, BANAMEX_DEBIT_PROPERTIES, BANAMEX_NEW_CREDIT_FORMAT_PROPERTIES,
     BANORTE_CREDIT_PROPERTIES, BANORTE_DEBIT_PROPERTIES, BANORTE_NEW_CREDIT_FORMAT_PROPERTIES,
@@ -15,8 +14,8 @@ from .properties_catalog import (
     NU_CREDIT_PROPERTIES, NU_DEBIT_PROPERTIES,
     SANTANDER_CREDIT_PROPERTIES, SANTANDER_DEBIT_PROPERTIES,
 )
-
-class DefaultBankDetector(BankDetector):
+       
+class DefaultDocumentAnalyzer(DocumentAnalyzer):
     """
     A class that detects the bank metadata of a given document.
 
@@ -24,10 +23,6 @@ class DefaultBankDetector(BankDetector):
         document_reader (DocumentReader): A document reader object.
     """
     
-    @cache
-    def get_extracted_words(self) -> pd.DataFrame:
-        return self.document_reader.extract_words()
-
     def detect_bank_in_footer(self) -> Literal['amex', 'banorte', 'bbva', 'citibanamex', 'hsbc', 'inbursa', 'nu', 'santander']:
         """
         Detect the bank by analyzing the footer of the document.
@@ -35,8 +30,8 @@ class DefaultBankDetector(BankDetector):
         Returns:
             str: The detected bank name if found, otherwise raises a ValueError.
         """
-        df_extracted_words = self.get_extracted_words().copy() 
-        document_height = self.document_reader.get_height() # Get height to determine the footer threshold
+        df_extracted_words = self.reader.extract_words()
+        document_height = self.reader.get_height() # Get height to determine the footer threshold
         
         footer_percentage = 0.15
         footer_threshold = document_height * footer_percentage # Calculate the footer threshold using 15% of the document height
@@ -71,7 +66,7 @@ class DefaultBankDetector(BankDetector):
         Returns:
             str: The detected bank name if found, otherwise None.
         """
-        df_extracted_words = self.get_extracted_words().copy()
+        df_extracted_words = self.reader.extract_words()
     
         clabe_keyword = r'\bclabe\b'
         
@@ -128,7 +123,7 @@ class DefaultBankDetector(BankDetector):
         Returns:
             str: The detected statement type if found, otherwise 'debit'.
         """
-        df_extracted_words = self.get_extracted_words().copy()
+        df_extracted_words = self.reader.extract_words()
         credit_condition_phrase = ['límite', 'de', 'crédito']
 
         # Convert the text column to lowercase and remove colons
@@ -141,7 +136,26 @@ class DefaultBankDetector(BankDetector):
 
         # Otherwise, return 'debit'
         return 'debit'
-
+    
+    def detect_new_credit_format(self, statement_properties: dict) -> bool:
+        """
+        Detects if the statement is in the new credit format.
+        
+        Returns:
+            bool: True if the statement is in the new credit format, False otherwise.
+        """
+        if self.detect_statement_type() == 'debit':
+            return False
+        
+        extracted_words = self.reader.extract_words()
+        start_phrase = statement_properties['start_phrase']
+        end_phrase = statement_properties['end_phrase']
+        
+        start_phrase_found = search_phrase_in_df(extracted_words, start_phrase, type_return='bool')
+        end_phrase_found = search_phrase_in_df(extracted_words, end_phrase, type_return='bool')
+        
+        return start_phrase_found and end_phrase_found
+        
     @cache
     def get_statement_properties(self) -> dict:
         """
@@ -150,77 +164,75 @@ class DefaultBankDetector(BankDetector):
         Returns:
             dict: The statement properties for the given bank and statement type.
         """
-        new_credit_format = self.new_credit_format
-        
         bank = self.detect_bank()
         statement_type = self.detect_statement_type()
 
-        match (bank, statement_type, new_credit_format):
-            case ('amex', 'credit', False):
-                return AMEX_CREDIT_PROPERTIES
-            
-            case ('amex', 'credit', True):
-                return {}
+        match (bank, statement_type):
+            case ('amex', 'credit'):
+                if self.detect_new_credit_format(AMEX_CREDIT_PROPERTIES):
+                    return {} # TODO: Get new credit format properties
+                else:
+                    return AMEX_CREDIT_PROPERTIES
 
-            case ('banamex', 'debit', _):
+            case ('banamex', 'debit'):
                 return BANAMEX_DEBIT_PROPERTIES
 
-            case ('banamex', 'credit', False):
-                return BANAMEX_CREDIT_PROPERTIES
-            
-            case ('banamex', 'credit', True):
-                return BANAMEX_NEW_CREDIT_FORMAT_PROPERTIES
+            case ('banamex', 'credit'):
+                if self.detect_new_credit_format(BANAMEX_CREDIT_PROPERTIES):
+                    return BANAMEX_NEW_CREDIT_FORMAT_PROPERTIES
+                else:
+                    return BANAMEX_CREDIT_PROPERTIES
 
-            case ('banorte', 'debit', _):
+            case ('banorte', 'debit'):
                 return BANORTE_DEBIT_PROPERTIES
 
-            case ('banorte', 'credit', False):
-                return BANORTE_CREDIT_PROPERTIES
-            
-            case ('banorte', 'credit', True):
-                return BANORTE_NEW_CREDIT_FORMAT_PROPERTIES
+            case ('banorte', 'credit'):
+                if self.detect_new_credit_format(BANORTE_CREDIT_PROPERTIES):
+                    return BANAMEX_NEW_CREDIT_FORMAT_PROPERTIES
+                else:
+                    return BANORTE_CREDIT_PROPERTIES
 
-            case ('bbva', 'debit', _):
+            case ('bbva', 'debit'):
                 return BBVA_DEBIT_PROPERTIES
 
-            case ('bbva', 'credit', False):
-                return BBVA_CREDIT_PROPERTIES
-            
-            case ('bbva', 'credit', True):
-                return BBVA_NEW_CREDIT_FORMAT_PROPERTIES
+            case ('bbva', 'credit'):
+                if self.detect_new_credit_format(BBVA_CREDIT_PROPERTIES):
+                    return BBVA_NEW_CREDIT_FORMAT_PROPERTIES
+                else: 
+                    return BBVA_CREDIT_PROPERTIES
 
-            case ('hsbc', 'debit', _):
+            case ('hsbc', 'debit'):
                 return HSBC_DEBIT_PROPERTIES
 
-            case ('hsbc', 'credit', False):
-                return HSBC_CREDIT_PROPERTIES
-            
-            case ('hsbc', 'credit', True):
-                return {}
+            case ('hsbc', 'credit'):
+                if self.detect_new_credit_format(HSBC_CREDIT_PROPERTIES):
+                    return {} # TODO: Get new credit format properties
+                else:
+                    return HSBC_CREDIT_PROPERTIES
 
-            case ('inbursa', 'debit', _):
+            case ('inbursa', 'debit'):
                 return INBURSA_DEBIT_PROPERTIES
 
-            case ('inbursa', 'credit', False):
-                return INBURSA_CREDIT_PROPERTIES
-            
-            case ('inbursa', 'credit', True):
-                return {}
+            case ('inbursa', 'credit'):
+                if self.detect_new_credit_format(INBURSA_CREDIT_PROPERTIES):
+                    return {} # TODO: Get new credit format properties
+                else:
+                    return INBURSA_CREDIT_PROPERTIES
 
-            case ('nu', 'debit', _):
+            case ('nu', 'debit'):
                 return NU_DEBIT_PROPERTIES
 
-            case ('nu', 'credit', _):
+            case ('nu', 'credit'):
                 return NU_CREDIT_PROPERTIES
 
-            case ('santander', 'debit', _):
+            case ('santander', 'debit'):
                 return SANTANDER_DEBIT_PROPERTIES
 
-            case ('santander', 'credit', False):
-                return SANTANDER_CREDIT_PROPERTIES
-            
-            case ('santander', 'credit', True):
-                return {}
+            case ('santander', 'credit'):
+                if self.detect_new_credit_format(SANTANDER_CREDIT_PROPERTIES):
+                    return {} # TODO: Get new credit format properties
+                else:
+                    return SANTANDER_CREDIT_PROPERTIES
 
             case _ :
                 return None

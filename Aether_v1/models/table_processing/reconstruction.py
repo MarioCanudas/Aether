@@ -1,48 +1,19 @@
-from core import TableReconstructor
 import pandas as pd
 import numpy as np
 from sklearn.cluster import KMeans
-import re
 from functools import cache
-from typing import List, Tuple, Literal
+from typing import List, Tuple
+from _core import Reconstructor
+from utils import classify_words
 
-def is_amount(value: str) -> bool:
-    # Ignore the empty strings
-    if value == '':
-        return True
-    
-    amount_pattern = r'^[+-]?\$?[+-]?(0|[1-9]\d{0,2}(?:,\d{3})*)\.\d{2}[-+]?$'
-
-    return bool(re.match(amount_pattern, value.strip()))
-
-class TransactionTableReconstructor(TableReconstructor):
-    @staticmethod
-    def classify_words(date_pattern: str, text: str) -> Literal['date', 'amount', 'description']:
-        """
-        Classifies a word into a category based on its content, based on the date pattern and the amount pattern.
-        
-        Args:
-            date_pattern (str): The pattern to match dates.
-            text (str): The word to classify.
-            
-        Returns:
-            str: The category of the word.
-        """
-        if re.match(date_pattern, text):
-            return 'date'
-        elif is_amount(text):
-            return 'amount'
-        else:
-            return 'description'
-    
+class TableReconstructor(Reconstructor):
     def classify_columns(self) -> pd.DataFrame:
         # Get the grouped rows DataFrame to process each row of detected words
         df_structured = self.grouped_rows
         
         # Retrieve statement properties, including date and amount column patterns
-        statement_properties = self.bank_detector.get_statement_properties()
-        date_pattern = statement_properties['date_pattern']
-        amount_columns = statement_properties['amount_column']
+        date_pattern = self.statement_properties['date_pattern']
+        amount_columns = self.statement_properties['amount_column']
         
         reconstructed_table = []
         
@@ -56,7 +27,7 @@ class TransactionTableReconstructor(TableReconstructor):
             
             # For each word in the row, classify as date, amount, or description
             for text, x0, _ in row['words']:
-                classification = self.classify_words(date_pattern, text)
+                classification = classify_words(date_pattern, text)
                 
                 # Assign the word to the appropriate field based on its classification
                 if classification == 'date' and not current_row['Date']:
@@ -80,8 +51,8 @@ class TransactionTableReconstructor(TableReconstructor):
         # Return the reconstructed table as a DataFrame
         return pd.DataFrame(reconstructed_table) 
     
-    @cache
-    def get_amount_columns_centroids(self) -> np.array:
+    @staticmethod
+    def get_amount_columns_centroids(delimitation: dict, amount_columns: List[str]) -> np.array:
         """
         Get the centroids of the amount columns, based on the column delimitation of the amount columns.
         
@@ -91,14 +62,9 @@ class TransactionTableReconstructor(TableReconstructor):
             np.array: The centroids of the amount columns.
         """
         # Get the column delimitation information (column names and their x0, x1 positions)
-        delimitation = self.column_delimitation
         columns = delimitation['column']
         x0_list = delimitation['x0']
         x1_list = delimitation['x1']
-        
-        # Get the list of amount columns from the statement properties
-        statement_properties = self.bank_detector.get_statement_properties()
-        amount_columns = statement_properties['amount_column']
         
         centroids = []
         
@@ -138,29 +104,21 @@ class TransactionTableReconstructor(TableReconstructor):
         
         return all_x0, row_indices
     
-    @cache
-    def get_structured_table(self) -> pd.DataFrame:
+    @staticmethod
+    def cluster_amounts_columns(all_x0: List[float], column_centroids: np.array, amount_columns: List[str]) -> Tuple[np.array, dict]:
         """
-        Structures amounts into their respective columns using K-means clustering on x-coordinates.
-        For single amount column, maps directly. For multiple columns, clusters by position.
+        Clusters the amounts into their respective columns using K-means clustering on x-coordinates.
+        
+        Args:
+            all_x0 (List[float]): The x-coordinates of the amounts.
+            column_centroids (np.array): The centroids of the amount columns.
+            amount_columns (List[str]): The names of the amount columns.
+            
+        Returns:
+            Tuple[np.array, dict]: The clusters and the mapping of clusters to column names.
         """
-        classified_columns = self.classify_columns()
-        statement_properties = self.bank_detector.get_statement_properties()
-        amount_columns = statement_properties['amount_column']
         n_amount_columns = len(amount_columns)
         
-        # Simple case: single amount column
-        if n_amount_columns == 1:
-            amount_column = amount_columns[0]
-            classified_columns[amount_column] = classified_columns['Amount']
-            classified_columns = classified_columns.drop('Amount', axis=1)
-            return classified_columns
-        
-        # Complex case: multiple amount columns - use clustering        
-        column_centroids = self.get_amount_columns_centroids()
-        all_x0, row_indices = self.filter_amounts_by_alignment(classified_columns, column_centroids)
-        
-        # Cluster amount positions using K-means
         X = np.array(all_x0).reshape(-1, 1)
         kmeans = KMeans(n_clusters=n_amount_columns, init=column_centroids, n_init=1)
         clusters = kmeans.fit_predict(X)
@@ -169,6 +127,29 @@ class TransactionTableReconstructor(TableReconstructor):
         final_centroids = kmeans.cluster_centers_.flatten()
         sorted_cluster_indices = np.argsort(final_centroids)
         cluster_to_column = {sorted_cluster_indices[i]: amount_columns[i] for i in range(n_amount_columns)}
+        
+        return clusters, cluster_to_column
+        
+    @cache
+    def get_structured_table(self) -> pd.DataFrame:
+        """
+        Structures amounts into their respective columns using K-means clustering on x-coordinates.
+        For single amount column, maps directly. For multiple columns, clusters by position.
+        """
+        classified_columns = self.classify_columns()
+        amount_columns = self.statement_properties['amount_column']
+        n_amount_columns = len(amount_columns)
+        
+        # Simple case: single amount column
+        if n_amount_columns == 1:
+            amount_column = amount_columns[0]
+            
+            return classified_columns.rename(columns={'Amount': amount_column}, inplace=True)
+        
+        # Complex case: multiple amount columns - use clustering        
+        column_centroids = self.get_amount_columns_centroids(self.column_delimitation, amount_columns)
+        all_x0, row_indices = self.filter_amounts_by_alignment(classified_columns, column_centroids)
+        clusters, cluster_to_column = self.cluster_amounts_columns(all_x0, column_centroids, amount_columns)
         
         # Assign amounts to their respective columns
         result_df = classified_columns.copy()
@@ -193,9 +174,8 @@ class TransactionTableReconstructor(TableReconstructor):
         merged_rows = []
         current_row = None
         
-        statement_properties = self.bank_detector.get_statement_properties()
-        amount_columns = statement_properties['amount_column']
-        date_pattern = statement_properties['date_pattern']
+        amount_columns = self.statement_properties['amount_column']
+        date_pattern = self.statement_properties['date_pattern']
 
         # Merge rows that belong to the same transaction
         for _, row in df_structured.iterrows():

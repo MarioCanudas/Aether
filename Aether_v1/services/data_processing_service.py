@@ -2,34 +2,72 @@ import pandas as pd
 from io import BytesIO
 import os
 from typing import Literal
-from models import (
-    PDFReader, 
-    DefaultBankDetector, 
-    TransactionTableBoundaryDetector, 
-    TransactionRowSegmenter, 
-    TransactionTableReconstructor, 
-    TransactionTableNormalizer
-)
+from models import DocumentProcessingFacade, TableProcessingFacade, DataProcessingFacade
 
 class DataProcessingService:
+    """
+    The DataProcessingService class manages the main components required for processing bank statement PDFs. 
+    The following objects are initialized in the constructor:
+
+    - doc_processor: An instance of DocumentProcessingFacade, responsible for reading the PDF file, extracting words, 
+      and analyzing document-level properties such as bank type and statement metadata.
+
+    - table_processor: An instance of TableProcessingFacade, which uses the corrected extracted words and statement 
+      properties to detect table boundaries, segment columns and rows, and reconstruct the transaction table structure.
+
+    - data_processor: An instance of DataProcessingFacade, which takes the reconstructed table, corrected words, and 
+      statement properties to extract metadata (such as period and initial balance) and normalize the transaction data 
+      for further analysis.
+
+    These objects work together to transform a raw PDF bank statement into a structured and normalized DataFrame of transactions.
+    """
     def __init__(self):
-        self.bank_detector = None
-        self.boundary_detector = None
-        self.row_segmenter = None
-        self.reconstructor = None
-        self.normalizer = None
+        self.doc_processor = None
+        self.table_processor = None
+        self.data_processor = None
         
-    def get_bank_detector(self, temp_file: str | BytesIO) -> DefaultBankDetector:
+    def set_document_processor(self, file: str | BytesIO) -> None:
         """
-        Get the bank detector for a given PDF file.
+        Set the document processor for the data processing service.
 
         Args:
-            temp_file (str | BytesIO): The path to the PDF file or a BytesIO object.
-
-        Returns:
-            DefaultBankDetector: The bank detector for the given PDF file.
+            file (str | BytesIO): The path to the PDF file or a BytesIO object.
         """
-        return DefaultBankDetector(PDFReader(temp_file))
+        if isinstance(file, str) or isinstance(file, BytesIO):
+            self.doc_processor = DocumentProcessingFacade(file)
+        else:
+            raise ValueError("File must be a string or a BytesIO object")
+        
+    def set_table_processor(self, corrected_extracted_words: pd.DataFrame, statement_properties: dict) -> None: 
+        """
+        Set the table processor for the data processing service.
+
+        Args:
+            corrected_extracted_words (pd.DataFrame): The corrected extracted words.
+            statement_properties (dict): The statement properties.
+        """
+        if self.doc_processor is None:
+            raise ValueError("Document processor must be set before table processing")
+        elif corrected_extracted_words.empty or statement_properties is None:
+            raise ValueError("Corrected extracted words and statement properties must be set before table processing")
+        else:
+            self.table_processor = TableProcessingFacade(corrected_extracted_words, statement_properties)
+        
+    def set_data_processor(self, corrected_extracted_words: pd.DataFrame, reconstructed_table: pd.DataFrame, statement_properties: dict) -> None:
+        """
+        Set the data processor for the data processing service.
+
+        Args:
+            corrected_extracted_words (pd.DataFrame): The corrected extracted words.
+            reconstructed_table (pd.DataFrame): The reconstructed table.
+            statement_properties (dict): The statement properties.
+        """
+        if self.doc_processor is None or self.table_processor is None:
+            raise ValueError("Document and table processors must be set before data processing")
+        elif corrected_extracted_words.empty or reconstructed_table.empty or statement_properties is None:
+            raise ValueError("Corrected extracted words, reconstructed table, and statement properties must be set before data processing")
+        else:
+            self.data_processor = DataProcessingFacade(corrected_extracted_words, reconstructed_table, statement_properties)
         
     def get_transactions_from_pdf(self, temp_file: str | BytesIO) -> pd.DataFrame:
         """
@@ -41,30 +79,19 @@ class DataProcessingService:
         Returns:
             pd.DataFrame: A DataFrame containing the extracted transactions from the document.
         """
-        bank_detector = self.get_bank_detector(temp_file)
-        reader = bank_detector.document_reader
+        self.set_document_processor(temp_file)
         
-        boundary_detector = TransactionTableBoundaryDetector(bank_detector)
-        if boundary_detector.start_idx is None or boundary_detector.end_idx is None:
-            bank_detector = DefaultBankDetector(reader, new_credit_format=True)
-            boundary_detector = TransactionTableBoundaryDetector(bank_detector)
-        df_table = boundary_detector.get_filtered_table_words()
+        statement_properties = self.doc_processor.get_statement_properties()
+        corrected_extracted_words = self.doc_processor.get_corrected_extracted_words()
         
-        row_segmenter = TransactionRowSegmenter(df_table, bank_detector)
-        column_delimitation = row_segmenter.delimit_column_positions()
-        grouped_rows = row_segmenter.group_rows()
-
-        table_reconstructor = TransactionTableReconstructor(grouped_rows, column_delimitation, bank_detector)
-        df_structured = table_reconstructor.reconstruct_table()
-
-        table_normalizer = TransactionTableNormalizer(df_structured, bank_detector)
-        df_transactions = table_normalizer.normalize_table()
+        self.set_table_processor(corrected_extracted_words, statement_properties)
+        reconstructed_table = self.table_processor.reconstruct_table()
         
-        bank_name = bank_detector.detect_bank()
-        statement_type = bank_detector.detect_statement_type()
+        self.set_data_processor(corrected_extracted_words, reconstructed_table, statement_properties)
+        df_transactions = self.data_processor.get_normalized_table()
         
-        df_transactions['bank'] = bank_name
-        df_transactions['statement_type'] = statement_type
+        df_transactions['bank'] = statement_properties['bank']
+        df_transactions['statement_type'] = statement_properties['statement_type']
         
         return df_transactions
     
@@ -92,7 +119,8 @@ class DataProcessingService:
 
         return df_transactions
     
-    def combine_transactions(self, all_transactions: list[pd.DataFrame]) -> pd.DataFrame:
+    @staticmethod
+    def combine_transactions(all_transactions: list[pd.DataFrame]) -> pd.DataFrame:
         """
         Combine a list of DataFrames containing transactions into a single DataFrame.
 
@@ -109,8 +137,9 @@ class DataProcessingService:
             return df.sort_values(by='Date', ascending=True)
         else:
             return pd.DataFrame()
-        
-    def delete_double_transactions(self, data: pd.DataFrame) -> pd.DataFrame:
+    
+    @staticmethod
+    def delete_double_transactions(data: pd.DataFrame) -> pd.DataFrame:
         """
         Removes duplicate transactions from a financial dataset, specifically targeting credit card payments
         (abonos) and their corresponding debit transactions (cargos) to avoid double-counting.
@@ -163,7 +192,8 @@ class DataProcessingService:
 
         return data_cleaned.drop(indices_to_remove)
 
-    def calculate_savings_and_validate_balances(self, data: pd.DataFrame) -> pd.DataFrame:
+    @staticmethod
+    def calculate_savings_and_validate_balances(data: pd.DataFrame) -> pd.DataFrame:
         """
         Calculates monthly savings and validates balances by ensuring the running total matches the provided balances.
 
@@ -228,7 +258,8 @@ class DataProcessingService:
         results_df = pd.DataFrame(results)
         return results_df
     
-    def process_daily_data_by_category(self, data: pd.DataFrame, category: Literal['Abono', 'Cargo']) -> pd.Series:
+    @staticmethod
+    def process_daily_data_by_category(data: pd.DataFrame, category: Literal['Abono', 'Cargo']) -> pd.Series:
         """
         Process daily data by calculating the average income and expenses per day.
 

@@ -13,7 +13,8 @@ class FinancialAnalysisService:
     def get_avg_withdrawal_per_month(self) -> float:
         return self.all_monthly_results['total_withdrawal'].mean()
         
-    def get_financial_tips(self, label):
+    @staticmethod
+    def get_financial_tips(label: str) -> list[str]:
         """
         Returns financial tips based on the given financial health label.
 

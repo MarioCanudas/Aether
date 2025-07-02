@@ -2,7 +2,8 @@ import matplotlib.pyplot as plt
 from pandas import DataFrame, Series
 
 class PlottingService:
-    def get_savings_donut_chart_config(self, total_savings, avg_income_per_month):
+    @staticmethod
+    def get_savings_donut_chart_config(total_savings: float, avg_income_per_month: float) -> dict:
         if total_savings >= 0.10 * avg_income_per_month:
             return {'completion_percentage': 100, 'label': "Excellent!", "color": '#1E90FF', "points": '100 pts'}
         elif 0 <= total_savings < 0.10 * avg_income_per_month:
@@ -12,7 +13,7 @@ class PlottingService:
         else:
             return {'completion_percentage': 25, 'label': "Poor", "color": '#F44336', "points": '25 pts'}
             
-    def get_plot_savings_donut_chart(self, total_savings, avg_income_per_month):
+    def get_plot_savings_donut_chart(self, total_savings: float, avg_income_per_month: float) -> plt.figure:
         """
         Plots a donut chart based on the savings compared to the average income.
 
@@ -43,7 +44,8 @@ class PlottingService:
 
         return fig, label
     
-    def bar_chart_monthly_total_expenses(self, monthly_results: DataFrame):
+    @staticmethod
+    def bar_chart_monthly_total_expenses(monthly_results: DataFrame) -> plt.figure:
         expenses_bar_chart, ax_expenses = plt.subplots()
 
         # Plot the data
@@ -58,7 +60,8 @@ class PlottingService:
         
         return expenses_bar_chart
     
-    def bar_chart_monthly_total_income(self, monthly_results: DataFrame):
+    @staticmethod
+    def bar_chart_monthly_total_income(monthly_results: DataFrame) -> plt.figure:
         income_bar_chart, ax_income = plt.subplots()
 
         # Plot the data
@@ -73,7 +76,8 @@ class PlottingService:
 
         return income_bar_chart
     
-    def bar_chart_daily_total_expenses(self, avg_expenses_per_day: Series) -> plt.figure:
+    @staticmethod
+    def bar_chart_daily_total_expenses(avg_expenses_per_day: Series) -> plt.figure:
         expenses_bar_chart, ax_avg_expenses_per_day = plt.subplots()
         ax_avg_expenses_per_day.bar(avg_expenses_per_day.index, avg_expenses_per_day, color='red')
 
@@ -87,7 +91,8 @@ class PlottingService:
 
         return expenses_bar_chart
     
-    def bar_chart_daily_total_income(self, avg_income_per_day: Series) -> plt.figure:
+    @staticmethod
+    def bar_chart_daily_total_income(avg_income_per_day: Series) -> plt.figure:
         income_bar_chart, ax_avg_income_per_day = plt.subplots()
         ax_avg_income_per_day.bar(avg_income_per_day.index, avg_income_per_day, color='green')
 

@@ -3,6 +3,11 @@ from config import MONTH_PATTERNS_SPA, NUMERIC_MONTH_PATTERNS
 inverted_numeric_month_patterns = {v:k for k,v in NUMERIC_MONTH_PATTERNS.items()}
 
 AMEX_CREDIT_PROPERTIES = {
+    # Bank properties
+    'bank' : 'amex',
+    'statement_type' : 'credit',
+    'new_format' : False,
+    
     # Phrase properties
     'start_phrase' : [],
     'end_phrase' : [],
@@ -30,6 +35,11 @@ AMEX_CREDIT_PROPERTIES = {
 }
 
 BANORTE_DEBIT_PROPERTIES = {
+    # Bank properties
+    'bank' : 'banorte',
+    'statement_type' : 'debit',
+    'new_format' : None,
+    
     # Phrase properties
     'start_phrase' : ['detalle', 'de', 'movimientos', '(pesos)▼'],
     'end_phrase' : ['inversión', 'enlace', 'personal'],
@@ -59,7 +69,12 @@ BANORTE_DEBIT_PROPERTIES = {
     
 }
 
-BANORTE_CREDIT_PROPERTIES = {
+BANORTE_CREDIT_PROPERTIES = {   
+    # Bank properties
+    'bank' : 'banorte',
+    'statement_type' : 'credit',
+    'new_format' : False,
+    
     # Phrase properties
     'start_phrase' : ['detalle', 'de', 'movimientos', 'del' ,'titular',  'en', 'm.n.'],
     'end_phrase' : ['si', 'solo', 'realizas', 'el', 'pago', 'mínimo'],
@@ -88,6 +103,11 @@ BANORTE_CREDIT_PROPERTIES = {
 }
 
 BANORTE_NEW_CREDIT_FORMAT_PROPERTIES = {
+    # Bank properties
+    'bank' : 'banorte',
+    'statement_type' : 'credit',
+    'new_format' : True,
+    
     # Phrase properties
     'start_phrase' : ['cargos,', 'abonos', 'y', 'compras', 'regulares'],
     'end_phrase' : ['total', 'cargos'],
@@ -116,6 +136,11 @@ BANORTE_NEW_CREDIT_FORMAT_PROPERTIES = {
 }
 
 BBVA_DEBIT_PROPERTIES = {
+    # Bank properties
+    'bank' : 'bbva',
+    'statement_type' : 'debit',
+    'new_format' : None,
+    
     # Phrase properties
     'start_phrase' : ["detalle", "de", "movimientos", "realizados"],
     'end_phrase' : ["le", "informamos", "que", "puede"],
@@ -146,6 +171,11 @@ BBVA_DEBIT_PROPERTIES = {
 }
 
 BBVA_CREDIT_PROPERTIES = {
+    # Bank properties
+    'bank' : 'bbva',
+    'statement_type' : 'credit',
+    'new_format' : False,
+    
     # Phrase properties
     'start_phrase' : ['movimientos', 'efectuados'],
     'end_phrase' : ['resumen', 'informativo', 'de', 'beneficios'],
@@ -174,6 +204,11 @@ BBVA_CREDIT_PROPERTIES = {
 }
 
 BBVA_NEW_CREDIT_FORMAT_PROPERTIES = {
+    # Bank properties
+    'bank' : 'bbva',
+    'statement_type' : 'credit',
+    'new_format' : True,
+    
     # Phrase properties
     'start_phrase' : ['cargos,compras', 'y', 'abonos'],
     'end_phrase' : ['total', 'cargos'],
@@ -206,6 +241,11 @@ BANAMEX_DEBIT_PROPERTIES = {
 }
 
 BANAMEX_CREDIT_PROPERTIES = {
+    # Bank properties
+    'bank' : 'banamex',
+    'statement_type' : 'credit',
+    'new_format' : False,
+    
     # Phrase properties
     'start_phrase' : ['detalle', 'de', 'operaciones'],
     'end_phrase' : ['mensualidad*', 'aplica', 'para', 'compras', 'a', 'plazos.'],
@@ -234,6 +274,11 @@ BANAMEX_CREDIT_PROPERTIES = {
 }
 
 BANAMEX_NEW_CREDIT_FORMAT_PROPERTIES = {
+    # Bank properties
+    'bank' : 'banamex',
+    'statement_type' : 'credit',
+    'new_format' : True,
+    
     # Phrase properties
     'start_phrase' : ['cargos,', 'abonos', 'y', 'compras', 'regulares'],
     'end_phrase' : ['total', 'cargos'],
@@ -266,6 +311,11 @@ HSBC_DEBIT_PROPERTIES = {
 }
 
 HSBC_CREDIT_PROPERTIES = {
+    # Bank properties
+    'bank' : 'hsbc',
+    'statement_type' : 'credit',
+    'new_format' : False,
+    
     # Phrase properties
     'start_phrase' : ['detalle', 'de', 'movimientos'],
     'end_phrase' : ['información', "spei´s", 'recibidos'],
@@ -294,6 +344,11 @@ HSBC_CREDIT_PROPERTIES = {
 }
 
 INBURSA_DEBIT_PROPERTIES = {
+    # Bank properties
+    'bank' : 'inbursa',
+    'statement_type' : 'debit',
+    'new_format' : None,
+    
     # Phrase properties
     'start_phrase' : ['detalle', 'de', 'movimientos'],
     'end_phrase' : ['movimientos', 'por', 'aclaracion'],
@@ -324,6 +379,11 @@ INBURSA_DEBIT_PROPERTIES = {
 }
 
 INBURSA_CREDIT_PROPERTIES = {
+    # Bank properties
+    'bank' : 'inbursa',
+    'statement_type' : 'credit',
+    'new_format' : False,
+    
     # Phrase properties
     'start_phrase' : ['movimientos', 'del', 'periodo'],
     'end_phrase' : ['resumen', 'de', 'promociones', 'a', 'meses', 'sin', 'interes'],
@@ -351,7 +411,12 @@ INBURSA_CREDIT_PROPERTIES = {
 
 }
 
-NU_DEBIT_PROPERTIES = {
+NU_DEBIT_PROPERTIES = { 
+    # Bank properties
+    'bank' : 'nu',
+    'statement_type' : 'debit',
+    'new_format' : None,
+    
     # Phrase properties
     'start_phrase' : ['detalle', 'de', 'movimientos', 'en', 'tu', 'cuenta'],
     'end_phrase' : ['con', 'estos', 'movimientos,'],
@@ -386,6 +451,11 @@ NU_DEBIT_PROPERTIES = {
 }
 
 NU_CREDIT_PROPERTIES = {
+    # Bank properties
+    'bank' : 'nu',
+    'statement_type' : 'credit',
+    'new_format' : False,
+    
     # Phrase properties
     'start_phrase' : ['transacciones'],
     'end_phrase' : ['saldo', 'final', 'del', 'periodo'],

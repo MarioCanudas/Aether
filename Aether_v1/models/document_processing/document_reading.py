@@ -2,9 +2,9 @@ import pdfplumber
 import pandas as pd
 from io import BytesIO
 import re
-from core import DocumentReader
+from functools import cache
 
-class PDFReader(DocumentReader):
+class PDFReader:
     """
     A class that reads a PDF file and can return file metadata and extracted words.
     This class is a wrapper around the pdfplumber library.
@@ -12,6 +12,8 @@ class PDFReader(DocumentReader):
     Args:
         file (str | BytesIO): The path to the PDF file or a BytesIO object.
     """
+    def __init__(self, file: str | BytesIO):
+        self.file = file
     
     def _is_bytes_io(self) -> bool:
         """
@@ -32,7 +34,7 @@ class PDFReader(DocumentReader):
         pdf_pattern = r'.*\.pdf$'
         return bool(re.match(pdf_pattern, self.file))
     
-    def get_valid_file(self) -> BytesIO | str:
+    def get_valid_file(self) -> str | BytesIO:
         """
         Validate the file and return a BytesIO object or a path.
 
@@ -73,7 +75,21 @@ class PDFReader(DocumentReader):
         with pdfplumber.open(file) as pdf:
             return pdf.pages[0].width
     
+    @cache
     def extract_words(self) -> pd.DataFrame:
+        """
+        Extract words from the PDF using pdfplumber.
+
+        Returns:
+            pd.DataFrame: A DataFrame with the following columns:
+
+            - page: The page number of the word.
+            - text: The text of the word.
+            - x0: The left coordinate of the word.
+            - top: The top coordinate of the word.
+            - x1: The right coordinate of the word.
+            - bottom: The bottom coordinate of the word.
+        """
         extracted_words = []
         
         file = self.get_valid_file()

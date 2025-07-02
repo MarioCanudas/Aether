@@ -1,19 +1,12 @@
-from core import RowSegmenter
 import pandas as pd
-from functools import cached_property
+from _core import ColumnSegmenter, RowSegmenter
 
-class TransactionRowSegmenter(RowSegmenter):
-    @cached_property
-    def sorted_df(self) -> pd.DataFrame:
-        df_table = self.df_table
-        
-        return df_table.sort_values(by=["page", "top"]).reset_index(drop=True)
-    
+class DefaultColumnSegmenter(ColumnSegmenter):
     def delimit_column_positions(self) -> dict:
-        rows = self.sorted_df.to_dict(orient='records') # Convert the DataFrame to a list of dictionaries
+        filtered_words = self.filtered_table_words
         
-        statement_properties = self.bank_detector.get_statement_properties()
-        columns = statement_properties['columns']
+        rows = filtered_words.to_dict(orient='records') # Convert the DataFrame to a list of dictionaries
+        columns = self.statement_properties['columns']
         
         # Initialize a dictionary to store the column positions
         delimitations = {
@@ -66,9 +59,11 @@ class TransactionRowSegmenter(RowSegmenter):
                     
         return delimitations
     
-    @cached_property
-    def row_threshold(self) -> float:
-        top_diffs = self.sorted_df.groupby("page")["top"].diff()
+class DefaultRowSegmenter(RowSegmenter):
+    def get_row_threshold(self) -> float:
+        filtered_words = self.filtered_table_words
+        
+        top_diffs = filtered_words.groupby("page")["top"].diff()
         positive_diffs = top_diffs[top_diffs > 0].dropna()
 
         q1 = positive_diffs.quantile(0.25)
@@ -86,14 +81,14 @@ class TransactionRowSegmenter(RowSegmenter):
         return min(max(filtered_diffs.median(), min_threshold), max_threshold)
     
     def group_rows(self) -> pd.DataFrame:
-        sorted_df = self.sorted_df.copy()
-        row_threshold = self.row_threshold
+        filtered_words = self.filtered_table_words
+        row_threshold = self.get_row_threshold()    
         
-        sorted_df["row_group"] = (sorted_df["top"].diff().abs() > row_threshold).cumsum()
+        filtered_words["row_group"] = (filtered_words["top"].diff().abs() > row_threshold).cumsum()
         
-        sorted_df["words"] = sorted_df.apply(lambda row: (row['text'], row['x0'], row['x1']), axis=1)
+        filtered_words["words"] = filtered_words.apply(lambda row: (row['text'], row['x0'], row['x1']), axis=1)
         
-        grouped_rows = sorted_df.groupby("row_group").agg({
+        grouped_rows = filtered_words.groupby("row_group").agg({
             "text": lambda x: " ".join(x),  # Concatenate all words in row
             "words": lambda x: list(x),  # Keep all words in row as a list
             "top": "min",  # Top position of row
@@ -102,3 +97,4 @@ class TransactionRowSegmenter(RowSegmenter):
         }).reset_index()
         
         return grouped_rows
+    
