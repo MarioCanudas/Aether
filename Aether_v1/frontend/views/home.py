@@ -6,16 +6,11 @@ controller = TransactionProcessorController()
 def show_home():
     # Set the title
     st.title('Quick Financial Analysis')
-    
-    # Disable adding cash transaction pop up, because it's not implemented properly yet
-    # adding_cash_transaction()
 
     controller.initialize_session_state()
 
     # File uploader
     uploaded_files = st.file_uploader("Please upload your Bank Statement PDF files", accept_multiple_files=True, type="pdf")
-    if st.button('Add cash transaction', type= 'primary', disabled=True):
-        st.rerun()
 
     if uploaded_files:
 

@@ -31,7 +31,7 @@ PAGES = {
 # -- Sidebar configuration --
 with st.sidebar:
     # Disable adding cash transaction button, because it's not implemented properly yet
-    if st.button('Add cash transaction', type= 'primary', disabled=True):
+    if st.button('Add cash transaction', type= 'primary'):
         adding_cash_transaction()
         
 page = st.navigation(PAGES)
