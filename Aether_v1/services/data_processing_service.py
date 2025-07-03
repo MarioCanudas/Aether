@@ -130,7 +130,8 @@ class DataProcessingService:
         if all_transactions:
             
             for df in all_transactions:
-                df['Date'] = pd.to_datetime(df['Date'])
+                if 'Date' in df.columns:
+                    df['Date'] = pd.to_datetime(df['Date'])
             
             df = pd.concat(all_transactions, ignore_index=True)
             return df.sort_values(by='Date', ascending=True)
