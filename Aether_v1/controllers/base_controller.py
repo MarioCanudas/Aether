@@ -2,6 +2,7 @@ from abc import ABC
 from services import ConnectionManagementService
 from typing import Generator
 from contextlib import contextmanager
+from services.database_service import DatabaseService
 
 class BaseController(ABC):
     """
@@ -13,7 +14,7 @@ class BaseController(ABC):
         self.connection_manager = ConnectionManagementService()
     
     @contextmanager
-    def session_scope(self):
+    def session_scope(self) -> Generator[DatabaseService, None, None]:
         """
         Context manager for user-interactive operations.
         Use this scope for operations that require a persistent connection
@@ -23,7 +24,7 @@ class BaseController(ABC):
             yield db_service
     
     @contextmanager 
-    def batch_scope(self):
+    def batch_scope(self) -> Generator[DatabaseService, None, None]:
         """
         Context manager for batch processing operations.
         Use this scope for high-volume or intensive tasks such as
@@ -33,7 +34,7 @@ class BaseController(ABC):
             yield db_service
     
     @contextmanager
-    def quick_read_scope(self):
+    def quick_read_scope(self) -> Generator[DatabaseService, None, None]:
         """
         Context manager for fast, read-only operations.
         Use this scope for quick lookups, validations, or dashboard refreshes
