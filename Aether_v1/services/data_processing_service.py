@@ -69,7 +69,7 @@ class DataProcessingService:
         else:
             self.data_processor = DataProcessingFacade(corrected_extracted_words, reconstructed_table, statement_properties)
         
-    def get_transactions_from_pdf(self, temp_file: str | BytesIO) -> pd.DataFrame:
+    def get_transactions_from_pdf(self, file: str | BytesIO) -> pd.DataFrame:
         """
         Extract transactions from a PDF document.
 
@@ -79,7 +79,7 @@ class DataProcessingService:
         Returns:
             pd.DataFrame: A DataFrame containing the extracted transactions from the document.
         """
-        self.set_document_processor(temp_file)
+        self.set_document_processor(file)
         
         statement_properties = self.doc_processor.get_statement_properties()
         corrected_extracted_words = self.doc_processor.get_corrected_extracted_words()
@@ -92,31 +92,8 @@ class DataProcessingService:
         
         df_transactions['bank'] = statement_properties['bank']
         df_transactions['statement_type'] = statement_properties['statement_type']
+        df_transactions['filename'] = file.name if isinstance(file, BytesIO) else file
         
-        return df_transactions
-    
-    def process_uploaded_file(self, uploaded_file: BytesIO, all_transactions: list[pd.DataFrame]) -> pd.DataFrame:
-        """
-        Process an uploaded file and return a DataFrame containing the extracted transactions.
-
-        Args:
-            uploaded_file (BytesIO): The uploaded file to process.
-            all_transactions (list[pd.DataFrame]): A list of DataFrames containing all previously processed transactions.
-        """
-        # Check if file was already processed (using name as identifier)
-        if any(uploaded_file.name == df['filename'].iloc[0] for df in all_transactions if not df.empty):
-            return pd.DataFrame()
-        # Save uploaded file to a temporary path for processing
-        temp_file_path = os.path.join("frontend", f"temp_uploaded_{uploaded_file.name}")
-        with open(temp_file_path, "wb") as f:
-            f.write(uploaded_file.getbuffer())
-
-        df_transactions = self.get_transactions_from_pdf(temp_file_path)
-        df_transactions['filename'] = uploaded_file.name
-        
-        if os.path.exists(temp_file_path):
-            os.remove(temp_file_path)
-
         return df_transactions
     
     @staticmethod

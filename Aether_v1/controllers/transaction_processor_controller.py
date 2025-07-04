@@ -24,7 +24,14 @@ class TransactionProcessorController(BaseController):
             session_state.all_monthly_results = DataFrame()
      
     def process_uploaded_file(self, uploaded_file: BytesIO) -> DataFrame:
-        return self.data_processing_service.process_uploaded_file(uploaded_file, session_state.all_transactions)
+        # Check if file was already processed (using name as identifier)
+        if any(uploaded_file.name == df['filename'].iloc[0] for df in session_state.all_transactions if not df.empty):
+            return DataFrame()
+
+        # Process BytesIO object
+        df_transactions = self.data_processing_service.get_transactions_from_pdf(uploaded_file)
+        
+        return df_transactions
     
     def append_transactions(self, transactions: DataFrame) -> None:
         session_state.all_transactions.append(transactions)
