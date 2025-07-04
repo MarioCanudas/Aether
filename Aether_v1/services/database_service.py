@@ -7,14 +7,6 @@ import re
 from contextlib import contextmanager
 from config import DATABASE_FILE
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(),  # Display in console
-    ]
-)
-
 logger = logging.getLogger(__name__)
 
 class DatabaseService:

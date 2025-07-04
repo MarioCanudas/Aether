@@ -1,8 +1,11 @@
 from pandas import DataFrame
 from io import BytesIO
+import logging
 from streamlit import session_state
 from services import DataProcessingService, FinancialAnalysisService, PlottingService
 from .base_controller import BaseController
+
+logger = logging.getLogger(__name__)
 
 class TransactionProcessorController(BaseController):   
     def __init__(self):
@@ -30,6 +33,8 @@ class TransactionProcessorController(BaseController):
 
         # Process BytesIO object
         df_transactions = self.data_processing_service.get_transactions_from_pdf(uploaded_file)
+        
+        logger.info(f"Processed file: {uploaded_file.name}")
         
         return df_transactions
     

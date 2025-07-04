@@ -1,5 +1,14 @@
 import sys
 import os
+import logging
+
+logging.basicConfig(
+    level=logging.INFO, # Set the logging level to INFO
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(),  # Display in console
+    ]
+)
 
 # Add the project root directory (aether_v1) to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
