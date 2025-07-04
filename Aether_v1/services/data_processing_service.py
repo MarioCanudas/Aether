@@ -21,12 +21,8 @@ class DataProcessingService:
 
     These objects work together to transform a raw PDF bank statement into a structured and normalized DataFrame of transactions.
     """
-    def __init__(self):
-        self.doc_processor = None
-        self.table_processor = None
-        self.data_processor = None
-        
-    def set_document_processor(self, file: str | BytesIO) -> None:
+    @staticmethod
+    def set_document_processor(file: str | BytesIO) -> DocumentProcessingFacade:
         """
         Set the document processor for the data processing service.
 
@@ -34,11 +30,12 @@ class DataProcessingService:
             file (str | BytesIO): The path to the PDF file or a BytesIO object.
         """
         if isinstance(file, str) or isinstance(file, BytesIO):
-            self.doc_processor = DocumentProcessingFacade(file)
+            return DocumentProcessingFacade(file)
         else:
             raise ValueError("File must be a string or a BytesIO object")
         
-    def set_table_processor(self, corrected_extracted_words: pd.DataFrame, statement_properties: dict) -> None: 
+    @staticmethod
+    def set_table_processor(corrected_extracted_words: pd.DataFrame, statement_properties: dict) -> TableProcessingFacade: 
         """
         Set the table processor for the data processing service.
 
@@ -46,14 +43,13 @@ class DataProcessingService:
             corrected_extracted_words (pd.DataFrame): The corrected extracted words.
             statement_properties (dict): The statement properties.
         """
-        if self.doc_processor is None:
-            raise ValueError("Document processor must be set before table processing")
-        elif corrected_extracted_words.empty or statement_properties is None:
-            raise ValueError("Corrected extracted words and statement properties must be set before table processing")
+        if not corrected_extracted_words.empty and statement_properties is not None:
+            return TableProcessingFacade(corrected_extracted_words, statement_properties)
         else:
-            self.table_processor = TableProcessingFacade(corrected_extracted_words, statement_properties)
+            raise ValueError("Corrected extracted words and statement properties must be set before table processing")
         
-    def set_data_processor(self, corrected_extracted_words: pd.DataFrame, reconstructed_table: pd.DataFrame, statement_properties: dict) -> None:
+    @staticmethod
+    def set_data_processor(corrected_extracted_words: pd.DataFrame, reconstructed_table: pd.DataFrame, statement_properties: dict) -> DataProcessingFacade:
         """
         Set the data processor for the data processing service.
 
@@ -62,12 +58,10 @@ class DataProcessingService:
             reconstructed_table (pd.DataFrame): The reconstructed table.
             statement_properties (dict): The statement properties.
         """
-        if self.doc_processor is None or self.table_processor is None:
-            raise ValueError("Document and table processors must be set before data processing")
-        elif corrected_extracted_words.empty or reconstructed_table.empty or statement_properties is None:
-            raise ValueError("Corrected extracted words, reconstructed table, and statement properties must be set before data processing")
+        if not corrected_extracted_words.empty and not reconstructed_table.empty and statement_properties is not None:
+            return DataProcessingFacade(corrected_extracted_words, reconstructed_table, statement_properties)
         else:
-            self.data_processor = DataProcessingFacade(corrected_extracted_words, reconstructed_table, statement_properties)
+            raise ValueError("Corrected extracted words, reconstructed table, and statement properties must be set before data processing")
         
     def get_transactions_from_pdf(self, file: str | BytesIO) -> pd.DataFrame:
         """
@@ -79,16 +73,16 @@ class DataProcessingService:
         Returns:
             pd.DataFrame: A DataFrame containing the extracted transactions from the document.
         """
-        self.set_document_processor(file)
+        doc_processor =self.set_document_processor(file)
         
-        statement_properties = self.doc_processor.get_statement_properties()
-        corrected_extracted_words = self.doc_processor.get_corrected_extracted_words()
+        statement_properties = doc_processor.get_statement_properties()
+        corrected_extracted_words = doc_processor.get_corrected_extracted_words()
         
-        self.set_table_processor(corrected_extracted_words, statement_properties)
-        reconstructed_table = self.table_processor.reconstruct_table()
+        table_processor = self.set_table_processor(corrected_extracted_words, statement_properties)
+        reconstructed_table = table_processor.reconstruct_table()
         
-        self.set_data_processor(corrected_extracted_words, reconstructed_table, statement_properties)
-        df_transactions = self.data_processor.get_normalized_table()
+        data_processor = self.set_data_processor(corrected_extracted_words, reconstructed_table, statement_properties)
+        df_transactions = data_processor.get_normalized_table()
         
         df_transactions['bank'] = statement_properties['bank']
         df_transactions['statement_type'] = statement_properties['statement_type']
