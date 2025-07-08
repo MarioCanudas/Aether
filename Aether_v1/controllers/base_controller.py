@@ -2,7 +2,7 @@ from abc import ABC
 from services import ConnectionManagementService
 from typing import Generator
 from contextlib import contextmanager
-from services.database_service import DatabaseService
+from services import DatabaseService, UserSessionService
 
 class BaseController(ABC):
     """
@@ -12,6 +12,7 @@ class BaseController(ABC):
     
     def __init__(self):
         self.connection_manager = ConnectionManagementService()
+        self.user_session_service = UserSessionService()
     
     @contextmanager
     def session_scope(self) -> Generator[DatabaseService, None, None]:
