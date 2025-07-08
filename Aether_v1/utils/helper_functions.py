@@ -1,6 +1,7 @@
 from typing import List, Literal
 import re
 import pandas as pd
+from functools import wraps
 
 def get_min_month(months: List[str]) -> str:
     """
@@ -135,3 +136,21 @@ def clean_amount(amount: str) -> str:
         str: The cleaned amount string.
     """
     return amount.replace(',', '').replace('$', '').replace('+', '').replace('-','')
+
+def cache_by_transactions(func):
+    """
+    Caches a function by the variable transactions.
+    """
+    cache = {}
+    
+    @wraps(func)
+    def wrapper(self, db_service, transactions):
+        # Crear clave de cache solo con transactions
+        cache_key = str(hash(pd.util.hash_pandas_object(transactions).sum()))
+        
+        if cache_key not in cache:
+            cache[cache_key] = func(self, db_service, transactions)
+        
+        return cache[cache_key]
+    
+    return wrapper

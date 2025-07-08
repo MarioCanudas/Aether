@@ -22,38 +22,38 @@ class TableReconstructor(Reconstructor):
         for _, row in df_structured.iterrows():
             # Initialize the row structure depending on the number of amount columns
             if len(amount_columns) > 1:
-                current_row = {'Date': None, 'Description': '', 'Amount': []}
+                current_row = {'date': None, 'description': '', 'amount': []}
             else:
-                current_row = {'Date': None, 'Description': '', 'Amount': None}
+                current_row = {'date': None, 'description': '', 'amount': None}
             
             # For each word in the row, classify as date, amount, or description
             for text, x0, _ in row['words']:
                 classification = classify_words(date_pattern, text)
                 
                 # Assign the word to the appropriate field based on its classification
-                if classification == 'date' and not current_row['Date']:
-                    current_row['Date'] = text
+                if classification == 'date' and not current_row['date']:
+                    current_row['date'] = text
                 elif classification == 'amount':
                     if len(amount_columns) > 1:
                         # For multiple amount columns, store both value and position
-                        current_row['Amount'].append((text, x0))
+                        current_row['amount'].append((text, x0))
                     else:
                         # For a single amount column, just store the value
-                        current_row['Amount'] = text
+                        current_row['amount'] = text
                 elif classification == 'description':
                     # Concatenate description words
-                    current_row['Description'] += text + " "
+                    current_row['description'] += text + " "
             
             # If no amount was found, set to None for consistency
-            if not current_row['Amount']:
-                current_row['Amount'] = None
+            if not current_row['amount']:
+                current_row['amount'] = None
             reconstructed_table.append(current_row)
         
         # Return the reconstructed table as a DataFrame
         if reconstructed_table:
             return pd.DataFrame(reconstructed_table) 
         else:
-            return pd.DataFrame(columns=['Date', 'Description', 'Amount'])
+            return pd.DataFrame(columns=['date', 'description', 'amount'])
     
     @staticmethod
     def get_amount_columns_centroids(delimitation: dict, amount_columns: List[str]) -> np.array:
@@ -94,8 +94,8 @@ class TableReconstructor(Reconstructor):
         
         # Check each row for amounts that align with column centroids
         for i, row in classified_columns.iterrows():
-            if row['Amount'] and isinstance(row['Amount'], list):
-                for amount, x0 in row['Amount']:
+            if row['amount'] and isinstance(row['amount'], list):
+                for amount, x0 in row['amount']:
                     # Check if amount position is within tolerance of any column centroid
                     is_near_column = any(
                         abs(x0 - centroid[0]) <= tolerance 
@@ -148,7 +148,7 @@ class TableReconstructor(Reconstructor):
         if n_amount_columns == 1:
             amount_column = amount_columns[0]
             
-            return classified_columns.rename(columns={'Amount': amount_column})
+            return classified_columns.rename(columns={'amount': amount_column})
         
         # Complex case: multiple amount columns - use clustering        
         column_centroids = self.get_amount_columns_centroids(self.column_delimitation, amount_columns)
@@ -166,7 +166,7 @@ class TableReconstructor(Reconstructor):
             if result_df.loc[row_idx, column_name] == "":
                 result_df.loc[row_idx, column_name] = amount_text
         
-        return result_df.drop('Amount', axis=1)
+        return result_df.drop('amount', axis=1)
     
     def reconstruct_table(self) -> pd.DataFrame:
         """
@@ -177,7 +177,7 @@ class TableReconstructor(Reconstructor):
         amount_columns = self.statement_properties['amount_column']
         
         if df_structured.empty:
-            return pd.DataFrame(columns=['Date', 'Description'] + amount_columns)
+            return pd.DataFrame(columns=['date', 'description'] + amount_columns)
         
         merged_rows = []
         current_row = None
@@ -187,7 +187,7 @@ class TableReconstructor(Reconstructor):
         # Merge rows that belong to the same transaction
         for _, row in df_structured.iterrows():
             try:
-                if row['Date'] is not None:  # New transaction starts
+                if row['date'] is not None:  # New transaction starts
                     if current_row is not None:
                         merged_rows.append(current_row)
                     current_row = row.copy()
@@ -198,7 +198,7 @@ class TableReconstructor(Reconstructor):
                             current_row[col] = row[col]
                     # Append description fragments
                     try:
-                        current_row['Description'] += " " + row['Description'] + " "
+                        current_row['description'] += " " + row['description'] + " "
                     except:
                         continue
             except TypeError:
@@ -211,4 +211,4 @@ class TableReconstructor(Reconstructor):
         df_merged = pd.DataFrame(merged_rows)
         df_merged = df_merged[~df_merged.apply(lambda row: all(pd.isna(row[col]) or row[col] == '' for col in amount_columns), axis=1)]
         
-        return df_merged[df_merged['Date'].str.match(date_pattern, na=False)].reset_index(drop=True)
+        return df_merged[df_merged['date'].str.match(date_pattern, na=False)].reset_index(drop=True)

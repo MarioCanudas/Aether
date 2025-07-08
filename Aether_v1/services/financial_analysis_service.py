@@ -1,17 +1,30 @@
 import pandas as pd
+from .database_service import DatabaseService
 
-class FinancialAnalysisService:
-    def __init__(self, all_monthly_results: pd.DataFrame):
-        self.all_monthly_results = all_monthly_results
-        
-    def get_total_savings(self) -> float:
-        return self.all_monthly_results['savings'].sum()
+class FinancialAnalysisService: 
+    @staticmethod
+    def get_total_savings(db_service: DatabaseService, user_id: int) -> float:
+        query = """
+        SELECT SUM(savings) FROM monthly_results
+        WHERE user_id = :user_id
+        """
+        return db_service.custom_query(query, {'user_id': user_id}, value_format='scalar')
     
-    def get_avg_income_per_month(self) -> float:
-        return self.all_monthly_results['total_income'].mean()
+    @staticmethod
+    def get_avg_income_per_month(db_service: DatabaseService, user_id: int) -> float:
+        query = """
+        SELECT AVG(total_income) FROM monthly_results
+        WHERE user_id = :user_id
+        """
+        return db_service.custom_query(query, {'user_id': user_id}, value_format='scalar')
     
-    def get_avg_withdrawal_per_month(self) -> float:
-        return self.all_monthly_results['total_withdrawal'].mean()
+    @staticmethod
+    def get_avg_withdrawal_per_month(db_service: DatabaseService, user_id: int) -> float:
+        query = """
+        SELECT AVG(total_withdrawal) FROM monthly_results
+        WHERE user_id = :user_id
+        """
+        return db_service.custom_query(query, {'user_id': user_id}, value_format='scalar')
         
     @staticmethod
     def get_financial_tips(label: str) -> list[str]:
