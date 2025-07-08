@@ -144,6 +144,17 @@ class TransactionProcessorController(BaseController):
             db.insert_multiple_records('monthly_results', filtered_records)
             logger.info(f"Inserted {len(filtered_records)} records into the monthly_results table")
             
+    def get_transactions(self) -> pd.DataFrame:
+        user_id = self.user_session_service.current_user_id
+        
+        with self.quick_read_scope() as db:
+            transactions = db.get_records(
+                table_name='transactions',
+                where_conditions={'user_id': user_id},
+                value_format='dataframe'
+            )
+            return transactions
+        
     def get_monthly_results(self) -> pd.DataFrame:
         user_id = self.user_session_service.current_user_id
         
