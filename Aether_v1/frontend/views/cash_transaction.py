@@ -31,19 +31,18 @@ def adding_cash_transaction():
             max_chars= 200
         )
         
+        user_id = controller.user_session_service.get_current_user_id()
+        
         if st.form_submit_button(label= 'Sumbit'):
-            transaction_data = pd.DataFrame([{
-                'Date': date,
-                'Description': description,
-                'Amount': transaction_amount if transaction_type == 'Abono' else -1 * transaction_amount,
-                'Type': transaction_type,
+            transaction_record = {
+                'user_id': user_id,
+                'date': date,
+                'description': description,
+                'amount': transaction_amount if transaction_type == 'Abono' else -1 * transaction_amount,
+                'type': transaction_type,
                 'bank': 'cash',
                 'statement_type': 'debit',
                 'filename': None
-            }])
+            }
             
-            controller.append_transactions(transaction_data)
-            controller.update_all_processed_data()
-            controller.update_all_monthly_results()
-            
-            st.rerun()
+            controller.update_transactions(pd.DataFrame([transaction_record]))

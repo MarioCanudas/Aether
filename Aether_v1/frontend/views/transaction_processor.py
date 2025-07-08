@@ -1,39 +1,34 @@
 import streamlit as st
 from controllers import TransactionProcessorController
+from .confirm_upload import confirm_upload_popup
 
 controller = TransactionProcessorController()
 
 def show_transaction_processor():
     st.title("Transaction Processor")
-
-    controller.initialize_session_state()
+    
+    df_transactions = None
 
     # Allow multiple file uploads
-    uploaded_files = st.file_uploader("Upload Bank Statement PDF(s)", type="pdf", accept_multiple_files=True)
+    uploaded_files = st.file_uploader(
+        "Upload Bank Statement PDF(s)", 
+        accept_multiple_files=True,
+        type="pdf", 
+        disabled= controller.user_session_service.get_current_user_id() is None
+    )
     if uploaded_files:
         
-        for uploaded_file in uploaded_files:
-            try:
-                df_transactions = controller.process_uploaded_file(uploaded_file)
-                controller.append_transactions(df_transactions)
-            except ValueError as e:
-                st.error(f"Error processing {uploaded_file.name}: {e}")
-            except Exception as e:
-                st.error(f"An unexpected error processing {uploaded_file.name}: {e}")
-                
-        controller.update_all_processed_data()
-        controller.update_all_monthly_results()
+        try:
+            df_transactions = controller.process_uploaded_files(uploaded_files)
+            confirm_upload_popup(df_transactions)
+        except Exception as e:
+            st.error(f"An unexpected error processing {uploaded_files.name}: {e}")
 
-        if st.session_state.all_transactions:
-            combined_df = controller.get_combined_df()
-            cleaned_df = controller.get_cleaned_df()
+        if df_transactions is not None:
             monthly_results = controller.get_monthly_results()
 
             st.subheader("Extracted Transactions")
-            st.dataframe(combined_df)
-
-            st.subheader("Analyzed Transactions")
-            st.dataframe(cleaned_df)
+            st.dataframe(df_transactions) if df_transactions is not None else st.info("No transactions uploaded")
 
             st.subheader("Monthly Savings & Metrics")
             st.dataframe(monthly_results)
@@ -59,6 +54,7 @@ def show_transaction_processor():
             for tip in tips:
                 st.write(f"- {tip}")
 
-    if st.button("Clear All Transactions"):
-        controller.clear_all_transactions()
+    # TODO: Uncomment and remove disabled= True when the clear all transactions function is implemented
+    if st.button("Clear All Transactions", disabled= True):
+        # controller.clear_all_transactions()
         st.rerun()

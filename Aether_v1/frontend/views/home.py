@@ -1,33 +1,30 @@
 import streamlit as st
 from controllers import TransactionProcessorController
+from .confirm_upload import confirm_upload_popup
 
 controller = TransactionProcessorController()
 
 def show_home():
     # Set the title
     st.title('Quick Financial Analysis')
-
-    controller.initialize_session_state()
-
     # File uploader
-    uploaded_files = st.file_uploader("Please upload your Bank Statement PDF files", accept_multiple_files=True, type="pdf")
+    uploaded_files = st.file_uploader(
+        "Please upload your Bank Statement PDF files", 
+        accept_multiple_files=True, 
+        type="pdf",
+        disabled= controller.user_session_service.get_current_user_id() is None
+    )
 
     if uploaded_files:
 
         st.write("Processing Files...")
-        for uploaded_file in uploaded_files:
-            try:
-                df_transactions = controller.process_uploaded_file(uploaded_file)
-                controller.append_transactions(df_transactions)
-            except ValueError as e:
-                st.error(f"Error processing {uploaded_file.name}: {e}")
-            except Exception as e:
-                st.error(f"An unexpected error processing {uploaded_file.name}: {e}")
+        try:
+            df_transactions = controller.process_uploaded_files(uploaded_files)
+            confirm_upload_popup(df_transactions)
+        except Exception as e:
+            st.error(f"An unexpected error processing {uploaded_files.name}: {e}")
 
-        controller.update_all_processed_data()
-        controller.update_all_monthly_results()
-
-    if not st.session_state.all_processed_data.empty and not st.session_state.all_monthly_results.empty:
+    if controller.user_have_transactions() and controller.user_have_monthly_results():
         financial_analysis = controller.get_financial_analysis()
 
         col1, col2, col3 = st.columns(3)
@@ -48,7 +45,8 @@ def show_home():
         st.subheader("Tips")
         for tip in tips:
             st.write(f"- {tip}")
-            
-        if st.button('Clear all transactions'):
-            controller.clear_all_transactions()
+        
+        # TODO: Uncomment and remove disabled= True when the clear all transactions function is implemented
+        if st.button('Clear all transactions', disabled= True):
+            # controller.clear_all_transactions()
             st.rerun()
