@@ -49,13 +49,13 @@ class PlottingService:
         expenses_bar_chart, ax_expenses = plt.subplots()
 
         # Plot the data
-        ax_expenses.bar(monthly_results['Month'], monthly_results['total_withdrawal'], color='orange')
+        ax_expenses.bar(monthly_results['year_month'], monthly_results['total_withdrawal'], color='orange')
 
         # Transparent background, Y-axis grid only, and white labels
         expenses_bar_chart.patch.set_alpha(0)  # Transparent background
         ax_expenses.set_facecolor('none')  # Transparent axes background
         ax_expenses.grid(True, color='gray', linestyle='-', linewidth=0.5, axis='y')
-        ax_expenses.set_xticklabels(monthly_results['Month'], rotation=90, color='white')
+        ax_expenses.set_xticklabels(monthly_results['year_month'], rotation=90, color='white')
         ax_expenses.set_yticklabels(ax_expenses.get_yticks(), color='white')
         
         return expenses_bar_chart
@@ -65,13 +65,13 @@ class PlottingService:
         income_bar_chart, ax_income = plt.subplots()
 
         # Plot the data
-        ax_income.bar(monthly_results['Month'], monthly_results['total_income'], color='blue')
+        ax_income.bar(monthly_results['year_month'], monthly_results['total_income'], color='blue')
 
         # Transparent background, white grid on Y-axis only, and white labels
         income_bar_chart.patch.set_alpha(0)
         ax_income.set_facecolor('none')
         ax_income.grid(True, color='gray', linestyle='-', linewidth=0.5, axis='y')
-        ax_income.set_xticklabels(monthly_results['Month'], rotation=90, color='white')
+        ax_income.set_xticklabels(monthly_results['year_month'], rotation=90, color='white')
         ax_income.set_yticklabels(ax_income.get_yticks(), color='white')
 
         return income_bar_chart
