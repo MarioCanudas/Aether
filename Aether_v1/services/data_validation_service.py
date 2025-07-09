@@ -7,7 +7,7 @@ class DataValidationService:
     This class is used to validate the transactions data to prevent duplicates and other errors.
     """
     @staticmethod
-    def check_if_transaction_exists_in_db(db_service: DatabaseService, transaction: Dict[str, Any]) -> bool:
+    def check_if_transaction_exists_in_db(db_service: DatabaseService, transaction: Dict[str, Any], user_id: int) -> bool:
         query = """
         SELECT EXISTS(
             SELECT 1 FROM transactions
@@ -15,25 +15,27 @@ class DataValidationService:
             AND date = :date 
             AND amount = :amount 
             AND description = :description
+            AND user_id = :user_id
         )       
         """
         
         check_values = ['filename', 'date', 'amount', 'description']
         params = {col: transaction[col] for col in check_values}
         params['date'] = params['date'].strftime('%Y-%m-%d') if hasattr(params['date'], 'strftime') else params['date']
+        params['user_id'] = user_id
         
         return db_service.custom_query(query, params, value_format='scalar')
     
     @staticmethod
-    def check_if_monthly_result_exists_in_db(db_service: DatabaseService, monthly_result: Dict[str, Any]) -> bool:
+    def check_if_monthly_result_exists_in_db(db_service: DatabaseService, monthly_result: Dict[str, Any], user_id: int) -> bool:
         query = """
         SELECT EXISTS(
             SELECT 1 FROM monthly_results
             WHERE year_month = :year_month
+            AND user_id = :user_id
         )
         """
-        
-        params = {'year_month': monthly_result['year_month']}
+        params = {'year_month': monthly_result['year_month'], 'user_id': user_id}
         
         return db_service.custom_query(query, params, value_format='scalar')
     

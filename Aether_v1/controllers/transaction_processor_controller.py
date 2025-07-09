@@ -72,6 +72,8 @@ class TransactionProcessorController(BaseController):
             transactions: pd.DataFrame,
             value_format: Literal['dataframe', 'records'] = 'records'
         ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+        user_id = self.user_session_service.current_user_id
+        
         transactions_cleaned = self.data_validation_service.delete_double_transactions(transactions)
         records = transactions_cleaned.to_dict(orient='records')
         
@@ -79,7 +81,7 @@ class TransactionProcessorController(BaseController):
         duplicate_records = []
         
         for record in records:
-            if self.data_validation_service.check_if_transaction_exists_in_db(db_service, record):
+            if self.data_validation_service.check_if_transaction_exists_in_db(db_service, record, user_id):
                 duplicate_records.append(record)
             else:
                 filtered_records.append(record)
@@ -96,11 +98,13 @@ class TransactionProcessorController(BaseController):
             monthly_results: pd.DataFrame,
             value_format: Literal['dataframe', 'records'] = 'records'
         ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+        user_id = self.user_session_service.current_user_id
+        
         filtered_records = []
         duplicate_records = []
         
         for record in monthly_results:
-            if self.data_validation_service.check_if_monthly_result_exists_in_db(db_service, record):
+            if self.data_validation_service.check_if_monthly_result_exists_in_db(db_service, record, user_id):
                 duplicate_records.append(record)
             else:
                 filtered_records.append(record)
@@ -126,8 +130,10 @@ class TransactionProcessorController(BaseController):
             logger.info(f"Inserted {len(filtered_records)} records into the transactions table")
             
     def update_monthly_results(self, transactions: pd.DataFrame) -> None:
+        transactions_cleaned = self.data_validation_service.delete_double_transactions(transactions)
+        
         with self.batch_scope() as db:
-            monthly_results = self.data_processing_service.calculate_savings_and_validate_balances(transactions, return_type='dataframe')
+            monthly_results = self.data_processing_service.calculate_savings_and_validate_balances(transactions_cleaned, return_type='dataframe')
             monthly_results['year_month'] = monthly_results['year_month'].astype(str)
             monthly_results['user_id'] = self.user_session_service.current_user_id  
             monthly_results = monthly_results.to_dict(orient='records')

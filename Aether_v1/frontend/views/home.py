@@ -21,6 +21,7 @@ def show_home():
         try:
             df_transactions = controller.process_uploaded_files(uploaded_files)
             confirm_upload_popup(df_transactions)
+            uploaded_files.clear()
         except Exception as e:
             st.error(f"An unexpected error processing {uploaded_files.name}: {e}")
 
