@@ -63,14 +63,14 @@ class DateNormalizer(ColumnNormalizer):
                 month = month_pattern[month] if not month.isnumeric() else month
                 
                 # Assign year based on month value
-                if int(month) <= 12:
-                    return f"{year1}-{month}-{day}"
-                else:
+                if 1 <= int(month) <= 6:
                     return f"{year2}-{month}-{day}"
+                else:
+                    return f"{year1}-{month}-{day}"
             else:
                 return ""
         else:
-            return ""  # No valid year found
+            raise ValueError(f"Invalid detected years: {years}")
             
     def normalize_column(self, date_column: pd.Series, years: List[int]) -> pd.Series:
         """
