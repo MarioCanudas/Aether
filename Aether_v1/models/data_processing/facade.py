@@ -2,6 +2,7 @@ import pandas as pd
 from typing import Dict
 from .metadata_extraction import DefaultMetadataExtractor
 from .table_normalzation import DefaultTableNormalizer, DateNormalizer, AmountNormalizer
+from .special_data_filtering import SpecialDataFiltering
 
 class DataProcessingFacade:
     def __init__(self, corrected_extracted_words: pd.DataFrame, reconstructed_table: pd.DataFrame, statement_properties: dict):
@@ -26,5 +27,12 @@ class DataProcessingFacade:
         years = self.metadata_extractor.get_years()
         initial_balance = self.metadata_extractor.get_initial_balance()
         
-        return self.table_normalizer.normalize_table(years, initial_balance)
+        bank = self.statement_properties['bank']
+        statement_type = self.statement_properties['statement_type']
+        
+        table_normalized = self.table_normalizer.normalize_table(years, initial_balance)
+        special_data_filtering = SpecialDataFiltering(table_normalized)
+        filtered_table = special_data_filtering.filter_special_data(bank, statement_type)
+        
+        return filtered_table
     

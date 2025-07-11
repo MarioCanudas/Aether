@@ -173,3 +173,12 @@ class TableNormalizer(ABC):
         """Normalizes the table into a consistent format."""
         pass
     
+class SpecialDataFiltering(ABC):
+    """Filters out special data from the table."""
+    def __init__(self, normalized_table: pd.DataFrame):
+        self.normalized_table = normalized_table
+        
+    @abstractmethod
+    def filter_special_data(self) -> pd.DataFrame:
+        """Filters out special data from the table."""
+        pass
