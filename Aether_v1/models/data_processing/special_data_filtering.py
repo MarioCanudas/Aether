@@ -1,9 +1,9 @@
 import re
 import pandas as pd
 from typing import Literal
-from ..core.interfaces import SpecialDataFiltering
+from ..core import SpecialDataFiltering
 
-class SpecialDataFiltering(SpecialDataFiltering):
+class DefaultSpecialDataFiltering(SpecialDataFiltering):
     BANKS_WITH_SPECIAL_DATA = {'nu'}
     
     def filter_nu_transactions(self) -> pd.DataFrame:
