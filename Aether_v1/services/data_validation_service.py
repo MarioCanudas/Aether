@@ -1,5 +1,5 @@
 import pandas as pd
-from typing import Dict, Any
+from typing import Dict, Any, List, Set, Tuple
 from .database_service import DatabaseService
 
 class DataValidationService:
@@ -7,37 +7,91 @@ class DataValidationService:
     This class is used to validate the transactions data to prevent duplicates and other errors.
     """
     @staticmethod
-    def check_if_transaction_exists_in_db(db_service: DatabaseService, transaction: Dict[str, Any], user_id: int) -> bool:
-        query = """
-        SELECT EXISTS(
-            SELECT 1 FROM transactions
-            WHERE filename = :filename
-            AND date = :date 
-            AND amount = :amount 
-            AND description = :description
-            AND user_id = :user_id
-        )       
+    def get_existing_transaction_keys(
+        db_service: DatabaseService, 
+        transactions: List[Dict[str, Any]], 
+        user_id: int
+    ) -> Set[Tuple]:
         """
+        Check which transactions exist in the database in a single query
+        Returns set of unique keys (filename, date, amount, description)
+        """
+        if not transactions:
+            return set()
         
-        check_values = ['filename', 'date', 'amount', 'description']
-        params = {col: transaction[col] for col in check_values}
-        params['date'] = params['date'].strftime('%Y-%m-%d') if hasattr(params['date'], 'strftime') else params['date']
-        params['user_id'] = user_id
+        # Prepare parameters for batch query
+        params_list = []
+        for t in transactions:
+            params = {
+                'filename': t['filename'],
+                'date': t['date'].strftime('%Y-%m-%d') if hasattr(t['date'], 'strftime') else t['date'],
+                'amount': t['amount'],
+                'description': t['description'],
+                'user_id': user_id
+            }
+            params_list.append(params)
         
-        return db_service.custom_query(query, params, value_format='scalar')
-    
-    @staticmethod
-    def check_if_monthly_result_exists_in_db(db_service: DatabaseService, monthly_result: Dict[str, Any], user_id: int) -> bool:
+        # Single query to check all transactions
         query = """
-        SELECT EXISTS(
-            SELECT 1 FROM monthly_results
-            WHERE year_month = :year_month
-            AND user_id = :user_id
+        SELECT filename, date, amount, description 
+        FROM transactions
+        WHERE (filename, date, amount, description, user_id) IN (
+            VALUES {}
         )
-        """
-        params = {'year_month': monthly_result['year_month'], 'user_id': user_id}
+        """.format(
+            ", ".join([f"(:filename_{i}, :date_{i}, :amount_{i}, :description_{i}, :user_id_{i})" 
+                      for i in range(len(params_list))])
+        )
         
-        return db_service.custom_query(query, params, value_format='scalar')
+        # Flatten parameters
+        flat_params = {}
+        for i, params in enumerate(params_list):
+            for key, value in params.items():
+                flat_params[f"{key}_{i}"] = value
+        
+        # Execute query
+        existing = db_service.custom_query(query, flat_params, value_format='dict')
+        
+        # Return as set of tuples for fast lookup
+        return {
+            (e['filename'], e['date'], e['amount'], e['description'])
+            for e in existing
+        }
+        
+    @staticmethod
+    def get_existing_monthly_result_keys(
+        db_service: DatabaseService, 
+        monthly_results: List[Dict[str, Any]], 
+        user_id: int
+    ) -> Set[str]:
+        """
+        Check which monthly results exist in the database in a single query
+        Returns set of existing year_month strings
+        """
+        if not monthly_results:
+            return set()
+        
+        # Extract unique year_month values
+        year_months = {r['year_month'] for r in monthly_results}
+        placeholders = ', '.join([f':year_month_{i}' for i in range(len(year_months))])
+        
+        # Single query to check all year_months
+        query = f"""
+        SELECT year_month 
+        FROM monthly_results
+        WHERE user_id = :user_id
+        AND year_month IN ({placeholders})
+        """
+        
+        params = {
+            'user_id': user_id,
+            **{f'year_month_{i}': year_month for i, year_month in enumerate(year_months)}
+        }
+        
+        existing = db_service.custom_query(query, params, value_format='dict')
+        
+        # Return as set of year_month strings
+        return {e['year_month'] for e in existing}
     
     @staticmethod
     def delete_double_transactions(transactions: pd.DataFrame) -> pd.DataFrame:
