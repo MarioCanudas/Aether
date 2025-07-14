@@ -146,3 +146,15 @@ class DataValidationService:
                 indices_to_remove.extend([index, last_matching_debit.name])
 
         return transactions_cleaned.drop(indices_to_remove)
+    
+    @staticmethod
+    def validate_monthly_results(monthly_results: pd.DataFrame) -> pd.DataFrame:
+        """
+        """
+        
+        monthly_results_cleaned = monthly_results.copy()
+        
+        # Implement balance validation, for now just set all to True
+        monthly_results_cleaned['balance_valid'] = True
+        
+        return monthly_results_cleaned

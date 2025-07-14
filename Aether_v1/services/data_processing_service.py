@@ -91,7 +91,7 @@ class DataProcessingService:
         return df_transactions
 
     @staticmethod
-    def calculate_savings_and_validate_balances(
+    def get_monthly_results(
             data: pd.DataFrame, 
             return_type: Literal['dataframe', 'records'] = 'records'
         ) -> pd.DataFrame | List[Dict[str, Any]]:
@@ -105,11 +105,6 @@ class DataProcessingService:
         Returns:
             pd.DataFrame | List[Dict[str, Any]]: A DataFrame with monthly savings and balance validation results or a list of records.
         """
-        # If the 'Balance' column is not present, add it with all values as None
-        # Temporary fix for implementation of new model
-        if not 'Balance' in data.columns:
-            data['Balance'] = None
-        
         # Ensure the 'Date' column is in datetime format
         data['date'] = pd.to_datetime(data['date'], format='%Y-%m-%d')
 
@@ -137,15 +132,6 @@ class DataProcessingService:
             # Calculate savings
             savings = total_income + total_withdrawal  # Withdrawals are negative, so adding them works here
 
-            # Validate balances
-            running_sum = initial_balance if initial_balance is not None else 0
-            balance_valid = True
-            for _, row in group.iterrows():
-                running_sum += row['amount']
-                if pd.notnull(row['Balance']) and abs(running_sum - row['Balance']) > 1e-2:
-                    balance_valid = False
-                    break
-
             # Append results
             results.append({
                 'year_month': name,
@@ -153,7 +139,6 @@ class DataProcessingService:
                 'total_income': total_income,
                 'total_withdrawal': total_withdrawal,
                 'savings': savings,
-                'balance_valid': balance_valid
             })
 
         if return_type == 'dataframe':

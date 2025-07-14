@@ -171,12 +171,19 @@ class TransactionProcessorController(BaseController):
     def update_monthly_results(self, transactions: pd.DataFrame) -> None:
         transactions_cleaned = self.data_validation_service.delete_double_transactions(transactions)
         
+        # Get and validate monthly results
+        monthly_results = self.data_processing_service.get_monthly_results(transactions_cleaned, return_type='dataframe')
+        monthly_results = self.data_validation_service.validate_monthly_results(monthly_results)
+        
+        # Add user_id and year_month in str format to the monthly results
+        monthly_results['year_month'] = monthly_results['year_month'].astype(str)
+        monthly_results['user_id'] = self.user_session_service.current_user_id 
+        
+        # Convert monthly results to records to be able to upload them to the database
+        monthly_results = monthly_results.to_dict(orient='records')
+         
         with self.batch_scope() as db:
-            monthly_results = self.data_processing_service.calculate_savings_and_validate_balances(transactions_cleaned, return_type='dataframe')
-            monthly_results['year_month'] = monthly_results['year_month'].astype(str)
-            monthly_results['user_id'] = self.user_session_service.current_user_id  
-            monthly_results = monthly_results.to_dict(orient='records')
-            
+            # Filter monthly results to avoid duplicates
             filtered_records, duplicate_records = self.filter_monthly_results(db, monthly_results)
             
             if duplicate_records:
