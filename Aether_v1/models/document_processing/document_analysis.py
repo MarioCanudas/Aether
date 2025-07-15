@@ -1,10 +1,9 @@
 import re
 from functools import cache
-from typing import Optional, Literal
+from typing import Optional
 from ..core import DocumentAnalyzer
-from config import BANKS, BANKS_CODES
 from utils import search_phrase_in_df
-from .banks_properties import BankProperties, BankPropertiesFactory, BankType, StatementType
+from .banks_properties import BankProperties, BankPropertiesFactory, BankType, StatementType, BANKS_CODES
        
 class DefaultDocumentAnalyzer(DocumentAnalyzer):
     """
@@ -34,7 +33,7 @@ class DefaultDocumentAnalyzer(DocumentAnalyzer):
             footer_text = df_footer['text'].apply(lambda x: x.lower())
             
             # Iterate through all known banks to search for matches
-            for bank in BANKS:
+            for bank in [b.value for b in BankType]:
                 # Create a boolean mask that searches for the bank name as a complete word
                 # \b = word boundary to avoid partial matches
                 # re.escape() escapes special characters in the bank name
