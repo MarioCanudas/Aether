@@ -2,9 +2,11 @@ from pandas import DataFrame
 from io import BytesIO
 from streamlit import session_state
 from services import DataProcessingService, FinancialAnalysisService, PlottingService
+from .base_controller import BaseController
 
-class TransactionProcessorController:   
+class TransactionProcessorController(BaseController):   
     def __init__(self):
+        super().__init__()
         self.data_processing_service = DataProcessingService()
         if 'all_monthly_results' in session_state:
             self.financial_analysis_service = FinancialAnalysisService(session_state.all_monthly_results)

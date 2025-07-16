@@ -7,7 +7,10 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DOCUMENTS_FOLDER = os.path.join(PROJECT_ROOT, 'documents')
 INPUTS_FOLDER = os.path.join(DOCUMENTS_FOLDER, 'inputs')
 OUTPUTS_FOLDER = os.path.join(DOCUMENTS_FOLDER, 'outputs')
-DATA_FOLDER = os.path.join(PROJECT_ROOT, 'data')
+
+# Paths for database
+DATABASE_FOLDER = os.path.join(PROJECT_ROOT, 'database')
+DATABASE_FILE = os.path.join(DATABASE_FOLDER, 'aether.db')
 
 # Other config variables
 BANKS = ['amex', 'banorte', 'bbva', 'citibanamex', 'hsbc', 'inbursa', 'nu', 'santander']
