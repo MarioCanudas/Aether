@@ -124,6 +124,8 @@ class MonthPatterns:
     abbr_to_num: Dict[str, str] # e.g. 'ENE' -> '01'
     # Numeric month names to abbreviated month names
     num_to_abbr: Dict[str, str] # e.g. '01' -> 'ENE'
+    # Month names to numeric month names
+    month_to_num: Dict[str, str] # e.g. 'Enero' -> '01'
     
     def __post_init__(self):
         for abbr, num in self.abbr_to_num.items():
@@ -159,6 +161,21 @@ month_patterns = MonthPatterns(
         'OCT': '10',
         'NOV': '11',
         'DIC': '12'
+    },
+    
+    month_to_num = {
+        'Enero': '01',
+        'Febrero': '02',
+        'Marzo': '03',
+        'Abril': '04',
+        'Mayo': '05',
+        'Junio': '06',
+        'Julio': '07',
+        'Agosto': '08',
+        'Septiembre': '09',
+        'Octubre': '10',
+        'Noviembre': '11',
+        'Diciembre': '12'
     }
 )
     
@@ -192,7 +209,8 @@ class BankProperties(BaseModel):
     expense_sign: AmountSignType
     
     period_pattern: Optional[str] = None
-    year_group: Optional[int] = None
+    period_month_pattern: Optional[Dict[str, str]] = None
+    period_group: Optional[Dict[str, int]] = None
 
     @field_validator('date_groups')
     @classmethod
@@ -328,7 +346,7 @@ class BankPropertiesFactory:
             end_phrase=['inversión', 'enlace', 'personal'],
             initial_balance_phrase=['saldo', 'inicial', 'del', 'periodo'],
             initial_balance_description='SALDO ANTERIOR',
-            period_phrase=['periodo'],
+            period_phrase=['información', 'del', 'periodo'],
             columns=['FECHA', 'DESCRIPCIÓN / ESTABLECIMIENTO', 'MONTO DEL DEPOSITO', 'MONTO DEL RETIRO', 'SALDO'],
             amount_column=['MONTO DEL DEPOSITO', 'MONTO DEL RETIRO', 'SALDO'],
             income_column='MONTO DEL DEPOSITO',
@@ -340,7 +358,8 @@ class BankPropertiesFactory:
             income_sign=AmountSignType.NEUTRAL,
             expense_sign=AmountSignType.NEUTRAL,
             period_pattern=r"(\d{2})/(Enero|Febrero|Marzo|Abril|Mayo|Junio|Julio|Agosto|Septiembre|Octubre|Noviembre|Diciembre)/(\d{4})",
-            year_group=3
+            period_month_pattern=month_patterns.month_to_num,
+            period_group={'year': 3, 'month': 2, 'day': 1},            
         )
 
     @classmethod
@@ -352,7 +371,7 @@ class BankPropertiesFactory:
             new_format=False,
             start_phrase=['detalle', 'de', 'movimientos', 'del' ,'titular',  'en', 'm.n.'],
             end_phrase=['si', 'solo', 'realizas', 'el', 'pago', 'mínimo'],
-            period_phrase=['periodo'],
+            period_phrase=['información', 'de', 'la', 'cuenta', 'del', 'periodo'],
             columns=['Fecha', 'Concepto', 'RFC/CURP', 'Tipo de transacción', 'Importe'],
             amount_column=['Importe'],
             income_column='Importe',
@@ -363,7 +382,8 @@ class BankPropertiesFactory:
             income_sign=AmountSignType.NEGATIVE,
             expense_sign=AmountSignType.NEUTRAL,
             period_pattern=None,
-            year_group=None
+            period_month_pattern=None,
+            period_group=None
         )
 
     @classmethod
@@ -375,7 +395,7 @@ class BankPropertiesFactory:
             new_format=True,
             start_phrase=['cargos,', 'abonos', 'y', 'compras', 'regulares'],
             end_phrase=['total', 'cargos'],
-            period_phrase= None,
+            period_phrase= ['tu', 'pago', 'requerido', 'este', 'periodo'],
             columns=['Fecha de la operación', 'Fecha de cargo', 'Descripción del movimiento', 'Monto'],
             amount_column=['Monto'],
             date_pattern=r"(\d{2})-(ENE|FEB|MAR|ABR|MAY|JUN|JUL|AGO|SEP|OCT|NOV|DIC)-(20\d{2})",
@@ -383,8 +403,9 @@ class BankPropertiesFactory:
             month_pattern=month_patterns.abbr_to_num,
             income_sign=AmountSignType.NEGATIVE,
             expense_sign=AmountSignType.POSITIVE,
-            period_pattern=None,
-            year_group=None
+            period_pattern=r"(\d{2})-(ENE|FEB|MAR|ABR|MAY|JUN|JUL|AGO|SEP|OCT|NOV|DIC)-(20\d{2})",
+            period_month_pattern=month_patterns.abbr_to_num,
+            period_group={'year': 3, 'month': 2, 'day': 1}
         )
 
     @classmethod
@@ -410,7 +431,8 @@ class BankPropertiesFactory:
             income_sign=AmountSignType.NEUTRAL,
             expense_sign=AmountSignType.NEUTRAL,
             period_pattern=r"(\d{2})/(\d{2})/(\d{4})",
-            year_group=3
+            period_month_pattern=None,
+            period_group={'year': 3, 'month': 2, 'day': 1}
         )
 
     @classmethod
@@ -422,7 +444,7 @@ class BankPropertiesFactory:
             new_format=False,
             start_phrase=['movimientos', 'efectuados'],
             end_phrase=['resumen', 'informativo', 'de', 'beneficios'],
-            period_phrase=None,
+            period_phrase=['en', 'el', 'periodo'],
             columns=['FECHA AUTORIZACION', 'FECHA APLICACION', 'CONCEPTO', 'R.F.C.', 'REFERENCIA', 'IMPORTE CARGOS', 'IMPORTE ABONOS'],
             amount_column=['IMPORTE CARGOS', 'IMPORTE ABONOS'],
             income_column='IMPORTE ABONOS',
@@ -432,8 +454,9 @@ class BankPropertiesFactory:
             month_pattern=month_patterns.num_to_abbr,
             income_sign=AmountSignType.NEUTRAL,
             expense_sign=AmountSignType.NEUTRAL,
-            period_pattern=None,
-            year_group=None
+            period_pattern=r'(\d{2})/(\d{2})/(\d{2})',
+            period_month_pattern=None,
+            period_group={'year': 3, 'month': 2, 'day': 1}
         )
 
     @classmethod
@@ -445,7 +468,7 @@ class BankPropertiesFactory:
             new_format=True,
             start_phrase=['cargos,compras', 'y', 'abonos'],
             end_phrase=['total', 'cargos'],
-            period_phrase=None,
+            period_phrase=['tu', 'pago', 'requerido', 'este', 'periodo'],
             columns=['Fecha de la operación', 'Fecha de cargo', 'Descripción del movimiento', 'Monto'],
             amount_column=['Monto'],
             date_pattern=r"(\d{2})-(ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic)-(20\d{2})",
@@ -453,8 +476,9 @@ class BankPropertiesFactory:
             month_pattern= {month.lower() : num for num, month in month_patterns.num_to_abbr.items()},
             income_sign=AmountSignType.NEGATIVE,
             expense_sign=AmountSignType.POSITIVE,
-            period_pattern=None,
-            year_group=None
+            period_pattern=r'(\d{2})-(ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic)-(\d{4})',
+            period_month_pattern={k.lower() : v for k, v in month_patterns.abbr_to_num.items()},
+            period_group={'year': 3, 'month': 2, 'day': 1}
         )
 
     @classmethod
@@ -476,8 +500,9 @@ class BankPropertiesFactory:
             month_pattern={month.capitalize() : num for num, month in month_patterns.num_to_abbr.items()},
             income_sign=AmountSignType.NEGATIVE,
             expense_sign=AmountSignType.NEUTRAL,
-            period_pattern=None,
-            year_group=None
+            period_pattern=r'(\d{2}) (de) (enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre) (de) (\d{4})',
+            period_month_pattern={k.lower() : v for k, v in month_patterns.month_to_num.items()},
+            period_group={'year': 5, 'month': 3, 'day': 1}
         )
 
     @classmethod
@@ -489,7 +514,7 @@ class BankPropertiesFactory:
             new_format=True,
             start_phrase=['cargos,', 'abonos', 'y', 'compras', 'regulares'],
             end_phrase=['total', 'cargos'],
-            period_phrase=None,
+            period_phrase=['tu', 'pago', 'requerido', 'este', 'periodo'],
             columns=['Fecha de la operación', 'Fecha de cargo', 'Descripción del movimiento', 'Monto'],
             amount_column=['Monto'],
             date_pattern=r"(\d{2})-(ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic)-(20\d{2})",
@@ -497,8 +522,9 @@ class BankPropertiesFactory:
             month_pattern= {month.lower() : num for num, month in month_patterns.num_to_abbr.items()},
             income_sign=AmountSignType.NEGATIVE,
             expense_sign=AmountSignType.POSITIVE,
-            period_pattern=None,
-            year_group=None
+            period_pattern=r'(\d{2})-(ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic)-(\d{4})',
+            period_month_pattern={k.lower() : v for k, v in month_patterns.abbr_to_num.items()},
+            period_group={'year': 3, 'month': 2, 'day': 1}
         )
 
     @classmethod
@@ -520,8 +546,9 @@ class BankPropertiesFactory:
             month_pattern= month_patterns.abbr_to_num,
             income_sign=AmountSignType.NEGATIVE,
             expense_sign=AmountSignType.NEUTRAL,
-            period_pattern=None,
-            year_group=None
+            period_pattern=r"(\d{2}) (ENE|FEB|MAR|ABR|MAY|JUN|JUL|AGO|SEP|OCT|NOV|DIC) (\d{4})",
+            period_month_pattern=month_patterns.abbr_to_num,
+            period_group={'year': 3, 'month': 2, 'day': 1}
         )
 
     @classmethod
@@ -546,8 +573,9 @@ class BankPropertiesFactory:
             month_pattern= month_patterns.abbr_to_num,
             income_sign=AmountSignType.NEUTRAL,
             expense_sign=AmountSignType.NEUTRAL,
-            period_pattern=None,
-            year_group=None
+            period_pattern= r"(\d{2}) (Ene|Feb|Mar|Abr|May|Jun|Jul|Ago|Sep|Oct|Nov|Dic) (\d{4})",
+            period_month_pattern={k.capitalize() : v for k, v in month_patterns.abbr_to_num.items()},
+            period_group={'year': 3, 'month': 2, 'day': 1}
         )
 
     @classmethod
@@ -569,8 +597,9 @@ class BankPropertiesFactory:
             month_pattern= month_patterns.num_to_abbr,
             income_sign=AmountSignType.NEGATIVE,
             expense_sign=AmountSignType.NEUTRAL,
-            period_pattern=None,
-            year_group=None
+            period_pattern= r"(\d{2}) (ENE|FEB|MAR|ABR|MAY|JUN|JUL|AGO|SEP|OCT|NOV|DIC) (\d{4})",
+            period_month_pattern=month_patterns.abbr_to_num,
+            period_group={'year': 3, 'month': 2, 'day': 1}
         )
 
     @classmethod
@@ -584,7 +613,7 @@ class BankPropertiesFactory:
             end_phrase=['con', 'estos', 'movimientos,'],
             initial_balance_phrase=['saldo', 'inicial'],
             initial_balance_description=None,
-            period_phrase=None,
+            period_phrase=['periodo'],
             columns=[
                 'FECHA',
                 r'(DE) (\d{2}) (ENE|FEB|MAR|ABR|MAY|JUN|JUL|AGO|SEP|OCT|NOV|DIC) (A) (\d{2}) (ENE|FEB|MAR|ABR|MAY|JUN|JUL|AGO|SEP|OCT|NOV|DIC) (\(\d{2}) (DÍAS\))',
@@ -598,8 +627,9 @@ class BankPropertiesFactory:
             month_pattern= month_patterns.abbr_to_num,
             income_sign=AmountSignType.POSITIVE,
             expense_sign=AmountSignType.NEGATIVE,
-            period_pattern=None,
-            year_group=None
+            period_pattern= r"(\d{2}) (ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic) (20\d{2})",
+            period_month_pattern={k.lower() : v for k, v in month_patterns.abbr_to_num.items()},
+            period_group={'year': 3, 'month': 2, 'day': 1}
         )
 
     @classmethod
@@ -625,8 +655,9 @@ class BankPropertiesFactory:
             month_pattern= month_patterns.abbr_to_num,
             income_sign=AmountSignType.NEGATIVE,
             expense_sign=AmountSignType.NEUTRAL,
-            period_pattern=None,
-            year_group=None
+            period_pattern=r'(\d{2}) (ENE|FEB|MAR|ABR|MAY|JUN|JUL|AGO|SEP|OCT|NOV|DIC) (\d{4})',
+            period_month_pattern=month_patterns.abbr_to_num,
+            period_group={'year': 3, 'month': 2, 'day': 1}
         )
 
     @classmethod

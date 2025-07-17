@@ -1,6 +1,9 @@
 import re
-from typing import List
+from typing import List, Tuple
 from functools import cache
+from datetime import date
+from dateutil.relativedelta import relativedelta
+import pandas as pd
 from ..core import MetadataExtractor
 from utils import clean_amount
 
@@ -30,8 +33,77 @@ class DefaultMetadataExtractor(MetadataExtractor):
 
         raise ValueError(f"Period phrase '{period_phrase}' not found in the extracted words.")
     
-    def get_period(self):
+    @cache
+    def get_period(self) -> Tuple[date, date] | None:
+        """"""
         period_idx = self.get_period_idx()
+        
+        if period_idx is None:
+            raise ValueError("Period phrase not found in the extracted words.")
+        
+        search_window: pd.DataFrame = self.corrected_extracted_words.iloc[period_idx : period_idx + 20]
+        texts: list[str] = search_window['text'].tolist()
+        
+        period_pattern: str | None = self.statement_properties['period_pattern']
+        
+        if not period_pattern:
+            return None
+        
+        pattern_parts: list[str] = period_pattern.split(' ')
+        n_parts: int = len(pattern_parts)
+        
+        found_dates = []
+        for i in range(len(texts) - n_parts):
+            candidate = ' '.join(texts[i:i+n_parts]) if n_parts > 1 else texts[i]
+            print(candidate)
+            date_match = re.match(period_pattern, candidate)
+            
+            if date_match:
+                found_dates.append(date_match)
+                
+            if len(found_dates) == 2:
+                break
+                
+        if not found_dates:
+            return None
+            
+        period_dates = []
+        for date_match in found_dates:
+            # Convert month to number if needed
+            month_pattern: dict[str, str] | None = self.statement_properties['period_month_pattern']
+            year_group: int = self.statement_properties['period_group']['year']
+            month_group: int = self.statement_properties['period_group']['month']
+            day_group: int = self.statement_properties['period_group']['day']
+            
+            year: str = date_match.group(year_group)
+            month: str = date_match.group(month_group)
+            day: str = date_match.group(day_group)
+            
+            # Validate date values
+            if len(year) == 2:
+                year = '20' + year
+            
+            if month_pattern is not None and month in month_pattern.keys():
+                month = month_pattern[month]
+            
+            if not day.isdigit():
+                raise ValueError(f"Invalid day format: {day}")
+            
+            date_period = date(int(year), int(month), int(day))
+            period_dates.append(date_period)
+            
+        period_dates = list(set(period_dates))
+            
+        if len(period_dates) == 0:
+            raise ValueError("No period dates found in the statement.")
+        elif len(period_dates) == 1:
+            previous_date = period_dates[0] - relativedelta(months=1) + relativedelta(days=1)
+            period = (previous_date, period_dates[0])
+            return period
+        elif len(period_dates) == 2:
+            return tuple(sorted(period_dates))
+        else:
+            raise ValueError("More than 2 period dates found in the statement.")
         
     def get_initial_balance(self) -> float:
         """
@@ -65,45 +137,53 @@ class DefaultMetadataExtractor(MetadataExtractor):
     
     def get_years(self) -> List[int]:
         """
-        Extracts year information from the statement period section.
-        Uses regex patterns to identify and collect valid years.
+        
         """
-        period_idx = self.get_period_idx()
+        period: Tuple[date, date] | None = self.get_period()
         
-        df_extracted_words = self.corrected_extracted_words.copy()
-        period_pattern = self.statement_properties['period_pattern']
-        year_group = self.statement_properties['year_group']
-        detected_years = []
-        
-        if period_idx is None or df_extracted_words.empty:
-            return detected_years
+        if not period: 
+            period_idx = self.get_period_idx()
             
-        # Search for years in the period section (limited window after period phrase)
-        period_values = df_extracted_words.iloc[period_idx : period_idx + 15]
+            df_extracted_words = self.corrected_extracted_words.copy()
+            period_pattern = self.statement_properties['period_pattern']
+            year_group = self.statement_properties['year_group']
+            detected_years = []
+            
+            if period_idx is None or df_extracted_words.empty:
+                return detected_years
+                
+            # Search for years in the period section (limited window after period phrase)
+            period_values = df_extracted_words.iloc[period_idx : period_idx + 15]
+            
+            for text in period_values['text']:
+                # Use custom pattern if available, otherwise fallback to generic year pattern
+                if period_pattern:
+                    year_match = re.search(period_pattern, text)
+                    
+                    if year_match:
+                        try:
+                            year = int(year_match.group(year_group))
+                            detected_years.append(year)
+                        except (ValueError, IndexError):
+                            continue
+                        
+                else:
+                    year_match = re.search(r'\b20\d{2}\b', text)
+                    
+                    if year_match:
+                        try:
+                            year = int(year_match.group())
+                            detected_years.append(year)
+                        except ValueError:
+                            continue
+                        
+            return sorted(list(set(detected_years)))
         
-        for text in period_values['text']:
-            # Use custom pattern if available, otherwise fallback to generic year pattern
-            if period_pattern:
-                year_match = re.search(period_pattern, text)
-                
-                if year_match:
-                    try:
-                        year = int(year_match.group(year_group))
-                        detected_years.append(year)
-                    except (ValueError, IndexError):
-                        continue
-                    
-            else:
-                year_match = re.search(r'\b20\d{2}\b', text)
-                
-                if year_match:
-                    try:
-                        year = int(year_match.group())
-                        detected_years.append(year)
-                    except ValueError:
-                        continue
-                    
-        return sorted(list(set(detected_years)))
+        else:
+            years = [period[0].year, period[1].year]
+            years = list(set(years))
+            
+            return sorted(years)
     
     def get_months(self) -> List[str]:
         return None

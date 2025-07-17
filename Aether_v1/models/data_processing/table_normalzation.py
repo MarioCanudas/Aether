@@ -211,9 +211,9 @@ class AmountNormalizer(ColumnNormalizer):
 
             return amount_columns.apply(lambda x: self.normalize_amount_for_single_column(x, income_sign, expense_sign))
         else:
-            income_column = statement_properties['income_column'].value
-            expense_column = statement_properties['expense_column'].value
-            balance_column = statement_properties['balance_column'].value
+            income_column = statement_properties['income_column']
+            expense_column = statement_properties['expense_column']
+            balance_column = statement_properties['balance_column']
 
             return amount_columns.apply(lambda x: self.normalize_amount_for_multiple_columns(x, income_column, expense_column, balance_column), axis=1)
 
