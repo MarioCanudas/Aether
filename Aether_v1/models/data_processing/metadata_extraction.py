@@ -1,10 +1,11 @@
 import re
-from typing import List, Tuple
+from typing import List, Tuple, Literal
 from functools import cache
 from datetime import date
 from dateutil.relativedelta import relativedelta
 import pandas as pd
 from ..core import MetadataExtractor
+from ..document_processing import StatementType
 from utils import clean_amount
 
 class DefaultMetadataExtractor(MetadataExtractor):
@@ -38,6 +39,8 @@ class DefaultMetadataExtractor(MetadataExtractor):
         """"""
         period_idx = self.get_period_idx()
         
+        print(period_idx)
+        
         if period_idx is None:
             raise ValueError("Period phrase not found in the extracted words.")
         
@@ -55,7 +58,6 @@ class DefaultMetadataExtractor(MetadataExtractor):
         found_dates = []
         for i in range(len(texts) - n_parts):
             candidate = ' '.join(texts[i:i+n_parts]) if n_parts > 1 else texts[i]
-            print(candidate)
             date_match = re.match(period_pattern, candidate)
             
             if date_match:
@@ -105,35 +107,41 @@ class DefaultMetadataExtractor(MetadataExtractor):
         else:
             raise ValueError("More than 2 period dates found in the statement.")
         
-    def get_initial_balance(self) -> float:
+    def get_balance(self, balance: Literal['initial', 'final']) -> float | None:
         """
         Extracts the initial balance amount from the statement text.
         Searches for the initial balance phrase and returns the following numeric value.
         """
-        if self.statement_properties['statement_type'] == 'credit':
+        if self.statement_properties['statement_type'] == StatementType.CREDIT:
             return None
         
         df_extracted_words = self.corrected_extracted_words.copy()
-        initial_balance_phrase = self.statement_properties['initial_balance_phrase']
         
-        if not initial_balance_phrase or df_extracted_words.empty:
+        if balance == 'initial':
+            balance_phrase = self.statement_properties['initial_balance_phrase']
+        elif balance == 'final':
+            balance_phrase = self.statement_properties['final_balance_phrase']
+        else:
+            raise ValueError(f"Invalid balance type: {balance}")
+        
+        if not balance_phrase or df_extracted_words.empty:
             return None
         
         # Search for initial balance phrase and extract the amount that follows
-        for i in range(len(df_extracted_words) - len(initial_balance_phrase)):
-            window_words = df_extracted_words["text"].iloc[i : i + len(initial_balance_phrase)]
+        for i in range(len(df_extracted_words) - len(balance_phrase)):
+            window_words = df_extracted_words["text"].iloc[i : i + len(balance_phrase)]
             processed_window = [word.lower().rstrip(':') for word in window_words]
             
-            if processed_window == initial_balance_phrase:
-                initial_balance = df_extracted_words["text"].iloc[i + len(initial_balance_phrase)]
-                initial_balance = clean_amount(initial_balance)
+            if processed_window == balance_phrase:
+                balance = df_extracted_words["text"].iloc[i + len(balance_phrase)]
+                balance = clean_amount(balance)
                 
                 try:
-                    return float(initial_balance)
+                    return float(balance)
                 except ValueError:
                     return None
 
-        return None
+        return None    
     
     def get_years(self) -> List[int]:
         """
@@ -186,4 +194,15 @@ class DefaultMetadataExtractor(MetadataExtractor):
             return sorted(years)
     
     def get_months(self) -> List[str]:
-        return None
+        """
+        Extracts the months from the statement text.
+        """
+        period: Tuple[date, date] | None = self.get_period()
+        
+        if not period:
+            return None
+        
+        months = [period[0].month, period[1].month]
+        months = list(set(months))
+        
+        return sorted(months)

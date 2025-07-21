@@ -193,6 +193,7 @@ class BankProperties(BaseModel):
     end_phrase: List[str]
     period_phrase: Optional[List[str]] = None
     initial_balance_phrase: Optional[List[str]] = None
+    final_balance_phrase: Optional[List[str]] = None
     initial_balance_description: Optional[str] = None
     
     columns: List[str]
@@ -292,41 +293,6 @@ class BankProperties(BaseModel):
         else:
             raise ValueError(f'Amount sign must be AmountSignType, string, or None, got {type(v)}')
 
-    # Utility methods
-    def get_amount_columns(self) -> List[str]:
-        """Get all amount columns"""
-        return self.amount_column
-    
-    def get_income_columns(self) -> List[str]:
-        """Get income columns"""
-        if self.income_column:
-            return [self.income_column]
-        return []
-    
-    def get_expense_columns(self) -> List[str]:
-        """Get expense columns"""
-        if self.expense_column:
-            return [self.expense_column]
-        return []
-    
-    def get_balance_columns(self) -> List[str]:
-        """Get balance columns"""
-        if self.balance_column:
-            return [self.balance_column]
-        return []
-    
-    def is_new_format(self) -> bool:
-        """Check if this is a new format statement"""
-        return self.new_format is True
-    
-    def get_date_group(self, group_type: str) -> Optional[int]:
-        """Get a specific date group"""
-        return self.date_groups.get(group_type)
-    
-    def get_month_mapping(self, direction: str = 'abbr_to_num') -> Dict[str, str]:
-        """Get month mapping in the specified direction"""
-        return getattr(self.month_pattern, direction, {})
-
 class BankPropertiesFactory:
     """
     Factory class for creating and managing bank properties.
@@ -345,6 +311,7 @@ class BankPropertiesFactory:
             start_phrase=['detalle', 'de', 'movimientos', '(pesos)▼'],
             end_phrase=['inversión', 'enlace', 'personal'],
             initial_balance_phrase=['saldo', 'inicial', 'del', 'periodo'],
+            final_balance_phrase=['saldo', 'actual'],
             initial_balance_description='SALDO ANTERIOR',
             period_phrase=['información', 'del', 'periodo'],
             columns=['FECHA', 'DESCRIPCIÓN / ESTABLECIMIENTO', 'MONTO DEL DEPOSITO', 'MONTO DEL RETIRO', 'SALDO'],
@@ -371,7 +338,7 @@ class BankPropertiesFactory:
             new_format=False,
             start_phrase=['detalle', 'de', 'movimientos', 'del' ,'titular',  'en', 'm.n.'],
             end_phrase=['si', 'solo', 'realizas', 'el', 'pago', 'mínimo'],
-            period_phrase=['información', 'de', 'la', 'cuenta', 'del', 'periodo'],
+            period_phrase=['periodo'],
             columns=['Fecha', 'Concepto', 'RFC/CURP', 'Tipo de transacción', 'Importe'],
             amount_column=['Importe'],
             income_column='Importe',
@@ -381,9 +348,9 @@ class BankPropertiesFactory:
             month_pattern=month_patterns.abbr_to_num,
             income_sign=AmountSignType.NEGATIVE,
             expense_sign=AmountSignType.NEUTRAL,
-            period_pattern=None,
-            period_month_pattern=None,
-            period_group=None
+            period_pattern=r'(\d{1,2}) (Enero|Febrero|Marzo|Abril|Mayo|Junio|Julio|Agosto|Septiembre|Octubre|Noviembre|Diciembre),? (\d{4})',
+            period_month_pattern=month_patterns.month_to_num,
+            period_group={'year': 3, 'month': 2, 'day': 1}
         )
 
     @classmethod
@@ -418,6 +385,7 @@ class BankPropertiesFactory:
             start_phrase=["detalle", "de", "movimientos", "realizados"],
             end_phrase=["le", "informamos", "que", "puede"],
             initial_balance_phrase=['saldo', 'anterior'],
+            final_balance_phrase=['saldo', 'final'],
             initial_balance_description=None,
             period_phrase=['periodo'],
             columns=['OPER', 'LIQ', 'DESCRIPCION', 'REFERENCIA', 'CARGOS', 'ABONOS', 'OPERACION', 'LIQUIDACION'],
@@ -561,6 +529,7 @@ class BankPropertiesFactory:
             start_phrase=['detalle', 'de', 'movimientos'],
             end_phrase=['movimientos', 'por', 'aclaracion'],
             initial_balance_phrase=['saldo', 'anterior'],
+            final_balance_phrase=['saldo', 'actual'],
             initial_balance_description='BALANCE INICIAL',
             period_phrase=['periodo'],
             columns=['FECHA', 'REFERENCIA', 'CONCEPTO', 'CARGOS', 'ABONOS', 'SALDO'],
@@ -612,6 +581,7 @@ class BankPropertiesFactory:
             start_phrase=['detalle', 'de', 'movimientos', 'en', 'tu', 'cuenta'],
             end_phrase=['con', 'estos', 'movimientos,'],
             initial_balance_phrase=['saldo', 'inicial'],
+            final_balance_phrase=['saldo', 'al', 'generar', 'este', 'estado', 'de', 'cuenta'],
             initial_balance_description=None,
             period_phrase=['periodo'],
             columns=[
@@ -773,7 +743,7 @@ class BankPropertiesFactory:
         Validate and convert statement_type to StatementType enum.
         
         Args:
-            statement_type: Statement type as string or StatementType enum
+            statement_type: Statement type as string or StatementType enum (DEBIT, CREDIT)
             
         Returns:
             StatementType enum

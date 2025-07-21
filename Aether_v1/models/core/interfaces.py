@@ -137,8 +137,8 @@ class MetadataExtractor(ABC):
         pass
     
     @abstractmethod
-    def get_initial_balance(self) -> float:
-        """Gets the initial balance of the statement."""
+    def get_balance(self, balance: Literal['initial', 'final']) -> float | None:
+        """Gets the initial or final balance of the statement."""
         pass
     
     @abstractmethod

@@ -14,11 +14,31 @@ class DataProcessingFacade:
         self.table_normalizer = DefaultTableNormalizer(self.reconstructed_table, self.statement_properties, DateNormalizer(self.statement_properties), AmountNormalizer(self.statement_properties))
         
     def get_period(self) -> Tuple[date, date] | None:
+        """
+        Get the period of the statement.
+        
+        Returns:
+            Tuple[date, date]: The start and end date of the statement.
+            None: If the period is not found in the statement based in the bank properties.
+        """
         return self.metadata_extractor.get_period()
+    
+    def get_balances(self) -> Tuple[float | None, float | None]:
+        """
+        Get the initial or final balance from the debit statements.
+        For credit statements the function will return (None, None)
+        
+        Returns:
+            Tuple[float, float]: The initial and final balance, if the statement is a debit statement.
+            Tuple[None, None]: If the statement is a credit statement.
+        """
+        initial_balance = self.metadata_extractor.get_balance('initial')
+        final_balance = self.metadata_extractor.get_balance('final')
+        return initial_balance, final_balance
     
     def get_normalized_table(self) -> pd.DataFrame:
         years = self.metadata_extractor.get_years()
-        initial_balance = self.metadata_extractor.get_initial_balance()
+        initial_balance, final_balance = self.get_balances()
         
         bank = self.statement_properties['bank']
         statement_type = self.statement_properties['statement_type']
