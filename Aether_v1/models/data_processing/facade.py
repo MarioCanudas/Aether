@@ -36,7 +36,7 @@ class DataProcessingFacade:
         final_balance = self.metadata_extractor.get_balance('final')
         return initial_balance, final_balance
     
-    def get_normalized_table(self) -> pd.DataFrame:
+    def get_transactions(self) -> pd.DataFrame:
         years = self.metadata_extractor.get_years()
         initial_balance, final_balance = self.get_balances()
         
