@@ -39,8 +39,6 @@ class DefaultMetadataExtractor(MetadataExtractor):
         """"""
         period_idx = self.get_period_idx()
         
-        print(period_idx)
-        
         if period_idx is None:
             raise ValueError("Period phrase not found in the extracted words.")
         
