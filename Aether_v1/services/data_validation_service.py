@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 from typing import Dict, Any, List, Set, Tuple
 from .database_service import DatabaseService
 
@@ -93,6 +94,57 @@ class DataValidationService:
         # Return as set of year_month strings
         return {e['year_month'] for e in existing}
     
+    @staticmethod
+    def validate_transactions(transactions: pd.DataFrame, metadata: Dict[str, Any]) -> pd.DataFrame:
+        """
+        Validate the transactions in function of the metadata.
+        
+        The metadata is a dictionary with the following keys:
+        - 'bank': The bank of the statement.
+        - 'statement_type': The type of statement (credit or debit).
+        - 'period': The period of the statement.
+        - 'initial_balance': The initial balance of the statement.
+        - 'final_balance': The final balance of the statement.
+        
+        Args:
+            transactions (pd.DataFrame): The transactions to validate.
+            metadata (Dict[str, Any]): The metadata of the statement.
+            
+        Returns:
+            pd.DataFrame: The validated transactions.
+        """
+        transactions_cleaned = transactions.copy()
+        
+        initial_date, final_date = metadata['period']
+        initial_date = pd.to_datetime(initial_date)
+        final_date = pd.to_datetime(final_date)
+        
+        # Filter the transactions by the period
+        transactions_cleaned = transactions_cleaned[
+            (transactions_cleaned['date'] >= initial_date) &
+            (transactions_cleaned['date'] <= final_date)
+        ]
+        
+        if metadata['statement_type'] == 'debit':
+            initial_balance = metadata['initial_balance']
+            final_balance = metadata['final_balance']
+
+            if initial_balance is not None and final_balance is not None:
+                all_incomes = transactions_cleaned[transactions_cleaned['type'] == 'Abono']['amount'].sum()
+                all_expenses = transactions_cleaned[transactions_cleaned['type'] == 'Cargo']['amount'].sum()
+
+                expected_final = initial_balance + all_incomes + all_expenses
+                if not np.isclose(expected_final, final_balance, atol=0.1):
+                    raise ValueError(
+                        f"El saldo final ({expected_final}) no coincide con el saldo inicial ({initial_balance}) "
+                        f"más ingresos ({all_incomes}) y egresos ({all_expenses}). "
+                        f"Esperado: {final_balance}"
+                    )
+            else:
+                print("Advertencia: No se validaron los saldos porque falta el saldo inicial o final.")
+
+        return transactions_cleaned
+        
     @staticmethod
     def delete_double_transactions(transactions: pd.DataFrame) -> pd.DataFrame:
         """
