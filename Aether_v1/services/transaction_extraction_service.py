@@ -88,6 +88,19 @@ class TransactionExtractionService:
         self._set_all_processors()
         
         transactions = self.data_processor.get_transactions()
+        generated_amount = self.data_processor.get_generated_amount()
+        
+        if generated_amount is not None:
+            _, final_date = self.data_processor.get_period()
+            final_date = pd.to_datetime(final_date)
+            
+            interest_gain = {
+                'date': final_date,
+                'description': 'Intereses generados',
+                'amount': generated_amount,
+                'type': 'Abono',
+            }
+            transactions = pd.concat([transactions, pd.DataFrame([interest_gain])])
         
         transactions['bank'] = self.get_statement_properties()['bank']
         transactions['statement_type'] = self.get_statement_properties()['statement_type']

@@ -195,6 +195,7 @@ class BankProperties(BaseModel):
     initial_balance_phrase: Optional[List[str]] = None
     final_balance_phrase: Optional[List[str]] = None
     initial_balance_description: Optional[str] = None
+    generated_amount_phrase: Optional[List[str]] = None
     
     columns: List[str]
     amount_column: List[str]
@@ -313,6 +314,7 @@ class BankPropertiesFactory:
             initial_balance_phrase=['saldo', 'inicial', 'del', 'periodo'],
             final_balance_phrase=['saldo', 'actual'],
             initial_balance_description='SALDO ANTERIOR',
+            generated_amount_phrase=['intereses', 'netos', 'ganados'],
             period_phrase=['información', 'del', 'periodo'],
             columns=['FECHA', 'DESCRIPCIÓN / ESTABLECIMIENTO', 'MONTO DEL DEPOSITO', 'MONTO DEL RETIRO', 'SALDO'],
             amount_column=['MONTO DEL DEPOSITO', 'MONTO DEL RETIRO', 'SALDO'],
@@ -387,6 +389,7 @@ class BankPropertiesFactory:
             initial_balance_phrase=['saldo', 'anterior'],
             final_balance_phrase=['saldo', 'final'],
             initial_balance_description=None,
+            generated_amount_phrase=['Intereses', 'a', 'favor'],
             period_phrase=['periodo'],
             columns=['OPER', 'LIQ', 'DESCRIPCION', 'REFERENCIA', 'CARGOS', 'ABONOS', 'OPERACION', 'LIQUIDACION'],
             amount_column=['CARGOS', 'ABONOS', 'OPERACION', 'LIQUIDACION'],
@@ -531,6 +534,7 @@ class BankPropertiesFactory:
             initial_balance_phrase=['saldo', 'anterior'],
             final_balance_phrase=['saldo', 'actual'],
             initial_balance_description='BALANCE INICIAL',
+            generated_amount_phrase=['rendimientos'],
             period_phrase=['periodo'],
             columns=['FECHA', 'REFERENCIA', 'CONCEPTO', 'CARGOS', 'ABONOS', 'SALDO'],
             amount_column=['CARGOS', 'ABONOS', 'SALDO'],
@@ -583,6 +587,7 @@ class BankPropertiesFactory:
             initial_balance_phrase=['saldo', 'inicial'],
             final_balance_phrase=['saldo', 'al', 'generar', 'este', 'estado', 'de', 'cuenta'],
             initial_balance_description=None,
+            generated_amount_phrase=['dinero', 'generado', 'este', 'mes'],
             period_phrase=['periodo'],
             columns=[
                 'FECHA',

@@ -36,6 +36,12 @@ class DataProcessingFacade:
         final_balance = self.metadata_extractor.get_balance('final')
         return initial_balance, final_balance
     
+    def get_generated_amount(self) -> float | None:
+        """
+        Get the generated amount from the statement.
+        """
+        return self.metadata_extractor.get_generated_amount()
+    
     def get_transactions(self) -> pd.DataFrame:
         years = self.metadata_extractor.get_years()
         initial_balance, final_balance = self.get_balances()

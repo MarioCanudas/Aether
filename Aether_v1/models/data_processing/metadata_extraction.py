@@ -6,7 +6,7 @@ from dateutil.relativedelta import relativedelta
 import pandas as pd
 from ..core import MetadataExtractor
 from ..document_processing import StatementType
-from utils import clean_amount
+from utils import clean_amount, search_phrase_in_df
 
 class DefaultMetadataExtractor(MetadataExtractor):
     @cache
@@ -107,6 +107,43 @@ class DefaultMetadataExtractor(MetadataExtractor):
         else:
             raise ValueError("More than 2 period dates found in the statement.")
         
+    @cache
+    def get_generated_amount(self) -> float | None:
+        """
+        Get the generated amount from the statement text.
+        Searches for the generated amount phrase and returns the following numeric value.
+        """
+        if self.statement_properties['statement_type'] == StatementType.CREDIT:
+            return None
+        
+        df_extracted_words = self.corrected_extracted_words.copy()
+        
+        generated_amount_phrase = self.statement_properties['generated_amount_phrase']
+        
+        if not generated_amount_phrase or df_extracted_words.empty:
+            return None
+        
+        phrase_idx = search_phrase_in_df(df_extracted_words, generated_amount_phrase)
+        
+        if phrase_idx is None:
+            return None
+        
+        search_window: pd.DataFrame = df_extracted_words.iloc[phrase_idx + len(generated_amount_phrase) : phrase_idx + 15]
+        texts: list[str] = search_window['text'].tolist()
+        
+        for text in texts:
+            text = clean_amount(text)
+            
+            try: 
+                amount = float(text)
+                
+                if amount > 0:
+                    return amount
+            except ValueError:
+                continue
+        else:
+            return None
+                
     def get_balance(self, balance: Literal['initial', 'final']) -> float | None:
         """
         Extracts the initial balance amount from the statement text.
