@@ -2,8 +2,8 @@ import pandas as pd
 from io import BytesIO
 from typing import List, Dict, Any, Tuple, Literal
 import logging
-from streamlit import session_state
 from services import (
+    TransactionExtractionService,
     DataProcessingService, 
     FinancialAnalysisService,
     PlottingService, DataValidationService, DatabaseService
@@ -54,12 +54,18 @@ class TransactionProcessorController(BaseController):
         
         for uploaded_file in uploaded_files:
             try:
-                df_transactions = self.data_processing_service.get_transactions_from_pdf(uploaded_file)
-                all_transactions.append(df_transactions)
+                # Set the transaction extraction service per file
+                transaction_extraction_service = TransactionExtractionService(uploaded_file)
+                df_transactions = transaction_extraction_service.get_transactions_from_pdf(return_type='dataframe')
+                df_metadata = transaction_extraction_service.get_metadata()
+                
+                validated_transactions = self.data_validation_service.validate_transactions(df_transactions, df_metadata)
+                
+                all_transactions.append(validated_transactions)
             except ValueError as e:
-                logger.error(f"Error processing {uploaded_file.name}: {e}")
+                raise ValueError(f"Error processing {uploaded_file.name}: {e}")
             except Exception as e:
-                logger.error(f"An unexpected error processing {uploaded_file.name}: {e}")
+                raise ValueError(f"An unexpected error processing {uploaded_file.name}: {e}")
                 
         all_transactions_df = pd.concat(all_transactions, ignore_index=True)
         all_transactions_df['user_id'] = self.user_session_service.current_user_id
