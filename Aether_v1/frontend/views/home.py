@@ -23,7 +23,7 @@ def show_home():
             df_transactions = controller.process_uploaded_files(uploaded_files)
             confirm_upload_popup(df_transactions)
         except Exception as e:
-            st.error(f"An unexpected error processing {uploaded_files.name}: {e}")
+            st.error(f"An unexpected error processing files: {e}")
             
     if controller.user_have_transactions() and controller.user_have_monthly_results():
         financial_analysis = controller.get_financial_analysis()
