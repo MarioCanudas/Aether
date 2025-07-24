@@ -137,20 +137,19 @@ def clean_amount(amount: str) -> str:
     """
     return amount.replace(',', '').replace('$', '').replace('+', '').replace('-','')
 
-def cache_by_transactions(func):
+def identify_date_separator(date_pattern: re.Pattern | str) -> str:
     """
-    Caches a function by the variable transactions.
+    Identifies the separator used in a date pattern.
     """
-    cache = {}
+    if isinstance(date_pattern, re.Pattern):
+        date_pattern = date_pattern.pattern
     
-    @wraps(func)
-    def wrapper(self, db_service, transactions):
-        # Crear clave de cache solo con transactions
-        cache_key = str(hash(pd.util.hash_pandas_object(transactions).sum()))
-        
-        if cache_key not in cache:
-            cache[cache_key] = func(self, db_service, transactions)
-        
-        return cache[cache_key]
+    matches = re.findall(r'\)[^\w\\]*([^\w\\])\(', date_pattern)
     
-    return wrapper
+    if matches:
+        return max(set(matches), key=matches.count)
+    
+    if re.search(r'\)\s+\(', date_pattern):
+        return ' '
+    
+    raise ValueError(f"Not found any separator in the date pattern: {date_pattern}")
