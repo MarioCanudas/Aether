@@ -1,14 +1,15 @@
 import matplotlib.pyplot as plt
 from pandas import DataFrame, Series
+from decimal import Decimal
 
 class PlottingService:
     @staticmethod
     def get_savings_donut_chart_config(total_savings: float, avg_income_per_month: float) -> dict:
-        if total_savings >= 0.10 * avg_income_per_month:
+        if total_savings >= Decimal(0.10) * avg_income_per_month:
             return {'completion_percentage': 100, 'label': "Excellent!", "color": '#1E90FF', "points": '100 pts'}
-        elif 0 <= total_savings < 0.10 * avg_income_per_month:
+        elif 0 <= total_savings < Decimal(0.10) * avg_income_per_month:
             return {'completion_percentage': 75, 'label': "Good", "color": '#4CAF50', "points": '75 pts'}
-        elif -0.10 * avg_income_per_month <= total_savings < 0:
+        elif Decimal(-0.10) * avg_income_per_month <= total_savings < 0:
             return {'completion_percentage': 50, 'label': "Regular", "color": '#FF9800', "points": '50 pts'}
         else:
             return {'completion_percentage': 25, 'label': "Poor", "color": '#F44336', "points": '25 pts'}
