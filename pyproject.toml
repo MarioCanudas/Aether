@@ -20,17 +20,19 @@ classifiers = [
 
 # Production dependencies: required for the application to run.
 dependencies = [
-    "streamlit==1.44.1",
+    "streamlit==1.46.1",
     "pandas==2.2.3",
     "matplotlib==3.10.1",
-    "easyocr==1.7.2",
     "pdfplumber==0.11.6",
     "scikit-learn==1.6.1",
+    "pydantic==2.9.2",
+    "psycopg2-binary==2.9.10",
 ]
 
 [project.optional-dependencies]
 dev = [
     "poe-the-poet>=0.24.0", # Task runner
+    "python-dotenv==1.1.1",
 ]
 test = [
     "pytest>=7.0.0",         # Testing framework
