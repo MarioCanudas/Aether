@@ -263,7 +263,7 @@ class DefaultTableNormalizer(TableNormalizer):
         
         # Normalize each column type
         df_normalized['date'] = self.date_normalizer.normalize_column(reconstructed_table['date'], years)
-        df_normalized['description'] = reconstructed_table['description']
+        df_normalized['description'] = reconstructed_table['description'].apply(lambda x: x[:500])
         
         # Handle single vs multiple amount columns
         df_amount = self.amount_normalizer.normalize_column(reconstructed_table[amount_column]) if len(amount_column) > 1 else self.amount_normalizer.normalize_column(reconstructed_table[amount_column[0]])

@@ -1,10 +1,11 @@
 import pandas as pd
 import numpy as np
+import re
 from sklearn.cluster import KMeans
 from functools import cache
-from typing import List, Tuple
+from typing import List, Tuple, Dict, Any
 from ..core import Reconstructor
-from utils import classify_words
+from utils import classify_words, identify_date_separator
 
 class TableReconstructor(Reconstructor):
     @cache
@@ -168,6 +169,79 @@ class TableReconstructor(Reconstructor):
         
         return result_df.drop('amount', axis=1)
     
+    def correct_date_errors(self, merged_rows: List[Dict[str, Any]]) -> pd.DataFrame:
+        """
+        Corrects date errors in the reconstructed table.
+        """
+        date_groups = self.statement_properties['date_groups']
+        day_group = date_groups['day']
+        month_group = date_groups['month']
+        year_group = date_groups['year']
+        
+        if year_group is None:
+            return pd.DataFrame(merged_rows)
+        
+        month_pattern = self.statement_properties['month_pattern']
+        date_pattern = re.compile(self.statement_properties['date_pattern'])
+        date_separator = identify_date_separator(date_pattern)
+        
+        rows_to_delete = []
+        
+        for i, row in enumerate(merged_rows):
+            date = row['date']
+            match = date_pattern.match(date)
+            
+            if not match:
+                rows_to_delete.append(i)
+                continue
+
+            day = match.group(day_group)
+            month = match.group(month_group)
+            year = match.group(year_group)
+            
+            if not year:
+                date_order = [None, None, None]
+                date_order[day_group - 1] = day
+                date_order[month_group - 1] = month
+                
+                no_date_word = ' '.join(date.split(date_separator)[year_group - 1:])
+                
+                for j in range(len(merged_rows)):
+                    j_date: str = merged_rows[j]['date']
+                    j_date_month: str = date_pattern.match(j_date).group(month_group)
+                    j_date_year: str = date_pattern.match(j_date).group(year_group)
+                    
+                    if j_date_month == month and j_date_year.isdigit():
+                        date_order[year_group - 1] = j_date_year
+                        break
+                else:
+                    jan = month_pattern.keys()[0]
+                    dic = month_pattern.keys()[-1]
+                    relative_year = None
+                    relative_month = None
+                    
+                    for j in range(len(merged_rows)):
+                        j_date: str = merged_rows[j]['date']
+                        j_date_month: str = date_pattern.match(j_date).group(month_group)
+                        j_date_year: str = date_pattern.match(j_date).group(year_group)
+                        
+                        if j_date_year.isdigit():
+                            relative_year = j_date_year
+                            relative_month = j_date_month
+                            break
+                        
+                    if month == jan and relative_month == dic:
+                        date_order[year_group - 1] = int(relative_year) + 1
+                    elif month == dic and relative_month == jan:
+                        date_order[year_group - 1] = int(relative_year) - 1
+                    else:
+                        date_order[year_group] = relative_year
+                
+                merged_rows[i]['date'] = date_separator.join(date_order)
+                merged_rows[i]['description'] = no_date_word.strip() + merged_rows[i]['description']
+                
+        return pd.DataFrame(merged_rows).drop(rows_to_delete).reset_index(drop=True)
+    
     def reconstruct_table(self) -> pd.DataFrame:
         """
         Merges multi-line transactions into single rows and filters out invalid entries.
@@ -183,6 +257,7 @@ class TableReconstructor(Reconstructor):
         current_row = None
         
         date_pattern = self.statement_properties['date_pattern']
+        date_groups = self.statement_properties['date_groups']
 
         # Merge rows that belong to the same transaction
         for _, row in df_structured.iterrows():
@@ -208,7 +283,7 @@ class TableReconstructor(Reconstructor):
             merged_rows.append(current_row)
 
         # Filter out rows without amounts and invalid dates
-        df_merged = pd.DataFrame(merged_rows)
+        df_merged = self.correct_date_errors(merged_rows)
         df_merged = df_merged[~df_merged.apply(lambda row: all(pd.isna(row[col]) or row[col] == '' for col in amount_columns), axis=1)]
         
         return df_merged[df_merged['date'].str.match(date_pattern, na=False)].reset_index(drop=True)
