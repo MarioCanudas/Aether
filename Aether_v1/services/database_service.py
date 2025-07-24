@@ -1,11 +1,21 @@
-import sqlite3
+import psycopg2
+import psycopg2.extras
 import pandas as pd
 from typing import Optional, Dict, Any, List, Literal, Tuple, Generator
 from pathlib import Path
 import logging
 import re
 from contextlib import contextmanager
-from config import DATABASE_FILE
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
+DB_HOST = os.getenv('DB_HOST')
+DB_PORT = os.getenv('DB_PORT')
+DB_NAME = os.getenv('DB_NAME')
+DB_USER = os.getenv('DB_USER')
+DB_PASSWORD = os.getenv('DB_PASSWORD')
 
 logger = logging.getLogger(__name__)
 
@@ -32,15 +42,14 @@ class DatabaseService:
     """
     ALLOWED_TABLES = {'users', 'transactions', 'monthly_results'}
     ALLOWED_COLUMNS = {
-        'users': {'id', 'username', 'created_at'},
+        'users': {'id', 'username', 'password_hash', 'created_at', 'last_login', 'updated_at'},
         'transactions': {'id', 'user_id', 'date', 'description', 'amount', 'type', 'bank', 'statement_type', 'filename'},
-        'monthly_results': {'id', 'user_id', 'year_month', 'initial_balance', 'total_income', 'total_withdrawal', 'savings', 'balance_valid'},
+        'monthly_results': {'id', 'user_id', 'year_month', 'initial_balance', 'total_income', 'total_withdrawal', 'savings', 'last_calculated_at'},
     }
     
-    def __init__(self, db_file: str= DATABASE_FILE):
-        self.db_file = Path(db_file)
-        self.conn: Optional[sqlite3.Connection] = None
-        self.cursor: Optional[sqlite3.Cursor] = None
+    def __init__(self):
+        self.conn: Optional[psycopg2.extensions.connection] = None
+        self.cursor: Optional[psycopg2.extensions.cursor] = None
         self._transaction_level = 0  # Track nested transaction levels
         self._savepoints = []  # Stack of savepoint names for nested transactions
         
@@ -49,16 +58,18 @@ class DatabaseService:
         Connect to the database.
         """
         try:
-            self.conn = sqlite3.connect(
-                self.db_file, 
-                autocommit= False,
-                check_same_thread= False,
-                timeout= 30.0
+            self.conn = psycopg2.connect(
+                host=DB_HOST,
+                port=DB_PORT,
+                dbname=DB_NAME,
+                user=DB_USER,
+                password=DB_PASSWORD,
+                connect_timeout=10
             )
-            self.cursor = self.conn.cursor()
-            logger.info(f"Connected to database: {self.db_file}")
+            self.cursor = self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+            logger.info(f"Connected to PostgreSQL database: {DB_HOST}/{DB_NAME}")
         except Exception as e:
-            logger.error(f"Error connecting to database: {e}")
+            logger.error(f"Error connecting to PostgreSQL: {e}")
             raise
         
     def disconnect(self) -> None:
@@ -100,6 +111,7 @@ class DatabaseService:
         
         if self._transaction_level == 1:
             # First transaction - BEGIN is implicit with autocommit=False
+            self.cursor.execute("BEGIN;")
             logger.debug("Transaction started")
         else:
             # Nested transaction - create savepoint
@@ -360,7 +372,7 @@ class DatabaseService:
         
         query = f"""
             INSERT INTO {table_name} ({', '.join(columns)})
-            VALUES ({', '.join([f':{col}' for col in columns])})
+            VALUES ({', '.join([f'%({col})s' for col in columns])})
         """
         
         try:
@@ -382,10 +394,80 @@ class DatabaseService:
                 logger.error(f"Error inserting record in transaction: {e}")
             raise
 
+    def _ensure_partition_exists(self, date_value: str) -> None:
+        """
+        Ensure that a partition exists for the given date in the transactions table.
+        Creates the partition if it doesn't exist.
+        
+        Args:
+            date_value (str): Date in 'YYYY-MM-DD' format
+        """
+        try:
+            # Parse the date to get year and month
+            from datetime import datetime
+            date_obj = datetime.strptime(date_value, '%Y-%m-%d')
+            year = date_obj.year
+            month = date_obj.month
+            
+            # Create partition name
+            partition_name = f"transactions_{year}_{month:02d}"
+            
+            # Check if partition exists
+            check_query = """
+                SELECT EXISTS (
+                    SELECT 1 FROM pg_class 
+                    WHERE relname = %s AND relispartition = true
+                )
+            """
+            self.cursor.execute(check_query, (partition_name,))
+            partition_exists = self.cursor.fetchone()[0]
+            
+            if not partition_exists:
+                # Create the partition
+                start_date = f"{year}-{month:02d}-01"
+                if month == 12:
+                    end_date = f"{year + 1}-01-01"
+                else:
+                    end_date = f"{year}-{month + 1:02d}-01"
+                
+                create_partition_query = f"""
+                    CREATE TABLE {partition_name} PARTITION OF transactions
+                    FOR VALUES FROM ('{start_date}') TO ('{end_date}')
+                """
+                
+                self.cursor.execute(create_partition_query)
+                logger.info(f"Created partition {partition_name} for date range {start_date} to {end_date}")
+                
+        except Exception as e:
+            logger.error(f"Error ensuring partition exists for date {date_value}: {e}")
+            raise
+
+    def _ensure_partitions_for_records(self, records: List[dict]) -> None:
+        """
+        Ensure that partitions exist for all dates in the records.
+        Only applies to transactions table.
+        
+        Args:
+            records (List[dict]): List of records to insert
+        """
+        # Get unique dates from records
+        unique_dates = set()
+        for record in records:
+            if 'date' in record:
+                date_str = record['date']
+                if hasattr(date_str, 'strftime'):
+                    date_str = date_str.strftime('%Y-%m-%d')
+                unique_dates.add(date_str)
+        
+        # Ensure partitions exist for each unique date
+        for date_str in unique_dates:
+            self._ensure_partition_exists(date_str)
+
     def insert_multiple_records(self, table_name: str, records: List[dict], unique_values: Dict[str, Any] = None) -> None:
         """
         Inserts multiple records into the database efficiently.
         Respects manual transactions - only commits if no active transaction.
+        For transactions table, automatically creates monthly partitions if they don't exist.
         
         Args:
             table_name (str): The name of the table to insert the records into.
@@ -413,6 +495,10 @@ class DatabaseService:
         table_name = self._validate_table_name(table_name)
         columns = self._validate_columns(table_name, list(records[0].keys()))
         
+        # Ensure partitions exist for transactions table before inserting
+        if table_name == 'transactions':
+            self._ensure_partitions_for_records(records)
+        
         # Verify that all records have the same columns and ensure date is in the correct format
         for i, record in enumerate(records):
             if 'date' in record:
@@ -423,11 +509,11 @@ class DatabaseService:
         
         query = f"""
             INSERT INTO {table_name} ({', '.join(columns)})
-            VALUES ({', '.join([f':{col}' for col in columns])})
+            VALUES ({', '.join([f'%({col})s' for col in columns])})
         """
         
         try:
-            self.cursor.executemany(query, records)
+            psycopg2.extras.execute_batch(self.cursor, query, records)
             
             # Only commit if not in a manual transaction
             if not self.is_in_transaction():
@@ -510,7 +596,7 @@ class DatabaseService:
                 raise ValueError("Where conditions must be a dictionary")
             if where_conditions:
                 where_conditions_columns = self._validate_columns(table_name, list(where_conditions.keys()))
-                where_clause = ' AND '.join([f'{col} = :{col}' for col in where_conditions_columns])
+                where_clause = ' AND '.join([f'{col} = %({col})s' for col in where_conditions_columns])
                 query += f' WHERE {where_clause}'
                 params = where_conditions
         # If where_conditions is None or empty, no WHERE clause is added and params remains empty
@@ -524,47 +610,24 @@ class DatabaseService:
             query += '\n' + order_by_clause
         
         try:
-            if value_format == 'dataframe':
-                # Manual implementation of query_to_dataframe
-                query_preview = query[:50] + '...' if len(query) > 50 else query
-                logger.debug(f"Converting query to DataFrame: {query_preview}")
-                
-                try:
-                    df = pd.read_sql_query(query, self.conn, params=params)
-                    logger.debug(f"DataFrame created with {len(params)} parameters")
-                    logger.info(f"DataFrame created successfully - Shape: {df.shape}")
-                    
-                    # Warning for very large DataFrames
-                    if len(df) > 5000:
-                        logger.warning(f"Large DataFrame created: {len(df)} rows - consider adding LIMIT")
-                    
-                    return df
-                    
-                except Exception as e:
-                    logger.error(f"Error converting query to DataFrame: {e}")
-                    logger.debug(f"Failed query: {query}")
-                    raise
-            else:
-                original_row_factory = self.conn.row_factory
-                
-                if value_format == 'dict':
-                    self.conn.row_factory = lambda cursor, row: dict(
-                        zip([col[0] for col in cursor.description], row)
-                    )
-                elif value_format == 'tuple':
-                    self.conn.row_factory = None
-                else:
-                    raise ValueError(f"Invalid value format: {value_format}")
-                
+            if value_format == 'dict' or value_format == 'dataframe':
+                cursor = self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+            elif value_format == 'tuple':
                 cursor = self.conn.cursor()
-                cursor.execute(query, params)
-                results = cursor.fetchall()
-                
-                self.conn.row_factory = original_row_factory
-                
-                logger.info(f"Retrieved {len(results)} records from {table_name} in {value_format} format")
+            else:
+                raise ValueError(f"Invalid value format: {value_format}")
+
+            cursor.execute(query, params)
+            results = cursor.fetchall()
+            cursor.close()
+
+            logger.info(f"Retrieved {len(results)} records from {table_name} in {value_format} format")
+
+            if value_format == 'dataframe':
+                return pd.DataFrame(results)
+            else:
                 return results
-                
+
         except Exception as e:
             logger.error(f"Error getting record from {table_name}: {e}")
             logger.debug(f"Failed query: {query}")
@@ -629,8 +692,8 @@ class DatabaseService:
         if overlapping_columns:
             logger.warning(f"Overlapping columns between SET and WHERE: {overlapping_columns}")
         
-        set_clause = ', '.join([f'{col} = :set_{col}' for col in new_record_columns])
-        where_clause = ' AND '.join([f'{col} = :where_{col}' for col in where_conditions_columns])
+        set_clause = ', '.join([f'{col} = %(set_{col})s' for col in new_record_columns])
+        where_clause = ' AND '.join([f'{col} = %(where_{col})s' for col in where_conditions_columns])
         
         query = f"""
             UPDATE {table_name}
@@ -649,10 +712,10 @@ class DatabaseService:
             query_preview = query[:100] + '...' if len(query) > 100 else query
             logger.debug(f"Executing query: {query_preview}")
             
-            result = self.cursor.execute(query, params)
+            self.cursor.execute(query, params)
             logger.debug(f"Query executed with {len(params)} parameters")
             
-            rows_affected = result.rowcount
+            rows_affected = self.cursor.rowcount
             
             # Only commit if not in a manual transaction
             if not self.is_in_transaction():
@@ -701,7 +764,7 @@ class DatabaseService:
         table_name = self._validate_table_name(table_name)
         where_conditions_columns = self._validate_columns(table_name, list(where_conditions.keys()))
         
-        where_clause = ' AND '.join([f'{col} = :{col}' for col in where_conditions_columns])
+        where_clause = ' AND '.join([f'{col} = %({col})s' for col in where_conditions_columns])
         
         query = f"""
             DELETE FROM {table_name} WHERE {where_clause}
@@ -712,10 +775,10 @@ class DatabaseService:
             query_preview = query[:100] + '...' if len(query) > 100 else query
             logger.debug(f"Executing query: {query_preview}")
             
-            result = self.cursor.execute(query, where_conditions)
+            self.cursor.execute(query, where_conditions)
             logger.debug(f"Query executed with {len(where_conditions)} parameters")
             
-            rows_affected = result.rowcount
+            rows_affected = self.cursor.rowcount
             
             # Only commit if not in a manual transaction
             if not self.is_in_transaction():
@@ -770,80 +833,57 @@ class DatabaseService:
     def _format_select_results(self, query: str, params: Dict[str, Any], value_format: Literal['tuple', 'dict', 'dataframe', 'scalar']) -> Any:
         """
         Format SELECT query results based on the specified format.
-        
         Args:
             query (str): The original query (for dataframe conversion)
             params (Dict[str, Any]): Query parameters (for dataframe conversion)
             value_format (str): Desired format ('tuple', 'dict', 'dataframe', 'scalar')
-            
         Returns:
             Formatted results based on value_format
         """
-        if value_format == 'dataframe':
-            # Use pandas for DataFrame conversion
-            query_preview = query[:50] + '...' if len(query) > 50 else query
-            logger.debug(f"Converting query to DataFrame: {query_preview}")
-            
-            try:
-                df = pd.read_sql_query(query, self.conn, params=params)
-                logger.info(f"DataFrame created successfully - Shape: {df.shape}")
-                
-                # Warning for very large DataFrames
-                if len(df) > 5000:
-                    logger.warning(f"Large DataFrame created: {len(df)} rows - consider adding LIMIT")
-                
-                return df
-                
-            except Exception as e:
-                logger.error(f"Error converting query to DataFrame: {e}")
-                raise
-                
-        elif value_format == 'scalar':
-            # For scalar values (single row, single column)
-            data = self.cursor.fetchall()
-            
-            if not data:
-                logger.warning("Scalar query returned no results")
-                return None
-            
-            if len(data) > 1:
-                logger.warning(f"Scalar query returned {len(data)} rows, using first row")
-            
-            if len(data[0]) > 1:
-                logger.warning(f"Scalar query returned {len(data[0])} columns, using first column")
-            
-            scalar_value = data[0][0]
-            logger.info(f"Scalar query executed - returned: {scalar_value}")
-            return scalar_value
-            
-        else:
-            # For 'tuple' and 'dict' formats
-            original_row_factory = self.conn.row_factory
-            
-            try:
-                if value_format == 'dict':
-                    self.conn.row_factory = lambda cursor, row: dict(
-                        zip([col[0] for col in cursor.description], row)
-                    )
-                elif value_format == 'tuple':
-                    self.conn.row_factory = None  # Default tuple format
-                
-                # Re-execute to get properly formatted results
+        try:
+            if value_format == 'dict' or value_format == 'dataframe':
+                cursor = self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+            elif value_format == 'tuple':
                 cursor = self.conn.cursor()
-                if params:
-                    cursor.execute(query, params)
-                else:
-                    cursor.execute(query)
-                    
-                results = cursor.fetchall()
+            elif value_format == 'scalar':
+                cursor = self.conn.cursor()
+            else:
+                raise ValueError(f"Invalid value format: {value_format}")
+
+            if params:
+                cursor.execute(query, params)
+            else:
+                cursor.execute(query)
+
+            if value_format == 'scalar':
+                data = cursor.fetchone()
                 cursor.close()
-                
-                logger.info(f"SELECT query executed - {len(results)} rows returned in {value_format} format")
+                if not data:
+                    logger.warning("Scalar query returned no results")
+                    return None
+                if isinstance(data, dict):
+                    # RealDictCursor returns dict
+                    scalar_value = next(iter(data.values()))
+                else:
+                    scalar_value = data[0]
+                logger.info(f"Scalar query executed - returned: {scalar_value}")
+                return scalar_value
+
+            results = cursor.fetchall()
+            cursor.close()
+
+            logger.info(f"SELECT query executed - {len(results)} rows returned in {value_format} format")
+
+            if value_format == 'dataframe':
+                return pd.DataFrame(results)
+            else:
                 return results
-                
-            finally:
-                # Restore original row factory
-                self.conn.row_factory = original_row_factory
+
+        except Exception as e:
+            logger.error(f"Error formatting select results: {e}")
+            logger.debug(f"Failed query: {query}")
+            logger.debug(f"Parameters: {params}")
+            raise
         
     def custom_query(
             self, 
