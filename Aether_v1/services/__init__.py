@@ -1,4 +1,4 @@
-from .transaction_extraction_service import TransactionExtractionService
+from .statement_data_extraction import StatementDataExtractionService
 from .data_processing_service import DataProcessingService
 from .financial_analysis_service import FinancialAnalysisService
 from .plotting_service import PlottingService
@@ -8,7 +8,7 @@ from .data_validation_service import DataValidationService
 from .user_session_service import UserSessionService
 
 __all__ = [
-    'TransactionExtractionService',
+    'StatementDataExtractionService',
     'DataProcessingService',
     'FinancialAnalysisService',
     'PlottingService',
