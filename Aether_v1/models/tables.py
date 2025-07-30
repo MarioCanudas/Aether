@@ -2,7 +2,7 @@ import pandas as pd
 from pydantic import BaseModel,ConfigDict, field_validator, ValidationError
 from typing import List, Literal
 from .amounts import AmountColumns
-from .transactions import TransactionRecord
+from .records import TransactionRecord, MonthlyResultRecord
 
 TABLE_CONFIG = ConfigDict(arbitrary_types_allowed=True) 
 
@@ -315,6 +315,13 @@ class ReconstructedTable(BaseModel):
         
     
 class TransactionsTable(BaseModel):
+    """Represents a table of transactions per individual statement with the following columns:
+    - date: The date of the transaction
+    - description: The description of the transaction
+    - amount: The amount of the transaction
+    - type: The type of the transaction
+    - bank: The bank of the transaction
+    """
     model_config = TABLE_CONFIG
     
     df: pd.DataFrame
@@ -387,11 +394,7 @@ class TransactionsTable(BaseModel):
     
     @property
     def bank(self) -> str | List[str]:
-        bank_list = self.df['bank'].unique().tolist()
-        if len(bank_list) == 1:
-            return bank_list[0]
-        else:
-            return bank_list
+        return self.df['bank'].iloc[0]
     
     @property
     def statement_type_col(self) -> pd.Series:
@@ -438,3 +441,128 @@ class TransactionsTable(BaseModel):
     
     def get_all_transactions(self) -> float:
         return self.df['amount'].sum()
+    
+    @property
+    def records(self) -> List[TransactionRecord]:
+        return self.df.to_dict(orient='records')
+    
+class AllTransactionsTable(TransactionsTable):
+    """Represents a table of all transactions from all statements with the following columns:
+    - date: The date of the transaction
+    - description: The description of the transaction
+    - amount: The amount of the transaction
+    - type: The type of the transaction
+    - bank: The bank of the transaction
+    - user_id: The user id of the transaction
+    """
+    @field_validator('df', mode='before')
+    @classmethod
+    def _validate_df_structure(cls, v: pd.DataFrame) -> pd.DataFrame:
+        v = super()._validate_df_structure(v)
+        
+        if 'user_id' not in v.columns:
+            raise ValidationError("The TransactionsTable must have the following columns: user_id")
+            
+        return v
+    
+    @property
+    def banks(self) -> List[str]:
+        return self.df['bank'].unique().tolist()
+    
+    @property
+    def files(self) -> List[str]:
+        return self.df['filename'].unique().tolist()
+    
+    @property
+    def user_id(self) -> int:
+        return self.df['user_id'].iloc[0]
+    
+class MonthlyResultsTable(BaseModel):
+    """Represents a table of monthly results with the following columns:
+    - year_month: The year and month of the result
+    - user_id: The user id of the result
+    """
+    model_config = TABLE_CONFIG
+    
+    df: pd.DataFrame = pd.DataFrame(columns= ['year_month', 'initial_balance', 'total_income', 'total_withdrawal', 'savings', 'user_id'])
+    
+    @field_validator('df', mode='before')
+    @classmethod
+    def _validate_df_structure(cls, v: pd.DataFrame) -> pd.DataFrame:
+        if not isinstance(v, pd.DataFrame):
+            raise ValidationError("The dataframe must be a pandas dataframe")
+        
+        if not all(col in v.columns for col in ['year_month', 'initial_balance', 'total_income', 'total_withdrawal', 'savings', 'user_id']):
+            raise ValidationError("The dataframe must have the following columns: year_month, initial_balance, total_income, total_withdrawal, savings, user_id")
+        
+        return v
+    
+    @property
+    def year_months(self) -> pd.Series:
+        return self.df['year_month']
+    
+    @year_months.setter
+    def year_months(self, year_months: pd.Series) -> None:
+        if not isinstance(year_months, pd.Series):
+            raise ValueError("The year months must be a pandas series")
+        
+        self.df['year_month'] = year_months
+        
+    @property
+    def initial_balances(self) -> pd.Series:
+        return self.df['initial_balance']
+    
+    @initial_balances.setter
+    def initial_balances(self, initial_balances: pd.Series) -> None:
+        if not isinstance(initial_balances, pd.Series):
+            raise ValueError("The initial balances must be a pandas series")
+        
+        self.df['initial_balance'] = initial_balances
+        
+    @property
+    def total_incomes(self) -> pd.Series:
+        return self.df['total_income']
+    
+    @total_incomes.setter
+    def total_incomes(self, total_incomes: pd.Series) -> None:
+        if not isinstance(total_incomes, pd.Series):
+            raise ValueError("The total incomes must be a pandas series")
+        
+        self.df['total_income'] = total_incomes
+        
+    @property
+    def total_withdrawals(self) -> pd.Series:
+        return self.df['total_withdrawal']
+    
+    @total_withdrawals.setter
+    def total_withdrawals(self, total_withdrawals: pd.Series) -> None:
+        if not isinstance(total_withdrawals, pd.Series):
+            raise ValueError("The total withdrawals must be a pandas series")
+        
+        self.df['total_withdrawal'] = total_withdrawals
+        
+    @property
+    def savings(self) -> pd.Series:
+        return self.df['savings']
+    
+    @savings.setter
+    def savings(self, savings: pd.Series) -> None:
+        if not isinstance(savings, pd.Series):
+            raise ValueError("The savings must be a pandas series")
+        
+        self.df['savings'] = savings
+        
+    @property
+    def user_id(self) -> int:
+        return self.df['user_id'].iloc[0]
+    
+    @user_id.setter
+    def user_id(self, user_id: int) -> None:
+        if not isinstance(user_id, int):
+            raise ValueError("The user id must be an integer")
+        
+        self.df['user_id'] = user_id
+        
+    @property
+    def records(self) -> List[MonthlyResultRecord]:
+        return self.df.to_dict(orient='records') if not self.df.empty else []	

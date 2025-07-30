@@ -20,7 +20,7 @@ class DateGroups(BaseModel):
     
     @field_validator('year', 'month', 'day')
     @classmethod
-    def validate_date_groups_instance(cls, v, info, values):
+    def validate_date_groups_instance(cls, v, info):
         """
         Validate that month and day are integers between 1 and 3,
         and that none of the values (year, month, day) are equal to each other,
@@ -32,9 +32,9 @@ class DateGroups(BaseModel):
                 raise ValueError(f"The {info.field_name} must be between 1 and 3")
         
         # Check that none of the values are equal (ignoring None for year)
-        year = v if info.field_name == 'year' else values.get('year')
-        month = v if info.field_name == 'month' else values.get('month')
-        day = v if info.field_name == 'day' else values.get('day')
+        year = v if info.field_name == 'year' else info.data.get('year')
+        month = v if info.field_name == 'month' else info.data.get('month')
+        day = v if info.field_name == 'day' else info.data.get('day')
 
         # Only compare if at least two values are not None
         values_to_compare = [x for x in (year, month, day) if x is not None]
@@ -52,11 +52,11 @@ class Period(BaseModel):
     
     @field_validator('end_date')
     @classmethod
-    def validate_dates_not_equal(cls, v, info, values):
+    def validate_dates_not_equal(cls, v, info):
         """
         Validate that the start and end dates are not equal.
         """
-        start_date = values.get('start_date')
+        start_date = info.data.get('start_date')
         end_date = v
         if start_date is not None and end_date is not None:
             if start_date == end_date:
