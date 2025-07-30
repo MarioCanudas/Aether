@@ -1,4 +1,3 @@
-import pandas as pd
 from models.delimitations import ColumnDelimitations
 from models.tables import GroupedRows
 from ..core import ColumnSegmenter, RowSegmenter

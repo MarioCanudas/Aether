@@ -7,7 +7,7 @@ import pandas as pd
 from utils import clean_amount, search_phrase_in_df
 from models.bank_properties import StatementType, Metadata, Balances
 from models.dates import Period
-from models.transactions import TransactionRecord
+from models.records import TransactionRecord
 from ..core import MetadataExtractor
 
 class DefaultMetadataExtractor(MetadataExtractor):

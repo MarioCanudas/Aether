@@ -1,12 +1,12 @@
 import pandas as pd
 import re
 from typing import List, Dict
-from ..core import ColumnNormalizer, TableNormalizer
 from utils import clean_amount
 from models.amounts import AmountSigns, AmountColumns
 from models.bank_properties import BankProperties
 from models.dates import DateGroups
 from models.tables import ReconstructedTable, TransactionsTable
+from ..core import ColumnNormalizer, TableNormalizer
 
 class DateNormalizer(ColumnNormalizer):
     @staticmethod
