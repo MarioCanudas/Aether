@@ -1,9 +1,8 @@
 from pydantic import BaseModel
 from enum import Enum
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Any
 from .amounts import AmountColumns, AmountSigns, Balances
 from .dates import DateGroups, Period
-from ..services.statement_data_extraction import SpecialDataFiltering
 
 class BankName(str, Enum):
     AMEX = 'amex'
@@ -57,4 +56,4 @@ class BankProperties(BaseModel):
     period_month_pattern: Optional[Dict[str, str]] = None
     period_group: Optional[DateGroups] = None
     
-    special_data_filtering: Optional[SpecialDataFiltering] = None
+    special_data_filtering: Any = None
