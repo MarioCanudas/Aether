@@ -29,7 +29,7 @@ class UserSessionService:
         self._local = threading.local()  # Thread-local storage for Streamlit sessions
         self.connection_manager = ConnectionManagementService()
         self._initialized = True
-        self.current_user_id = None
+        self.current_user_id: Optional[int] = None
         logger.info("UserSessionService initialized")
         
     def get_available_df_users(self) -> list:

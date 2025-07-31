@@ -34,9 +34,8 @@ class StatementDataExtractionService:
         extracted_words = self.reader.extract_words()
         
         text_processor = DefaultTextProcessor(extracted_words, self.get_bank_properties())
-        corrected_extracted_words = text_processor.correct_text()
         
-        return ExtractedWords(df= corrected_extracted_words)
+        return text_processor.correct_text()
     
     @cached_property
     def metadata_extractor(self) -> DefaultMetadataExtractor:
@@ -60,11 +59,8 @@ class StatementDataExtractionService:
         grouped_rows = row_segmenter.group_rows()
         
         reconstructed_table = TableReconstructor(grouped_rows, column_delimitations, bank_properties)
-        reconstructed_table = reconstructed_table.reconstruct_table()
         
-        amount_columns = bank_properties.amount_columns
-        
-        return ReconstructedTable(df= reconstructed_table, amount_columns= amount_columns)
+        return reconstructed_table.reconstruct_table()
     
     def get_normalized_table(self) -> TransactionsTable:
         reconstructed_table = self.get_reconstructed_table()
@@ -77,7 +73,7 @@ class StatementDataExtractionService:
         
         table_normalizer = DefaultTableNormalizer(reconstructed_table, bank_properties, (date_normalizer, amount_normalizer))
         
-        return table_normalizer.normalize_table(years)
+        return table_normalizer.normalize_table(years, self.filename)
     
     def get_transactions(self) -> TransactionsTable:
         normalized_table = self.get_normalized_table()

@@ -1,8 +1,6 @@
 import pandas as pd
-from io import BytesIO
-import os
-from typing import Literal, List, Dict, Any
-from models import DocumentProcessingFacade, TableProcessingFacade, DataProcessingFacade
+from typing import Literal
+from models.tables import AllTransactionsTable, MonthlyResultsTable
 
 class DataProcessingService:
     """
@@ -23,9 +21,8 @@ class DataProcessingService:
     """
     @staticmethod
     def get_monthly_results(
-            data: pd.DataFrame, 
-            return_type: Literal['dataframe', 'records'] = 'records'
-        ) -> pd.DataFrame | List[Dict[str, Any]]:
+            all_transactions: AllTransactionsTable
+        ) -> MonthlyResultsTable:
         """
         Calculates monthly savings and validates balances by ensuring the running total matches the provided balances.
 
@@ -36,17 +33,19 @@ class DataProcessingService:
         Returns:
             pd.DataFrame | List[Dict[str, Any]]: A DataFrame with monthly savings and balance validation results or a list of records.
         """
+        # Copy the dataframe to avoid modifying the original one
+        df = all_transactions.df.copy()
         # Ensure the 'Date' column is in datetime format
-        data['date'] = pd.to_datetime(data['date'], format='%Y-%m-%d')
+        df['date'] = pd.to_datetime(df['date'], format='%Y-%m-%d')
 
         # Add 'Year-Month' column for grouping
-        data['year_month'] = data['date'].dt.to_period('M')
+        df['year_month'] = df['date'].dt.to_period('M')
 
         # Initialize a list to store results
         results = []
 
         # Group data by 'Year-Month'
-        grouped = data.groupby('year_month')
+        grouped = df.groupby('year_month')
 
         for year_month, group in grouped:
             # Sort by date within the group for proper calculations
@@ -72,12 +71,7 @@ class DataProcessingService:
                 'savings': savings,
             })
 
-        if return_type == 'dataframe':
-            return pd.DataFrame(results)
-        elif return_type == 'records':
-            return results
-        else:
-            raise ValueError("Invalid return type. Must be 'dataframe' or 'records'")
+        return MonthlyResultsTable(df=pd.DataFrame(results))
     
     @staticmethod
     def process_daily_data_by_category(data: pd.DataFrame, category: Literal['Abono', 'Cargo']) -> pd.Series:

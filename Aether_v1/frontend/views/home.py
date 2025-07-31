@@ -20,8 +20,8 @@ def show_home():
 
         st.write("Processing Files...")
         try:
-            df_transactions = controller.process_uploaded_files(uploaded_files)
-            confirm_upload_popup(df_transactions)
+            transactions = controller.process_uploaded_files(uploaded_files)
+            confirm_upload_popup(transactions)
         except Exception as e:
             st.error(f"An unexpected error processing files: {e}")
             

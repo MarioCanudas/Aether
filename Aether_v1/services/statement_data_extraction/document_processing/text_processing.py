@@ -15,17 +15,17 @@ class DefaultTextProcessor(TextProcessor):
             ExtractedWordsTable: Corrected ExtractedWordsTable with properly separated text elements
         """
         # Get a copy of the extracted words to avoid modifying the original
-        extracted_words = self.extracted_words
+        extracted_words = self.extracted_words.df
         corrected_extracted_words = self.extracted_words.df.copy()
         
         # Define regex patterns for matching amounts and dates
         amount_pattern = r'^\$?(0|[1-9]\d{0,2}(?:,\d{3})*)\.\d{2}$'  # Matches currency amounts like $1,234.56
-        date_pattern = self.statement_properties.date_pattern  # Bank-specific date pattern
+        date_pattern = self.bank_properties.date_pattern  # Bank-specific date pattern
         
         idx_to_drop = []
         
         # Iterate through each row to identify and correct parsing issues
-        for i, row in extracted_words.df.iterrows():
+        for i, row in extracted_words.iterrows():
             text = str(row['text']).strip()
             next_text = str(extracted_words.loc[i + 1, 'text']).strip() if i + 1 < len(extracted_words) else None
             next_next_text = str(extracted_words.loc[i + 2, 'text']).strip() if i + 2 < len(extracted_words) else None

@@ -203,7 +203,7 @@ class AmountNormalizer(ColumnNormalizer):
             return columns.apply(lambda row: self.normalize_amount_for_multiple_columns(row, amount_columns), axis=1)
 
 class DefaultTableNormalizer(TableNormalizer):
-    def normalize_table(self, years: List[int]) -> TransactionsTable:
+    def normalize_table(self, years: List[int], filename: str) -> TransactionsTable:
         """
         Main method that orchestrates the complete table normalization process.
         Normalizes dates and amounts, adds initial balance, and sorts by date.
@@ -221,7 +221,7 @@ class DefaultTableNormalizer(TableNormalizer):
         normalized_table.dates = date_normalizer.normalize_column(reconstructed_table, self.bank_properties, years)
         
         # Restrict descriptions to 500 characters
-        normalized_table.descriptions = reconstructed_table['description'].apply(lambda x: x[:500])
+        normalized_table.descriptions = reconstructed_table.descriptions.apply(lambda x: x[:500])
         
         # Normalize amounts
         amount_columns = self.bank_properties.amount_columns
@@ -231,9 +231,9 @@ class DefaultTableNormalizer(TableNormalizer):
         # Add transaction type
         normalized_table.types = normalized_table.amounts.apply(lambda amount: 'Abono' if amount > 0 else 'Cargo')
         
-        normalized_table.bank_col = reconstructed_table.bank_col
-        normalized_table.statement_type_col = reconstructed_table.statement_type_col
-        normalized_table.filename_col = reconstructed_table.filename_col
+        normalized_table.bank_col = self.bank_properties.bank
+        normalized_table.statement_type_col = self.bank_properties.statement_type
+        normalized_table.filename_col = filename
         
         if self.bank_properties.special_data_filtering is not None:
             normalized_table = self.bank_properties.special_data_filtering.filter_special_data(normalized_table)

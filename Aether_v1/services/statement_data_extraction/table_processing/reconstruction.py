@@ -252,11 +252,11 @@ class TableReconstructor(Reconstructor):
         Merges multi-line transactions into single rows and filters out invalid entries.
         Combines description fragments and fills missing amounts from continuation rows.
         """
-        df_structured = self.get_structured_table()
-        amount_columns = df_structured.amount_columns
+        structured_table = self.get_structured_table()
+        amount_columns = structured_table.amount_columns
         all_amount_columns = amount_columns.all_list
         
-        if df_structured.empty:
+        if structured_table.empty:
             raise ValueError("The structured table is empty")
         
         merged_rows = []
@@ -265,7 +265,7 @@ class TableReconstructor(Reconstructor):
         date_pattern = self.bank_properties.date_pattern
 
         # Merge rows that belong to the same transaction
-        for _, row in df_structured.iterrows():
+        for _, row in enumerate(structured_table.records):
             try:
                 if row['date'] is not None:  # New transaction starts
                     if current_row is not None:

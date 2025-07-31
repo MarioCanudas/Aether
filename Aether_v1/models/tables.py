@@ -1,5 +1,5 @@
 import pandas as pd
-from pydantic import BaseModel,ConfigDict, field_validator, ValidationError
+from pydantic import BaseModel,ConfigDict, field_validator, model_validator
 from typing import List, Literal
 from .amounts import AmountColumns
 from .records import TransactionRecord, MonthlyResultRecord
@@ -15,15 +15,24 @@ class ExtractedWords(BaseModel):
     @classmethod
     def _validate_df_structure(cls, v: pd.DataFrame) -> pd.DataFrame:
         if not isinstance(v, pd.DataFrame):
-            raise ValidationError("The dataframe must be a pandas dataframe")
+            raise ValueError(f"ExtractedWords dataframe must be a pandas DataFrame, got {type(v).__name__}")
         
         if v.empty:
             v = pd.DataFrame(columns= ['page', 'text', 'x0', 'top', 'x1', 'bottom'])
         
         if not all(col in v.columns for col in ['page', 'text', 'x0', 'top', 'x1', 'bottom']):
-            raise ValidationError("The dataframe must have the following columns: page, text, x0, top, x1, bottom")
+            missing_cols = [col for col in ['page', 'text', 'x0', 'top', 'x1', 'bottom'] if col not in v.columns]
+            raise ValueError(f"ExtractedWords dataframe missing required columns: {missing_cols}. Available columns: {list(v.columns)}")
         
         return v
+    
+    @property
+    def num_rows(self) -> int:
+        return len(self.df)
+    
+    @property
+    def records(self) -> List[dict]:
+        return self.df.to_dict(orient='records')
     
     @property
     def pages(self) -> pd.Series:
@@ -132,13 +141,14 @@ class GroupedRows(BaseModel):
     @classmethod
     def _validate_df_structure(cls, v: pd.DataFrame) -> pd.DataFrame:
         if not isinstance(v, pd.DataFrame):
-            raise ValidationError("The dataframe must be a pandas dataframe")
+            raise ValueError(f"GroupedRows dataframe must be a pandas DataFrame, got {type(v).__name__}")
         
         if v.empty:
             v = pd.DataFrame(columns= ['row_group', 'text', 'words', 'top', 'bottom', 'page'])
         
         if not all(col in v.columns for col in ['row_group', 'text', 'words', 'top', 'bottom', 'page']):
-            raise ValidationError("The dataframe must have the following columns: row_group, text, words, top, bottom, page")
+            missing_cols = [col for col in ['row_group', 'text', 'words', 'top', 'bottom', 'page'] if col not in v.columns]
+            raise ValueError(f"GroupedRows dataframe missing required columns: {missing_cols}. Available columns: {list(v.columns)}")
         
         return v
     
@@ -219,7 +229,7 @@ class ReconstructedTable(BaseModel):
     @classmethod
     def _validate_amount_columns(cls, v: AmountColumns) -> AmountColumns:
         if not isinstance(v, AmountColumns):
-            raise ValidationError("The amount columns must be an AmountColumns object")
+            raise ValueError(f"ReconstructedTable amount_columns must be an AmountColumns object, got {type(v).__name__}")
         
         return v
     
@@ -227,15 +237,42 @@ class ReconstructedTable(BaseModel):
     @classmethod
     def _validate_df_structure(cls, v: pd.DataFrame) -> pd.DataFrame:
         if not isinstance(v, pd.DataFrame):
-            raise ValidationError("The dataframe must be a pandas dataframe")
+            raise ValueError(f"ReconstructedTable dataframe must be a pandas DataFrame, got {type(v).__name__}")
         
         if v.empty:
-            v = pd.DataFrame(columns= ['date', 'description'] + cls.amount_columns.all_list)
+            # For empty dataframes, we'll create a basic structure and let the amount_columns validation handle the rest
+            v = pd.DataFrame(columns=['date', 'description'])
             
-        if not all(col in v.columns for col in ['date', 'description'] + cls.amount_columns.all_list):
-            raise ValidationError("The dataframe must have the following columns: date, description, " + ", ".join(cls.amount_columns.all_list))
+        # Check for required base columns
+        required_base_cols = ['date', 'description']
+        if not all(col in v.columns for col in required_base_cols):
+            missing_cols = [col for col in required_base_cols if col not in v.columns]
+            raise ValueError(f"ReconstructedTable dataframe missing required base columns: {missing_cols}. Available columns: {list(v.columns)}")
         
         return v
+    
+    @model_validator(mode='after')
+    def _validate_amount_columns_after_df(self) -> 'ReconstructedTable':
+        if self.amount_columns.is_mono_column:
+            if self.amount_columns.income not in self.df.columns:
+                raise ValueError(f"ReconstructedTable amount_columns.income '{self.amount_columns.income}' not found in dataframe columns: {list(self.df.columns)}")
+        else:
+            if self.amount_columns.income not in self.df.columns:
+                raise ValueError(f"ReconstructedTable amount_columns.income '{self.amount_columns.income}' not found in dataframe columns: {list(self.df.columns)}")
+            if self.amount_columns.expense not in self.df.columns:
+                raise ValueError(f"ReconstructedTable amount_columns.expense '{self.amount_columns.expense}' not found in dataframe columns: {list(self.df.columns)}")
+            if self.amount_columns.has_balance and self.amount_columns.balance not in self.df.columns:
+                raise ValueError(f"ReconstructedTable amount_columns.balance '{self.amount_columns.balance}' not found in dataframe columns: {list(self.df.columns)}")
+
+        return self
+    
+    @property
+    def empty(self) -> bool:
+        return self.df.empty
+    
+    @property
+    def records(self) -> List[dict]:
+        return self.df.to_dict(orient='records')
     
     @property
     def dates(self) -> pd.Series:
@@ -333,7 +370,8 @@ class TransactionsTable(BaseModel):
             v = pd.DataFrame(columns= ['date', 'description', 'amount', 'type', 'bank', 'statement_type', 'filename'])
         
         if not all(col in v.columns for col in ['date', 'description', 'amount', 'type', 'bank', 'statement_type', 'filename']):
-            raise ValidationError("The dataframe must have the following columns: date, description, amount, type, bank, statement_type, filename")
+            missing_cols = [col for col in ['date', 'description', 'amount', 'type', 'bank', 'statement_type', 'filename'] if col not in v.columns]
+            raise ValueError(f"TransactionsTable dataframe missing required columns: {missing_cols}. Available columns: {list(v.columns)}")
         
         return v
     
@@ -386,11 +424,11 @@ class TransactionsTable(BaseModel):
         return self.df['bank']
     
     @bank_col.setter
-    def bank_col(self, bank_col: pd.Series) -> None:
-        if not isinstance(bank_col, pd.Series):
-            raise ValueError("The bank column must be a pandas series")
+    def bank_col(self, bank: str) -> None:
+        if not isinstance(bank, str):
+            raise ValueError("The bank must be a string")
         
-        self.df['bank'] = bank_col
+        self.df['bank'] = bank
     
     @property
     def bank(self) -> str | List[str]:
@@ -401,11 +439,11 @@ class TransactionsTable(BaseModel):
         return self.df['statement_type']
     
     @statement_type_col.setter
-    def statement_type_col(self, statement_type_col: pd.Series) -> None:
-        if not isinstance(statement_type_col, pd.Series):
-            raise ValueError("The statement type column must be a pandas series")
+    def statement_type_col(self, statement_type: str) -> None:
+        if not isinstance(statement_type, str):
+            raise ValueError("The statement type must be a string")
         
-        self.df['statement_type'] = statement_type_col
+        self.df['statement_type'] = statement_type
     
     @property
     def statement_type(self) -> str:
@@ -416,11 +454,11 @@ class TransactionsTable(BaseModel):
         return self.df['filename']
     
     @filename_col.setter
-    def filename_col(self, filename_col: pd.Series) -> None:
-        if not isinstance(filename_col, pd.Series):
-            raise ValueError("The filename column must be a pandas series")
+    def filename_col(self, filename: str) -> None:
+        if not isinstance(filename, str):
+            raise ValueError("The filename must be a string")
         
-        self.df['filename'] = filename_col
+        self.df['filename'] = filename
     
     @property
     def filename(self) -> str:
@@ -434,10 +472,10 @@ class TransactionsTable(BaseModel):
         return self.df.to_dict(orient='records')
     
     def get_all_incomes(self) -> float:
-        return self.df[self.df.types == 'Abono']['amount'].sum()
+        return self.df[self.df['type'] == 'Abono']['amount'].sum()
     
     def get_all_expenses(self) -> float:
-        return self.df[self.df.types == 'Cargo']['amount'].sum()
+        return self.df[self.df['type'] == 'Cargo']['amount'].sum()
     
     def get_all_transactions(self) -> float:
         return self.df['amount'].sum()
@@ -461,7 +499,7 @@ class AllTransactionsTable(TransactionsTable):
         v = super()._validate_df_structure(v)
         
         if 'user_id' not in v.columns:
-            raise ValidationError("The TransactionsTable must have the following columns: user_id")
+            raise ValueError(f"AllTransactionsTable dataframe missing required column 'user_id'. Available columns: {list(v.columns)}")
             
         return v
     
@@ -490,10 +528,17 @@ class MonthlyResultsTable(BaseModel):
     @classmethod
     def _validate_df_structure(cls, v: pd.DataFrame) -> pd.DataFrame:
         if not isinstance(v, pd.DataFrame):
-            raise ValidationError("The dataframe must be a pandas dataframe")
+            raise ValueError(f"MonthlyResultsTable dataframe must be a pandas DataFrame, got {type(v).__name__}")
+        
+        if v.empty:
+            v = pd.DataFrame(columns= ['year_month', 'initial_balance', 'total_income', 'total_withdrawal', 'savings', 'user_id'])
+            
+        if 'user_id' not in v.columns:
+            v['user_id'] = None
         
         if not all(col in v.columns for col in ['year_month', 'initial_balance', 'total_income', 'total_withdrawal', 'savings', 'user_id']):
-            raise ValidationError("The dataframe must have the following columns: year_month, initial_balance, total_income, total_withdrawal, savings, user_id")
+            missing_cols = [col for col in ['year_month', 'initial_balance', 'total_income', 'total_withdrawal', 'savings', 'user_id'] if col not in v.columns]
+            raise ValueError(f"MonthlyResultsTable dataframe missing required columns: {missing_cols}. Available columns: {list(v.columns)}")
         
         return v
     

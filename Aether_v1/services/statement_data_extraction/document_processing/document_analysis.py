@@ -25,13 +25,13 @@ class DefaultDocumentAnalyzer(DocumentAnalyzer):
             str: The detected bank name if found, otherwise None.
         """
         try:
-            df_extracted_words = self.reader.extract_words()
+            extracted_words = self.reader.extract_words()
             document_height = self.reader.get_height() # Get height to determine the footer threshold
             
             footer_percentage = 0.15
             footer_threshold = document_height * footer_percentage # Calculate the footer threshold using 15% of the document height
 
-            df_footer = df_extracted_words[df_extracted_words['bottom'] > document_height - footer_threshold] # Filter the rows that are in the footer
+            df_footer = extracted_words.df[extracted_words.df['bottom'] > document_height - footer_threshold] # Filter the rows that are in the footer
 
             # Convert all footer text to lowercase for case-insensitive searches
             footer_text = df_footer['text'].apply(lambda x: x.lower())
@@ -50,7 +50,7 @@ class DefaultDocumentAnalyzer(DocumentAnalyzer):
                     return bank
             
             # Special case for Nu credit, because the document dosen't have a footer either CLABE
-            if search_phrase_in_df(df_extracted_words, ['nu', 'méxico', 'financiera,'], type_return='bool'):
+            if search_phrase_in_df(extracted_words.df, ['nu', 'méxico', 'financiera,'], type_return='bool'):
                 return BankName.NU
         
             return None
@@ -66,7 +66,8 @@ class DefaultDocumentAnalyzer(DocumentAnalyzer):
             str: The detected bank name if found, otherwise None.
         """
         try:
-            df_extracted_words = self.reader.extract_words()
+            extracted_words = self.reader.extract_words()
+            df_extracted_words = extracted_words.df
         
             clabe_keyword = r'\bclabe\b'
             
@@ -74,19 +75,19 @@ class DefaultDocumentAnalyzer(DocumentAnalyzer):
             
             # Create a boolean Series (mask) that searches for the CLABE keyword in the text column
             # na=False ensures that NaN values are treated as False instead of NaN
-            mask = df_extracted_words['text'].str.contains(clabe_keyword, regex=True, case=False, na=False)
+            mask = extracted_words.df['text'].str.contains(clabe_keyword, regex=True, case=False, na=False)
             
             if mask.any():
                 # Get the indices of the rows where the CLABE keyword is found
-                clabe_indices = df_extracted_words.index[mask].tolist()
+                clabe_indices = extracted_words.df.index[mask].tolist()
                 
                 for idx in clabe_indices:
                     # Determine the range of the nearest text to the CLABE keyword
                     start_idx = max(0, idx - 5)
-                    end_idx = min(len(df_extracted_words), idx + 20)
+                    end_idx = min(len(extracted_words.df), idx + 20)
                     
                     # Extract text in that range and remove spaces
-                    nearby_text = df_extracted_words.iloc[start_idx:end_idx]['text'].astype(str)
+                    nearby_text = extracted_words.df.iloc[start_idx:end_idx]['text'].astype(str)
                     nearby_text = nearby_text.str.replace(r'\s+', '', regex=True) # Remove spaces
                     
                     for text in nearby_text:
@@ -136,11 +137,11 @@ class DefaultDocumentAnalyzer(DocumentAnalyzer):
             str: The detected statement type if found, otherwise 'debit'.
         """
         try:
-            df_extracted_words = self.reader.extract_words()
+            extracted_words = self.reader.extract_words()
             credit_condition_phrase = ['límite', 'de', 'crédito']
 
             # Convert the text column to lowercase and remove colons
-            text_column = df_extracted_words['text']
+            text_column = extracted_words.df['text']
             processed_text = text_column.str.lower().str.replace(':', '', regex=False)
 
             # If the credit condition phrase is found, return 'credit'
@@ -174,8 +175,8 @@ class DefaultDocumentAnalyzer(DocumentAnalyzer):
             start_phrase = bank_properties.start_phrase
             end_phrase = bank_properties.end_phrase
             
-            start_phrase_found = search_phrase_in_df(extracted_words, start_phrase, type_return='bool')
-            end_phrase_found = search_phrase_in_df(extracted_words, end_phrase, type_return='bool')
+            start_phrase_found = search_phrase_in_df(extracted_words.df, start_phrase, type_return='bool')
+            end_phrase_found = search_phrase_in_df(extracted_words.df, end_phrase, type_return='bool')
             
             if not start_phrase_found or not end_phrase_found:
                 return True

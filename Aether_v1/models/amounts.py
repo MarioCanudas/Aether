@@ -25,7 +25,7 @@ class AmountColumns(BaseModel):
     
     @property
     def is_mono_column(self) -> bool:
-        if len(self.all_columns) == 1 and self.income == self.expense:
+        if len(self.all_list) == 1 and self.income == self.expense:
             return True
         else:
             return False
