@@ -83,7 +83,12 @@ class DefaultTextProcessor(TextProcessor):
                     
         if idx_to_drop:
             corrected_extracted_words = corrected_extracted_words.drop(idx_to_drop)
-                
+
+        # Drop rows with empty text
+        corrected_extracted_words = corrected_extracted_words[corrected_extracted_words['text'] != '']
+        # Drop rows with $ sign
+        corrected_extracted_words = corrected_extracted_words[corrected_extracted_words['text'] != '$']
+        
         return corrected_extracted_words
     
     

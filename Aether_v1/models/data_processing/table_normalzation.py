@@ -1,6 +1,6 @@
 import pandas as pd
 import re
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 from ..core import ColumnNormalizer, TableNormalizer
 from utils import clean_amount
 
@@ -11,7 +11,9 @@ class DateNormalizer(ColumnNormalizer):
         Normalizes dates that already contain year information to ISO format (YYYY-MM-DD).
         Handles both numeric and text month formats.
         """
-        year_group, month_group, day_group = groups_date
+        year_group = groups_date['year']
+        month_group = groups_date['month']
+        day_group = groups_date['day']
         
         date_match = re.match(date_pattern, date)
         
@@ -29,12 +31,13 @@ class DateNormalizer(ColumnNormalizer):
             return ""
     
     @staticmethod
-    def normalize_date_without_year(date: str, years: List[int], date_pattern: str, groups_date: Tuple[None, int, int], month_pattern: dict) -> str:
+    def normalize_date_without_year(date: str, years: List[int], date_pattern: str, groups_date: Dict[str, int], month_pattern: dict) -> str:
         """
         Normalizes dates without year by inferring the year from the statement period.
         Handles single-year and cross-year periods with month-based logic.
         """
-        _, month_group, day_group = groups_date
+        month_group = groups_date['month']
+        day_group = groups_date['day']
         
         date_match = re.match(date_pattern, date)
 
@@ -81,7 +84,7 @@ class DateNormalizer(ColumnNormalizer):
         groups_date = self.statement_properties['date_groups']
         month_pattern = self.statement_properties['month_pattern']
 
-        have_year: bool = groups_date[0] is not None
+        have_year: bool = groups_date['year'] is not None
         
         # Route to appropriate normalization method
         if have_year:
@@ -203,8 +206,8 @@ class AmountNormalizer(ColumnNormalizer):
         
         # Route based on input type
         if isinstance(amount_columns, pd.Series):
-            income_sign = statement_properties['income_sign']
-            expense_sign = statement_properties['expense_sign']
+            income_sign = statement_properties['income_sign'].value
+            expense_sign = statement_properties['expense_sign'].value
 
             return amount_columns.apply(lambda x: self.normalize_amount_for_single_column(x, income_sign, expense_sign))
         else:

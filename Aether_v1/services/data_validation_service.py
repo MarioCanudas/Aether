@@ -1,5 +1,6 @@
 import pandas as pd
-from typing import Dict, Any
+import numpy as np
+from typing import Dict, Any, List, Set, Tuple
 from .database_service import DatabaseService
 
 class DataValidationService:
@@ -7,38 +8,143 @@ class DataValidationService:
     This class is used to validate the transactions data to prevent duplicates and other errors.
     """
     @staticmethod
-    def check_if_transaction_exists_in_db(db_service: DatabaseService, transaction: Dict[str, Any], user_id: int) -> bool:
+    def get_existing_transaction_keys(
+        db_service: DatabaseService, 
+        transactions: List[Dict[str, Any]], 
+        user_id: int
+    ) -> Set[Tuple]:
+        """
+        Check which transactions exist in the database in a single query
+        Returns set of unique keys (filename, date, amount, description)
+        """
+        if not transactions:
+            return set()
+        
+        # Prepare parameters for batch query
+        params_list = []
+        for t in transactions:
+            params = {
+                'filename': t['filename'],
+                'date': t['date'].strftime('%Y-%m-%d') if hasattr(t['date'], 'strftime') else t['date'],
+                'amount': t['amount'],
+                'description': t['description'],
+                'user_id': user_id
+            }
+            params_list.append(params)
+        
+        # Single query to check all transactions
         query = """
-        SELECT EXISTS(
-            SELECT 1 FROM transactions
-            WHERE filename = :filename
-            AND date = :date 
-            AND amount = :amount 
-            AND description = :description
-            AND user_id = :user_id
-        )       
+        SELECT filename, date, amount, description 
+        FROM transactions
+        WHERE (filename, date, amount, description, user_id) IN (
+            VALUES {}
+        )
+        """.format(
+            ", ".join([f"(:filename_{i}, :date_{i}, :amount_{i}, :description_{i}, :user_id_{i})" 
+                      for i in range(len(params_list))])
+        )
+        
+        # Flatten parameters
+        flat_params = {}
+        for i, params in enumerate(params_list):
+            for key, value in params.items():
+                flat_params[f"{key}_{i}"] = value
+        
+        # Execute query
+        existing = db_service.custom_query(query, flat_params, value_format='dict')
+        
+        # Return as set of tuples for fast lookup
+        return {
+            (e['filename'], e['date'], e['amount'], e['description'])
+            for e in existing
+        }
+        
+    @staticmethod
+    def get_existing_monthly_result_keys(
+        db_service: DatabaseService, 
+        monthly_results: List[Dict[str, Any]], 
+        user_id: int
+    ) -> Set[str]:
+        """
+        Check which monthly results exist in the database in a single query
+        Returns set of existing year_month strings
+        """
+        if not monthly_results:
+            return set()
+        
+        # Extract unique year_month values
+        year_months = {r['year_month'] for r in monthly_results}
+        placeholders = ', '.join([f':year_month_{i}' for i in range(len(year_months))])
+        
+        # Single query to check all year_months
+        query = f"""
+        SELECT year_month 
+        FROM monthly_results
+        WHERE user_id = :user_id
+        AND year_month IN ({placeholders})
         """
         
-        check_values = ['filename', 'date', 'amount', 'description']
-        params = {col: transaction[col] for col in check_values}
-        params['date'] = params['date'].strftime('%Y-%m-%d') if hasattr(params['date'], 'strftime') else params['date']
-        params['user_id'] = user_id
+        params = {
+            'user_id': user_id,
+            **{f'year_month_{i}': year_month for i, year_month in enumerate(year_months)}
+        }
         
-        return db_service.custom_query(query, params, value_format='scalar')
+        existing = db_service.custom_query(query, params, value_format='dict')
+        
+        # Return as set of year_month strings
+        return {e['year_month'] for e in existing}
     
     @staticmethod
-    def check_if_monthly_result_exists_in_db(db_service: DatabaseService, monthly_result: Dict[str, Any], user_id: int) -> bool:
-        query = """
-        SELECT EXISTS(
-            SELECT 1 FROM monthly_results
-            WHERE year_month = :year_month
-            AND user_id = :user_id
-        )
+    def validate_transactions(transactions: pd.DataFrame, metadata: Dict[str, Any]) -> pd.DataFrame:
         """
-        params = {'year_month': monthly_result['year_month'], 'user_id': user_id}
+        Validate the transactions in function of the metadata.
         
-        return db_service.custom_query(query, params, value_format='scalar')
-    
+        The metadata is a dictionary with the following keys:
+        - 'bank': The bank of the statement.
+        - 'statement_type': The type of statement (credit or debit).
+        - 'period': The period of the statement.
+        - 'initial_balance': The initial balance of the statement.
+        - 'final_balance': The final balance of the statement.
+        
+        Args:
+            transactions (pd.DataFrame): The transactions to validate.
+            metadata (Dict[str, Any]): The metadata of the statement.
+            
+        Returns:
+            pd.DataFrame: The validated transactions.
+        """
+        transactions_cleaned = transactions.copy()
+        
+        initial_date, final_date = metadata['period']
+        initial_date = pd.to_datetime(initial_date)
+        final_date = pd.to_datetime(final_date)
+        
+        # Filter the transactions by the period
+        transactions_cleaned = transactions_cleaned[
+            (transactions_cleaned['date'] >= initial_date) &
+            (transactions_cleaned['date'] <= final_date)
+        ]
+        
+        if metadata['statement_type'] == 'debit':
+            initial_balance = metadata['initial_balance']
+            final_balance = metadata['final_balance']
+
+            if initial_balance is not None and final_balance is not None:
+                all_incomes = transactions_cleaned[transactions_cleaned['type'] == 'Abono']['amount'].sum()
+                all_expenses = transactions_cleaned[transactions_cleaned['type'] == 'Cargo']['amount'].sum()
+
+                expected_final = initial_balance + all_incomes + all_expenses
+                if not np.isclose(expected_final, final_balance, atol=0.1):
+                    raise ValueError(
+                        f"El saldo final ({expected_final}) no coincide con el saldo inicial ({initial_balance}) "
+                        f"más ingresos ({all_incomes}) y egresos ({all_expenses}). "
+                        f"Esperado: {final_balance}"
+                    )
+            else:
+                print("Advertencia: No se validaron los saldos porque falta el saldo inicial o final.")
+
+        return transactions_cleaned
+        
     @staticmethod
     def delete_double_transactions(transactions: pd.DataFrame) -> pd.DataFrame:
         """
@@ -92,3 +198,15 @@ class DataValidationService:
                 indices_to_remove.extend([index, last_matching_debit.name])
 
         return transactions_cleaned.drop(indices_to_remove)
+    
+    @staticmethod
+    def validate_monthly_results(monthly_results: pd.DataFrame) -> pd.DataFrame:
+        """
+        """
+        
+        monthly_results_cleaned = monthly_results.copy()
+        
+        # Implement balance validation, for now just set all to True
+        monthly_results_cleaned['balance_valid'] = True
+        
+        return monthly_results_cleaned

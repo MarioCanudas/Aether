@@ -9,6 +9,7 @@ from .interfaces import (
     MetadataExtractor,
     ColumnNormalizer,
     TableNormalizer,
+    SpecialDataFiltering
 )
 
 __all__ = [
@@ -21,5 +22,6 @@ __all__ = [
     "Reconstructor",
     "MetadataExtractor",
     "ColumnNormalizer",
-    "TableNormalizer"
+    "TableNormalizer",
+    "SpecialDataFiltering"
 ]

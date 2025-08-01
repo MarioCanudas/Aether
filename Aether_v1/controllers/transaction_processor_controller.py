@@ -2,8 +2,8 @@ import pandas as pd
 from io import BytesIO
 from typing import List, Dict, Any, Tuple, Literal
 import logging
-from streamlit import session_state
 from services import (
+    TransactionExtractionService,
     DataProcessingService, 
     FinancialAnalysisService,
     PlottingService, DataValidationService, DatabaseService
@@ -54,12 +54,18 @@ class TransactionProcessorController(BaseController):
         
         for uploaded_file in uploaded_files:
             try:
-                df_transactions = self.data_processing_service.get_transactions_from_pdf(uploaded_file)
-                all_transactions.append(df_transactions)
+                # Set the transaction extraction service per file
+                transaction_extraction_service = TransactionExtractionService(uploaded_file)
+                df_transactions = transaction_extraction_service.get_transactions_from_pdf(return_type='dataframe')
+                df_metadata = transaction_extraction_service.get_metadata()
+                
+                validated_transactions = self.data_validation_service.validate_transactions(df_transactions, df_metadata)
+                
+                all_transactions.append(validated_transactions)
             except ValueError as e:
-                logger.error(f"Error processing {uploaded_file.name}: {e}")
+                raise ValueError(f"Error processing {uploaded_file.name}: {e}")
             except Exception as e:
-                logger.error(f"An unexpected error processing {uploaded_file.name}: {e}")
+                raise ValueError(f"An unexpected error processing {uploaded_file.name}: {e}")
                 
         all_transactions_df = pd.concat(all_transactions, ignore_index=True)
         all_transactions_df['user_id'] = self.user_session_service.current_user_id
@@ -77,14 +83,34 @@ class TransactionProcessorController(BaseController):
         transactions_cleaned = self.data_validation_service.delete_double_transactions(transactions)
         records = transactions_cleaned.to_dict(orient='records')
         
-        filtered_records = []
-        duplicate_records = []
-        
-        for record in records:
-            if self.data_validation_service.check_if_transaction_exists_in_db(db_service, record, user_id):
-                duplicate_records.append(record)
-            else:
-                filtered_records.append(record)
+        # Batch processing optimization
+        if records:
+            # Get existing transactions in a single query
+            existing_keys = self.data_validation_service.get_existing_transaction_keys(
+                db_service, 
+                records, 
+                user_id
+            )
+            
+            filtered_records = []
+            duplicate_records = []
+            
+            for record in records:
+                # Create unique key for comparison
+                key = (
+                    record['filename'],
+                    record['date'].strftime('%Y-%m-%d') if hasattr(record['date'], 'strftime') else record['date'],
+                    record['amount'],
+                    record['description']
+                )
+                
+                if key in existing_keys:
+                    duplicate_records.append(record)
+                else:
+                    filtered_records.append(record)
+        else:
+            filtered_records = []
+            duplicate_records = []
                 
         if value_format == 'dataframe':
             filtered_records = pd.DataFrame(filtered_records)
@@ -100,14 +126,33 @@ class TransactionProcessorController(BaseController):
         ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
         user_id = self.user_session_service.current_user_id
         
-        filtered_records = []
-        duplicate_records = []
-        
-        for record in monthly_results:
-            if self.data_validation_service.check_if_monthly_result_exists_in_db(db_service, record, user_id):
-                duplicate_records.append(record)
-            else:
-                filtered_records.append(record)
+        # Convert to records if needed
+        if isinstance(monthly_results, pd.DataFrame):
+            records = monthly_results.to_dict(orient='records')
+        else:
+            records = monthly_results
+            
+        # Batch processing optimization
+        if records:
+            # Get existing monthly results in a single query
+            existing_keys = self.data_validation_service.get_existing_monthly_result_keys(
+                db_service, 
+                records, 
+                user_id
+            )
+            
+            filtered_records = []
+            duplicate_records = []
+            
+            for record in records:
+                key = record['year_month']
+                if key in existing_keys:
+                    duplicate_records.append(record)
+                else:
+                    filtered_records.append(record)
+        else:
+            filtered_records = []
+            duplicate_records = []
                 
         if value_format == 'dataframe':
             filtered_records = pd.DataFrame(filtered_records)
@@ -132,12 +177,19 @@ class TransactionProcessorController(BaseController):
     def update_monthly_results(self, transactions: pd.DataFrame) -> None:
         transactions_cleaned = self.data_validation_service.delete_double_transactions(transactions)
         
+        # Get and validate monthly results
+        monthly_results = self.data_processing_service.get_monthly_results(transactions_cleaned, return_type='dataframe')
+        monthly_results = self.data_validation_service.validate_monthly_results(monthly_results)
+        
+        # Add user_id and year_month in str format to the monthly results
+        monthly_results['year_month'] = monthly_results['year_month'].astype(str)
+        monthly_results['user_id'] = self.user_session_service.current_user_id 
+        
+        # Convert monthly results to records to be able to upload them to the database
+        monthly_results = monthly_results.to_dict(orient='records')
+         
         with self.batch_scope() as db:
-            monthly_results = self.data_processing_service.calculate_savings_and_validate_balances(transactions_cleaned, return_type='dataframe')
-            monthly_results['year_month'] = monthly_results['year_month'].astype(str)
-            monthly_results['user_id'] = self.user_session_service.current_user_id  
-            monthly_results = monthly_results.to_dict(orient='records')
-            
+            # Filter monthly results to avoid duplicates
             filtered_records, duplicate_records = self.filter_monthly_results(db, monthly_results)
             
             if duplicate_records:
