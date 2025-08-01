@@ -159,6 +159,9 @@ class TransactionProcessorController(BaseController):
                 where_conditions={'user_id': user_id},
                 value_format='dataframe'
             )
+            # Ensure date is in datetime format
+            transactions['date'] = pd.to_datetime(transactions['date'])
+            
             return transactions
         
     def get_monthly_results(self) -> pd.DataFrame:

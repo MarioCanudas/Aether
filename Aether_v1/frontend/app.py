@@ -49,14 +49,19 @@ with st.sidebar:
     if st.button('Add user'):
         add_user_popup(user_session_service)
     
-    if current_username is not None:
-        user_id = user_session_service.get_user_id_by_username(current_username)
-        user_session_service.set_current_user_by_id(user_id)
-        st.toast(f"Logged in as {current_username} with id {user_session_service.current_user_id}")
-    
     # Disable adding cash transaction button, because it's not implemented properly yet
     if st.button('Add cash transaction', type= 'primary'):
         adding_cash_transaction()
+
+# -- User session management --
+if current_username is None:
+    user_session_service.clear_current_user()
+    st.toast("No user selected")
+elif current_username is not None and not user_session_service.current_user_id:
+    user_id = user_session_service.get_user_id_by_username(current_username)
+    user_session_service.set_current_user_by_id(user_id)
+    st.toast(f"Logged in as {current_username} with id {user_session_service.current_user_id}")
+
         
 page = st.navigation(PAGES)
 page.run()

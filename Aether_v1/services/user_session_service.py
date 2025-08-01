@@ -61,10 +61,6 @@ class UserSessionService:
         Returns:
             True if user was set successfully, False otherwise.
         """
-        if user_id is None:
-            self.clear_current_user()
-            return True
-        
         try:
             with self.connection_manager.get_quick_read_service() as db:
                 users = db.get_records(
@@ -86,6 +82,13 @@ class UserSessionService:
         except Exception as e:
             logger.error(f"Error setting current user {user_id}: {e}")
             return False
+        
+    def clear_current_user(self) -> None:
+        """
+        Clear the current user.
+        """
+        self.current_user_id = None
+        self._local.current_user = None
         
     def get_user_id_by_username(self, username: str) -> Optional[int]:
         """
