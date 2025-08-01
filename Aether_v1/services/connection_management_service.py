@@ -41,7 +41,7 @@ class ConnectionManagementService:
         """Create base SQLite connection with standard optimizations."""
         connection = sqlite3.connect(
             self.db_file,
-            autocommit=False,
+            autocommit=True,
             check_same_thread=False,  # Allow cross-thread usage (controlled)
             timeout=30.0
         )

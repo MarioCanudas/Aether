@@ -472,8 +472,8 @@ class TestDefaultTableNormalizerAddInitialBalance:
         
         result = normalizer.add_initial_balance(mock_table, 157.39)
         
-        # Should mark existing entry as 'Saldo Inicial'
-        assert result.loc[0, 'Type'] == 'Saldo Inicial'
+        # Should mark existing entry as 'Saldo inicial'
+        assert result.loc[0, 'Type'] == 'Saldo inicial'
         assert len(result) == 2  # No new row added
     
     def test_add_initial_balance_no_existing_description(self):
@@ -494,8 +494,8 @@ class TestDefaultTableNormalizerAddInitialBalance:
         
         # Should add new initial balance row
         assert len(result) == 3
-        initial_balance_row = result[result['Type'] == 'Saldo Inicial'].iloc[0]
-        assert initial_balance_row['Description'] == 'Saldo Inicial'
+        initial_balance_row = result[result['Type'] == 'Saldo inicial'].iloc[0]
+        assert initial_balance_row['Description'] == 'Saldo inicial'
         assert initial_balance_row['Amount'] == 1000.00
         assert initial_balance_row['Date'] == pd.to_datetime('2024-03-15')  # Min date
     
@@ -518,8 +518,8 @@ class TestDefaultTableNormalizerAddInitialBalance:
         
         # Should add new initial balance row
         assert len(result) == 3
-        initial_balance_row = result[result['Type'] == 'Saldo Inicial'].iloc[0]
-        assert initial_balance_row['Description'] == 'Saldo Inicial'
+        initial_balance_row = result[result['Type'] == 'Saldo inicial'].iloc[0]
+        assert initial_balance_row['Description'] == 'Saldo inicial'
         assert initial_balance_row['Amount'] == 500.00
 
 
@@ -554,7 +554,7 @@ class TestDefaultTableNormalizerNormalizeTable:
         assert result['Date'].is_monotonic_increasing
         
         # Check initial balance addition
-        assert 'Saldo Inicial' in result['Type'].values
+        assert 'Saldo inicial' in result['Type'].values
     
     def test_normalize_table_multiple_amount_columns(self):
         """Test complete table normalization with multiple amount columns"""
@@ -574,7 +574,7 @@ class TestDefaultTableNormalizerNormalizeTable:
             result = normalizer.normalize_table([2024], 157.39)
         
         # Check that existing initial balance is marked correctly
-        saldo_inicial_rows = result[result['Type'] == 'Saldo Inicial']
+        saldo_inicial_rows = result[result['Type'] == 'Saldo inicial']
         assert len(saldo_inicial_rows) == 1
         assert saldo_inicial_rows.iloc[0]['Description'] == 'SALDO ANTERIOR'
         
@@ -614,7 +614,7 @@ class TestDefaultTableNormalizerNormalizeTable:
         assert dates == sorted(dates)
         
         # Check that first date corresponds to early transaction
-        first_non_inicial = result[result['Type'] != 'Saldo Inicial'].iloc[0]
+        first_non_inicial = result[result['Type'] != 'Saldo inicial'].iloc[0]
         assert first_non_inicial['Description'] == 'Early Transaction'
 
 
@@ -640,11 +640,11 @@ class TestDefaultTableNormalizerWithRealData:
         assert result['Date'].dtype == 'datetime64[ns]'
         
         # Verify types are assigned
-        valid_types = ['Abono', 'Cargo', 'Saldo', 'Saldo Inicial']
+        valid_types = ['Abono', 'Cargo', 'Saldo', 'Saldo inicial']
         assert all(t in valid_types for t in result['Type'].dropna())
         
         # Verify initial balance handling
-        assert 'Saldo Inicial' in result['Type'].values
+        assert 'Saldo inicial' in result['Type'].values
     
     @pytest.mark.parametrize('get_input_data_from_path', [BBVA_RECONSTRUCTED_TABLE_FILE], indirect=True)
     def test_normalize_bbva_debit_real_data(self, get_input_data_from_path):
@@ -666,7 +666,7 @@ class TestDefaultTableNormalizerWithRealData:
         assert pd.api.types.is_numeric_dtype(result['Amount'])
         
         # Should have initial balance
-        assert 'Saldo Inicial' in result['Type'].values
+        assert 'Saldo inicial' in result['Type'].values
     
     @pytest.mark.parametrize('get_input_data_from_path', [BANORTE_CREDIT_RECONSTRUCTED_FILE], indirect=True)
     def test_normalize_banorte_credit_real_data(self, get_input_data_from_path):
@@ -680,7 +680,7 @@ class TestDefaultTableNormalizerWithRealData:
         result = normalizer.normalize_table([2022], 0.00)
         
         # Credit statements should not have initial balance added
-        assert 'Saldo Inicial' not in result['Type'].values or len(result[result['Type'] == 'Saldo Inicial']) == 0
+        assert 'Saldo inicial' not in result['Type'].values or len(result[result['Type'] == 'Saldo inicial']) == 0
         
         # Verify basic structure
         assert 'Date' in result.columns
@@ -797,7 +797,7 @@ class TestDefaultTableNormalizerEdgeCases:
             result = normalizer.normalize_table([2024], 0.00)
         
         # Should handle zero initial balance correctly
-        initial_balance_rows = result[result['Type'] == 'Saldo Inicial']
+        initial_balance_rows = result[result['Type'] == 'Saldo inicial']
         assert len(initial_balance_rows) == 1
         assert initial_balance_rows.iloc[0]['Amount'] == 0.00
     
@@ -817,7 +817,7 @@ class TestDefaultTableNormalizerEdgeCases:
             result = normalizer.normalize_table([2024], -500.00)
         
         # Should handle negative initial balance correctly
-        initial_balance_rows = result[result['Type'] == 'Saldo Inicial']
+        initial_balance_rows = result[result['Type'] == 'Saldo inicial']
         assert len(initial_balance_rows) == 1
         assert initial_balance_rows.iloc[0]['Amount'] == -500.00
 
@@ -851,7 +851,7 @@ class TestDefaultTableNormalizerIntegration:
         assert actual_dates == expected_dates
         
         # Check amount normalization
-        saldo_inicial = result[result['Type'] == 'Saldo Inicial'].iloc[0]
+        saldo_inicial = result[result['Type'] == 'Saldo inicial'].iloc[0]
         assert saldo_inicial['Amount'] == 157.39
         
         deposito = result[result['Type'] == 'Abono'].iloc[0]
@@ -914,7 +914,7 @@ class TestDefaultTableNormalizerIntegration:
         # Check transaction type assignment
         types = result['Type'].value_counts()
         
-        assert 'Saldo Inicial' in types
+        assert 'Saldo inicial' in types
         assert 'Abono' in types
         assert 'Cargo' in types
         

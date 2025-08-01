@@ -1,15 +1,26 @@
 import sys
 import os
+import logging
+
+logging.basicConfig(
+    level=logging.INFO, # Set the logging level to INFO
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(),  # Display in console
+    ]
+)
 
 # Add the project root directory (aether_v1) to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import streamlit as st
+from services.user_session_service import UserSessionService
 from views.home import show_home
 from views.data import show_data
 from views.income_analysis import show_income_analysis
 from views.expenses_analysis import show_expenses_analysis
 from views.cash_transaction import adding_cash_transaction
+from views.add_user import add_user_popup
 from views.transaction_processor import show_transaction_processor  # Import the transaction processor
 
 # -- Page Configuration --
@@ -28,8 +39,21 @@ PAGES = {
     ],
 }
 
+user_session_service = UserSessionService()
+users = user_session_service.get_available_df_users()
+
 # -- Sidebar configuration --
 with st.sidebar:
+    current_username = st.selectbox("Select User", users, index= None)
+    
+    if st.button('Add user'):
+        add_user_popup(user_session_service)
+    
+    if current_username is not None:
+        user_id = user_session_service.get_user_id_by_username(current_username)
+        user_session_service.set_current_user_by_id(user_id)
+        st.toast(f"Logged in as {current_username} with id {user_session_service.current_user_id}")
+    
     # Disable adding cash transaction button, because it's not implemented properly yet
     if st.button('Add cash transaction', type= 'primary'):
         adding_cash_transaction()

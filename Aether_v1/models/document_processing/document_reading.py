@@ -2,6 +2,7 @@ import pdfplumber
 import pandas as pd
 from io import BytesIO
 import re
+import logging
 from functools import cache
 from ..core import Reader
 
@@ -13,6 +14,11 @@ class PDFReader(Reader):
     Args:
         file (str | BytesIO): The path to the PDF file or a BytesIO object.
     """
+    def __init__(self, file: str | BytesIO):
+        super().__init__(file)
+        # Suppress pdfminer page warnings
+        logging.getLogger('pdfminer.pdfpage').setLevel(logging.ERROR)
+    
     def _is_bytes_io(self) -> bool:
         """
         Check if self.file is a BytesIO object.

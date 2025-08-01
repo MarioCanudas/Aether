@@ -7,14 +7,6 @@ import re
 from contextlib import contextmanager
 from config import DATABASE_FILE
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(),  # Display in console
-    ]
-)
-
 logger = logging.getLogger(__name__)
 
 class DatabaseService:
@@ -38,10 +30,11 @@ class DatabaseService:
         transaction: Context manager for automatic transaction handling.
         batch_operations: Execute multiple operations in a single transaction.
     """
-    ALLOWED_TABLES = {'users', 'transactions'}
+    ALLOWED_TABLES = {'users', 'transactions', 'monthly_results'}
     ALLOWED_COLUMNS = {
         'users': {'id', 'username', 'created_at'},
         'transactions': {'id', 'user_id', 'date', 'description', 'amount', 'type', 'bank', 'statement_type', 'filename'},
+        'monthly_results': {'id', 'user_id', 'year_month', 'initial_balance', 'total_income', 'total_withdrawal', 'savings', 'balance_valid'},
     }
     
     def __init__(self, db_file: str= DATABASE_FILE):
@@ -389,7 +382,7 @@ class DatabaseService:
                 logger.error(f"Error inserting record in transaction: {e}")
             raise
 
-    def insert_multiple_records(self, table_name: str, records: List[dict]) -> None:
+    def insert_multiple_records(self, table_name: str, records: List[dict], unique_values: Dict[str, Any] = None) -> None:
         """
         Inserts multiple records into the database efficiently.
         Respects manual transactions - only commits if no active transaction.
@@ -420,8 +413,10 @@ class DatabaseService:
         table_name = self._validate_table_name(table_name)
         columns = self._validate_columns(table_name, list(records[0].keys()))
         
-        # Verify that all records have the same columns
+        # Verify that all records have the same columns and ensure date is in the correct format
         for i, record in enumerate(records):
+            if 'date' in record:
+                record['date'] = record['date'].strftime('%Y-%m-%d') if hasattr(record['date'], 'strftime') else record['date']
             if set(record.keys()) != set(columns):
                 logger.error(f"Record {i} has different columns than the first record")
                 raise ValueError(f"All records must have the same columns. Record {i} differs.")
@@ -453,7 +448,7 @@ class DatabaseService:
     def get_records(
             self, 
             table_name: str, 
-            where_conditions: Dict[str, Any], 
+            where_conditions: Optional[Dict[str, Any]] = None, 
             columns: Optional[List[str]] = None,
             order_by: Optional[str] = None,
             limit: Optional[int] = None,
@@ -464,7 +459,7 @@ class DatabaseService:
 
         Args:
             table_name (str): The name of the table from which to retrieve records.
-            where_conditions (Dict[str, Any]): A dictionary specifying the column-value pairs to filter the records (used in the WHERE clause).
+            where_conditions (Dict[str, Any], optional): A dictionary specifying the column-value pairs to filter the records (used in the WHERE clause).
             columns (Optional[List[str]], optional): A list of column names to retrieve. If None, all columns are returned.
             order_by (Optional[str], optional): A string specifying the column(s) to order the results by. If None, no ordering is applied.
             limit (Optional[int], optional): The maximum number of records to return. If None, all matching records are returned.
@@ -496,25 +491,30 @@ class DatabaseService:
             logger.error("Not connected to the database")
             raise Exception("Not connected to the database")
         
-        if not isinstance(where_conditions, dict):
-            logger.error(f"Where conditions must be a dictionary, got {type(where_conditions)}")
-            raise ValueError("Where conditions must be a dictionary")
-        
-        table_name = self._validate_table_name(table_name)
-        where_conditions_columns = self._validate_columns(table_name, list(where_conditions.keys()))
-        
-        where_clause = ' AND '.join([f'{col} = :{col}' for col in where_conditions_columns])
+        table_name = self._validate_table_name(table_name)        
         
         query = f"""
-            SELECT * FROM {table_name} WHERE {where_clause}
+            SELECT * FROM {table_name}
         """
         
         if columns:
             columns_clause = ', '.join(columns)
             query = f"""
-                SELECT {columns_clause} FROM {table_name} WHERE {where_clause}
+                SELECT {columns_clause} FROM {table_name}
             """
-            
+        
+        params = {}
+        if where_conditions is not None:
+            if not isinstance(where_conditions, dict):
+                logger.error(f"Where conditions must be a dictionary, got {type(where_conditions)}")
+                raise ValueError("Where conditions must be a dictionary")
+            if where_conditions:
+                where_conditions_columns = self._validate_columns(table_name, list(where_conditions.keys()))
+                where_clause = ' AND '.join([f'{col} = :{col}' for col in where_conditions_columns])
+                query += f' WHERE {where_clause}'
+                params = where_conditions
+        # If where_conditions is None or empty, no WHERE clause is added and params remains empty
+        
         if limit:
             limit_clause = f'LIMIT {limit}'
             query += '\n' + limit_clause
@@ -530,8 +530,8 @@ class DatabaseService:
                 logger.debug(f"Converting query to DataFrame: {query_preview}")
                 
                 try:
-                    df = pd.read_sql_query(query, self.conn, params= where_conditions)
-                    logger.debug(f"DataFrame created with {len(where_conditions)} parameters")
+                    df = pd.read_sql_query(query, self.conn, params=params)
+                    logger.debug(f"DataFrame created with {len(params)} parameters")
                     logger.info(f"DataFrame created successfully - Shape: {df.shape}")
                     
                     # Warning for very large DataFrames
@@ -557,7 +557,7 @@ class DatabaseService:
                     raise ValueError(f"Invalid value format: {value_format}")
                 
                 cursor = self.conn.cursor()
-                cursor.execute(query, where_conditions)
+                cursor.execute(query, params)
                 results = cursor.fetchall()
                 
                 self.conn.row_factory = original_row_factory
@@ -568,7 +568,7 @@ class DatabaseService:
         except Exception as e:
             logger.error(f"Error getting record from {table_name}: {e}")
             logger.debug(f"Failed query: {query}")
-            logger.debug(f"Parameters: {where_conditions}")
+            logger.debug(f"Parameters: {params}")
             raise
         
     def update_record(self, table_name: str, new_record: Dict[str, Any], where_conditions: Dict[str, Any]) -> None:
@@ -740,6 +740,209 @@ class DatabaseService:
             logger.debug(f"Parameters: {where_conditions}")
             raise
         
+    def _detect_query_type(self, query: str) -> str:
+        """
+        Detect the type of SQL query.
+        
+        Args:
+            query (str): The SQL query
+            
+        Returns:
+            str: Query type (SELECT, INSERT, UPDATE, DELETE, or OTHER)
+        """
+        query_upper = query.strip().upper()
+        
+        if query_upper.startswith('SELECT'):
+            return 'SELECT'
+        elif query_upper.startswith('INSERT'):
+            return 'INSERT'
+        elif query_upper.startswith('UPDATE'):
+            return 'UPDATE'
+        elif query_upper.startswith('DELETE'):
+            return 'DELETE'
+        elif query_upper.startswith(('CREATE', 'DROP', 'ALTER')):
+            return 'DDL'
+        elif query_upper.startswith('WITH') and 'SELECT' in query_upper:
+            return 'SELECT'  # CTE queries
+        else:
+            return 'OTHER'
+        
+    def _format_select_results(self, query: str, params: Dict[str, Any], value_format: Literal['tuple', 'dict', 'dataframe', 'scalar']) -> Any:
+        """
+        Format SELECT query results based on the specified format.
+        
+        Args:
+            query (str): The original query (for dataframe conversion)
+            params (Dict[str, Any]): Query parameters (for dataframe conversion)
+            value_format (str): Desired format ('tuple', 'dict', 'dataframe', 'scalar')
+            
+        Returns:
+            Formatted results based on value_format
+        """
+        if value_format == 'dataframe':
+            # Use pandas for DataFrame conversion
+            query_preview = query[:50] + '...' if len(query) > 50 else query
+            logger.debug(f"Converting query to DataFrame: {query_preview}")
+            
+            try:
+                df = pd.read_sql_query(query, self.conn, params=params)
+                logger.info(f"DataFrame created successfully - Shape: {df.shape}")
+                
+                # Warning for very large DataFrames
+                if len(df) > 5000:
+                    logger.warning(f"Large DataFrame created: {len(df)} rows - consider adding LIMIT")
+                
+                return df
+                
+            except Exception as e:
+                logger.error(f"Error converting query to DataFrame: {e}")
+                raise
+                
+        elif value_format == 'scalar':
+            # For scalar values (single row, single column)
+            data = self.cursor.fetchall()
+            
+            if not data:
+                logger.warning("Scalar query returned no results")
+                return None
+            
+            if len(data) > 1:
+                logger.warning(f"Scalar query returned {len(data)} rows, using first row")
+            
+            if len(data[0]) > 1:
+                logger.warning(f"Scalar query returned {len(data[0])} columns, using first column")
+            
+            scalar_value = data[0][0]
+            logger.info(f"Scalar query executed - returned: {scalar_value}")
+            return scalar_value
+            
+        else:
+            # For 'tuple' and 'dict' formats
+            original_row_factory = self.conn.row_factory
+            
+            try:
+                if value_format == 'dict':
+                    self.conn.row_factory = lambda cursor, row: dict(
+                        zip([col[0] for col in cursor.description], row)
+                    )
+                elif value_format == 'tuple':
+                    self.conn.row_factory = None  # Default tuple format
+                
+                # Re-execute to get properly formatted results
+                cursor = self.conn.cursor()
+                if params:
+                    cursor.execute(query, params)
+                else:
+                    cursor.execute(query)
+                    
+                results = cursor.fetchall()
+                cursor.close()
+                
+                logger.info(f"SELECT query executed - {len(results)} rows returned in {value_format} format")
+                return results
+                
+            finally:
+                # Restore original row factory
+                self.conn.row_factory = original_row_factory
+        
+    def custom_query(
+            self, 
+            query: str, 
+            params: Dict[str, Any] = None,
+            value_format: Literal['tuple', 'dict', 'dataframe', 'scalar'] = 'dict'
+        ) -> Any:
+        """
+        Execute a custom query with parameters and flexible return formats.
+        
+        Automatically detects query type and handles accordingly:
+        - SELECT queries: Returns results in specified format
+        - INSERT/UPDATE/DELETE queries: Commits and returns row count
+        - Other queries: Executes and commits
+        
+        Args:
+            query (str): The SQL query to execute
+            params (Dict[str, Any], optional): Parameters for the query
+            value_format (Literal['tuple', 'dict', 'dataframe', 'scalar'], optional): 
+                Format for SELECT query results:
+                - 'tuple': List of tuples (default)
+                - 'dict': List of dictionaries with column names as keys
+                - 'dataframe': pandas DataFrame
+                - 'scalar': Single value (for queries returning one row, one column)
+                
+        Returns:
+            For SELECT queries:
+            - 'tuple': List of tuples [(col1, col2), ...]
+            - 'dict': List of dicts [{'col1': val1, 'col2': val2}, ...]
+            - 'dataframe': pandas DataFrame
+            - 'scalar': Single value (for SUM, COUNT, EXISTS, etc.)
+            
+            For INSERT/UPDATE/DELETE: Number of affected rows
+            For others: None
+            
+        Raises:
+            Exception: If not connected or query execution fails
+            ValueError: If invalid value_format specified
+        """
+        if not self.conn:
+            logger.error("Not connected to the database")
+            raise Exception("Not connected to the database")
+        
+        # Validate value_format
+        valid_formats = ['tuple', 'dict', 'dataframe', 'scalar']
+        if value_format not in valid_formats:
+            raise ValueError(f"Invalid value_format: {value_format}. Must be one of: {valid_formats}")
+        
+        # Detect query type
+        query_type = self._detect_query_type(query)
+        
+        try:
+            # Execute the query
+            if params:
+                result = self.cursor.execute(query, params)
+                logger.debug(f"Query executed with {len(params)} parameters")
+            else:
+                result = self.cursor.execute(query)
+                logger.debug("Query executed without parameters")
+            
+            # Handle based on query type
+            if query_type == 'SELECT':
+                return self._format_select_results(query, params, value_format)
+                
+            elif query_type in ['INSERT', 'UPDATE', 'DELETE']:
+                # For write queries, handle commit and return row count
+                rows_affected = result.rowcount
+                
+                # Only commit if not in a manual transaction
+                if not self.is_in_transaction():
+                    self.conn.commit()
+                    logger.info(f"{query_type} query executed and committed - {rows_affected} rows affected")
+                else:
+                    logger.debug(f"{query_type} query executed - {rows_affected} rows affected (transaction pending)")
+                
+                return rows_affected
+                
+            else:
+                # For other queries (CREATE, DROP, etc.), commit if needed
+                if not self.is_in_transaction():
+                    self.conn.commit()
+                    logger.info(f"Custom {query_type} query executed and committed")
+                else:
+                    logger.debug(f"Custom {query_type} query executed (transaction pending)")
+                
+                return None
+                
+        except Exception as e:
+            # Only rollback if not in a manual transaction
+            if not self.is_in_transaction():
+                self.conn.rollback()
+                logger.error(f"Error executing custom query, rolled back: {e}")
+            else:
+                logger.error(f"Error executing custom query in transaction: {e}")
+            
+            logger.debug(f"Failed query: {query}")
+            logger.debug(f"Parameters: {params}")
+            raise
+    
     def __enter__(self):
         self.connect()
         return self
@@ -748,5 +951,4 @@ class DatabaseService:
         if exc_type:
             logger.warning(f"Exception in context manager: {exc_type.__name__}: {exc_value}")
         self.disconnect()
-    
     

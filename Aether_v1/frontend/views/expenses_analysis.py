@@ -7,23 +7,24 @@ def show_expenses_analysis():
     st.title('Expenses Analysis')
 
     # Check if monthly results are available
-    if 'all_monthly_results' in st.session_state and not st.session_state.all_monthly_results.empty:
+    if controller.user_have_monthly_results():
         st.write("Analysis based on monthly results")
 
         # Bar chart for Total Expenses
         st.subheader('Total Expenses by Month')
-        expenses_chart = controller.get_bar_chart_monthly_total_by_category('Cargo')
+        monthly_expenses_chart = controller.get_bar_chart_monthly_total_by_category('Cargo')
 
         # Display the plot
-        st.pyplot(expenses_chart)
+        st.pyplot(monthly_expenses_chart)
+    else:
+        st.info("No monthly results available. Please upload files in the Home view.")
 
-        # Check if processed data is available for daily analysis
-        if 'all_processed_data' in st.session_state and not st.session_state.all_processed_data.empty:
+    if controller.user_have_transactions():
             st.subheader('Average Expenses by Day')
             
-            expenses_chart = controller.get_bar_chart_daily_total_by_category('Cargo')
+            daily_expenses_chart = controller.get_bar_chart_daily_total_by_category('Cargo')
             
             # Display the plot
-            st.pyplot(expenses_chart)
-    else:
-        st.write("No monthly results available. Please upload files in the Home view.")
+            st.pyplot(daily_expenses_chart)
+    else: 
+        st.info("No transactions available. Please upload files in the Home view.")

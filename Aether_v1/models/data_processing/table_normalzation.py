@@ -131,7 +131,7 @@ class AmountNormalizer(ColumnNormalizer):
                 amount = float(clean_amount(value.replace(expense_sign, ''))) * -1
                 transaction_type = 'Cargo'
                 
-        return pd.Series({'Amount': amount, 'Type': transaction_type})
+        return pd.Series({'amount': amount, 'type': transaction_type})
     
     @staticmethod
     def normalize_amount_for_multiple_columns(row, income_column: str, expense_column: str, balance_column: str) -> pd.Series:
@@ -192,7 +192,7 @@ class AmountNormalizer(ColumnNormalizer):
             except ValueError:
                 pass
         
-        return pd.Series({'Amount': amount, 'Type': transaction_type})
+        return pd.Series({'amount': amount, 'type': transaction_type})
         
     def normalize_column(self, amount_columns: pd.Series | pd.DataFrame) -> pd.Series:
         """
@@ -231,15 +231,15 @@ class DefaultTableNormalizer(TableNormalizer):
         # Try to find and mark existing initial balance entry
         if initial_balance_description is not None:
             normalized_target = initial_balance_description.strip().lower()
-            condition = reconstructed_table['Description'].str.strip().str.lower() == normalized_target
+            condition = reconstructed_table['description'].str.strip().str.lower() == normalized_target
             
             if condition.any():
-                reconstructed_table.loc[condition, 'Type'] = 'Saldo Inicial'
+                reconstructed_table.loc[condition, 'type'] = 'Saldo inicial'
                 return reconstructed_table
         
         # Create new initial balance entry if not found
-        first_date = reconstructed_table['Date'].min()
-        initial_balance_row = {'Date': first_date, 'Description': 'Saldo Inicial', 'Amount': initial_balance, 'Type': 'Saldo Inicial'}
+        first_date = reconstructed_table['date'].min()
+        initial_balance_row = {'date': first_date, 'description': 'Saldo inicial', 'amount': initial_balance, 'type': 'Saldo inicial'}
         reconstructed_table = pd.concat([reconstructed_table, pd.DataFrame([initial_balance_row])], ignore_index=True)
             
         return reconstructed_table
@@ -259,17 +259,17 @@ class DefaultTableNormalizer(TableNormalizer):
         amount_column = self.statement_properties['amount_column']
         
         # Normalize each column type
-        df_normalized['Date'] = self.date_normalizer.normalize_column(reconstructed_table['Date'], years)
-        df_normalized['Description'] = reconstructed_table['Description']
+        df_normalized['date'] = self.date_normalizer.normalize_column(reconstructed_table['date'], years)
+        df_normalized['description'] = reconstructed_table['description']
         
         # Handle single vs multiple amount columns
         df_amount = self.amount_normalizer.normalize_column(reconstructed_table[amount_column]) if len(amount_column) > 1 else self.amount_normalizer.normalize_column(reconstructed_table[amount_column[0]])
         
-        df_normalized['Amount'] = df_amount['Amount']
-        df_normalized['Type'] = df_amount['Type']
+        df_normalized['amount'] = df_amount['amount']
+        df_normalized['type'] = df_amount['type']
         
         # Convert dates and finalize
-        df_normalized['Date'] = pd.to_datetime(df_normalized['Date'])
+        df_normalized['date'] = pd.to_datetime(df_normalized['date'])
         df_normalized = self.add_initial_balance(df_normalized, initial_balance)
         
-        return df_normalized.sort_values(by='Date')
+        return df_normalized.sort_values(by='date')

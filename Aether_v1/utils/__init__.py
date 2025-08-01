@@ -4,7 +4,8 @@ from .helper_functions import (
     search_phrase_in_df, 
     is_amount, 
     classify_words,
-    clean_amount
+    clean_amount,
+    cache_by_transactions
 )
 
 __all__ = [
@@ -13,5 +14,6 @@ __all__ = [
     'search_phrase_in_df', 
     'is_amount', 
     'classify_words',
-    'clean_amount'
+    'clean_amount',
+    'cache_by_transactions'
 ]
