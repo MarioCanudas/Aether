@@ -597,7 +597,7 @@ class BankPropertiesFactory:
             amount_column=['MONTO EN PESOS MEXICANOS'],
             income_column='MONTO EN PESOS MEXICANOS',
             expense_column='MONTO EN PESOS MEXICANOS',
-            date_pattern=r"(\d{2}) (ENE|FEB|MAR|ABR|MAY|JUN|JUL|AGO|SEP|OCT|NOV|DIC) (20\d{2})",
+            date_pattern=r"(\d{2}) (ENE|FEB|MAR|ABR|MAY|JUN|JUL|AGO|SEP|OCT|NOV|DIC) (20\d{2})?",
             date_groups={'year': 3, 'month': 2, 'day': 1},
             month_pattern= month_patterns.abbr_to_num,
             income_sign=AmountSignType.POSITIVE,
@@ -615,7 +615,7 @@ class BankPropertiesFactory:
             statement_type=StatementType.CREDIT,
             new_format=False,
             start_phrase=['transacciones'],
-            end_phrase=['saldo', 'final', 'del', 'periodo'],
+            end_phrase=['información', 'de', 'costos'],
             period_phrase=['periodo'],
             columns=[
                 'TRANSACCIONES',

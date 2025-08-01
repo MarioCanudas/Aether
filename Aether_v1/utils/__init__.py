@@ -5,7 +5,7 @@ from .helper_functions import (
     is_amount, 
     classify_words,
     clean_amount,
-    cache_by_transactions
+    identify_date_separator
 )
 
 __all__ = [
@@ -15,5 +15,5 @@ __all__ = [
     'is_amount', 
     'classify_words',
     'clean_amount',
-    'cache_by_transactions'
+    'identify_date_separator'
 ]
