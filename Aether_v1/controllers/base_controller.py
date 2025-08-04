@@ -1,13 +1,15 @@
 from abc import ABC
-from services import ConnectionManagementService
-from typing import Generator
+from typing import Generator, List
 from contextlib import contextmanager
-from services import DatabaseService, UserSessionService
+from services import ConnectionManagementService, DatabaseService, UserSessionService
 
 class BaseController(ABC):
     """
-    Base controller that provides centralized access to DatabaseService
+    Base controller that provides centralized access to DatabaseService and UserSessionService
     with different scopes depending on the type of operation.
+    
+    Provides general methods for user session management and database access, commonly used in 
+    all the child controllers.
     """
     
     def __init__(self):
@@ -44,3 +46,23 @@ class BaseController(ABC):
         with self.connection_manager.get_quick_read_service() as db_service:
             yield db_service
 
+    def get_users(self) -> List[str]:
+        return sorted(self.user_session_service.get_available_df_users())
+    
+    def add_user(self, username: str) -> None:
+        self.user_session_service.add_user(username)
+    
+    @property
+    def user_id(self) -> int:
+        return self.user_session_service.get_current_user_id()
+    
+    def get_user_id(self, username: str) -> int:
+        return self.user_session_service.get_user_id_by_username(username)
+    
+    def update_user_id(self, user_id: int) -> None:
+        self.user_session_service.set_current_user_by_id(user_id)
+    
+    def clear_user_session(self) -> None:
+        self.user_session_service.clear_current_user()
+    
+        
