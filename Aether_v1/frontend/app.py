@@ -19,8 +19,8 @@ from views.home import show_home
 from views.data import show_data
 from views.income_analysis import show_income_analysis
 from views.expenses_analysis import show_expenses_analysis
-from views.cash_transaction import adding_cash_transaction
-from views.add_user import add_user_popup
+from components.cash_transaction import adding_cash_transaction
+from components.add_user import add_user_popup
 from views.transaction_processor import show_transaction_processor  # Import the transaction processor
 
 # -- Page Configuration --

@@ -1,6 +1,6 @@
 import streamlit as st
 from controllers import TransactionProcessorController
-from .confirm_upload import confirm_upload_popup
+from components.confirm_upload import confirm_upload_popup
 
 controller = TransactionProcessorController()
 
@@ -14,7 +14,7 @@ def show_home():
         type="pdf",
         disabled= controller.user_session_service.get_current_user_id() is None,
         key= 'home_file_uploader'
-    )
+    )   
 
     if uploaded_files:
 
