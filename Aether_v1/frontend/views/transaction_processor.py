@@ -1,6 +1,6 @@
 import streamlit as st
 from controllers import TransactionProcessorController
-from .confirm_upload import confirm_upload_popup
+from components.confirm_upload import confirm_upload_popup
 
 controller = TransactionProcessorController()
 
