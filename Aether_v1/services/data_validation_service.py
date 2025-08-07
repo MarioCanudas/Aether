@@ -25,10 +25,10 @@ class DataValidationService:
         """
         if not transactions:
             return set()
-        
+          
         if not isinstance(user_id, int):
             user_id = int(user_id)
-        
+
         # Prepare parameters for batch query
         params_list = []
         for t in transactions:
