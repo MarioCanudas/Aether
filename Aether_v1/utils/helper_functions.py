@@ -1,7 +1,6 @@
 from typing import List, Literal
 import re
 import pandas as pd
-from functools import wraps
 
 def get_min_month(months: List[str]) -> str:
     """
@@ -54,7 +53,7 @@ def eliminate_ocr_errors_for_amounts(value: str) -> str:
 
     return value
 
-def search_phrase_in_df(df: pd.DataFrame | pd.Series, phrase: List[str], type_return: Literal['idx', 'bool'] = 'idx') -> int | bool | None:
+def search_phrase_in_df(df: pd.DataFrame, phrase: List[str], type_return: Literal['idx', 'bool'] = 'idx') -> int | bool | None:
     """
     Search for a phrase in a DataFrame.
     The phrase must be in lower case.

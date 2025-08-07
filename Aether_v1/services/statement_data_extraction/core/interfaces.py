@@ -1,12 +1,58 @@
 from abc import ABC, abstractmethod
-from typing import Literal, List
 import pandas as pd
 from io import BytesIO
+import re
+from typing import Literal, List, Tuple
+from models.bank_properties import BankProperties
+from models.amounts import Balances
+from models.delimitations import ColumnDelimitations
+from models.tables import ExtractedWords, GroupedRows, ReconstructedTable, TransactionsTable
 
 class Reader(ABC):
     """Reads and extracts information from documents."""
     def __init__(self, file: str | BytesIO):
         self.file = file
+        
+    def _is_bytes_io(self) -> bool:
+        """
+        Check if self.file is a BytesIO object.
+
+        Returns:
+            bool: True if self.file is BytesIO, False if it's a path.
+        """
+        return isinstance(self.file, BytesIO)
+    
+    def _is_path(self) -> bool:
+        """
+        Check if self.file is a path.
+
+        Returns:
+            bool: True if self.file is a path, False if it's a BytesIO object.
+        """
+    
+        pdf_pattern = r'.*\.pdf$'
+        return bool(re.match(pdf_pattern, self.file)) if isinstance(self.file, str) else False
+        
+    def get_valid_file(self) -> str | BytesIO:
+        """
+        Validate the file and return a BytesIO object or a path.
+
+        Returns:
+            BytesIO | str: The validated file.
+
+        Raises:
+            ValueError: If the file is not a path or a BytesIO object.
+        """
+        if self._is_path() or self._is_bytes_io():
+            return self.file
+        else:
+            raise ValueError("Invalid file type")
+        
+    def get_file_name(self) -> str:
+        """Gets the name of the file."""
+        file = self.get_valid_file()
+        
+        return file.name if isinstance(file, BytesIO) else file
     
     @abstractmethod
     def get_height(self) -> float: 
@@ -19,7 +65,7 @@ class Reader(ABC):
         pass
     
     @abstractmethod
-    def extract_words(self) -> pd.DataFrame: 
+    def extract_words(self) -> ExtractedWords: 
         """Extracts all words with their positional information from the document."""
         pass
     
@@ -40,26 +86,26 @@ class DocumentAnalyzer(ABC):
         pass
 
     @abstractmethod
-    def get_statement_properties(self) -> dict:
+    def get_bank_properties(self) -> BankProperties:
         """Retrieves the configuration properties specific to the detected bank and statement type."""
         pass
     
 class TextProcessor(ABC):
     """Processes text data to extract relevant information."""
-    def __init__(self, extracted_words: pd.DataFrame, statement_properties: dict):
+    def __init__(self, extracted_words: ExtractedWords, bank_properties: BankProperties):
         self.extracted_words = extracted_words
-        self.statement_properties = statement_properties
+        self.bank_properties = bank_properties
     
     @abstractmethod
-    def correct_text(self) -> pd.DataFrame:
+    def correct_text(self) -> ExtractedWords:
         """Corrects the text data to extract relevant information."""
         pass
     
 class TableBoundaryDetector(ABC):
     """Detects the boundaries of the table in the document."""
-    def __init__(self, corrected_extracted_words: pd.DataFrame, statement_properties: dict):
+    def __init__(self, corrected_extracted_words: ExtractedWords, bank_properties: BankProperties):
         self.corrected_extracted_words = corrected_extracted_words
-        self.statement_properties = statement_properties
+        self.bank_properties = bank_properties
     
     @abstractmethod
     def get_start_idx(self) -> int:
@@ -72,24 +118,24 @@ class TableBoundaryDetector(ABC):
         pass
     
     @abstractmethod
-    def get_filtered_table_words(self) -> pd.DataFrame:
-        """Filters the table words to only include the words that are part of the table."""
+    def get_filtered_table_words(self) -> ExtractedWords:
+        """Gets the filtered table words."""
         pass
     
 class ColumnSegmenter(ABC):
     """Segments the columns of the table."""
-    def __init__(self, filtered_table_words: pd.DataFrame, statement_properties: dict):
+    def __init__(self, filtered_table_words: ExtractedWords, bank_properties: BankProperties):
         self.filtered_table_words = filtered_table_words
-        self.statement_properties = statement_properties
+        self.bank_properties = bank_properties
     
     @abstractmethod
-    def delimit_column_positions(self) -> dict:
+    def delimit_column_positions(self) -> ColumnDelimitations:
         """Delimits the column positions of the table."""
         pass
     
 class RowSegmenter(ABC):
     """Segments the rows of the table."""
-    def __init__(self, filtered_table_words: pd.DataFrame):
+    def __init__(self, filtered_table_words: ExtractedWords):
         self.filtered_table_words = filtered_table_words
     
     @abstractmethod
@@ -98,38 +144,38 @@ class RowSegmenter(ABC):
         pass
     
     @abstractmethod
-    def group_rows(self) -> pd.DataFrame:
+    def group_rows(self) -> GroupedRows:
         """Groups the rows of the table."""
         pass
     
 class Reconstructor(ABC):
     """Reconstructs the table from the segmented rows and columns."""
-    def __init__(self, grouped_rows: pd.DataFrame, column_delimitation: dict, statement_properties: dict):
+    def __init__(self, grouped_rows: GroupedRows, column_delimitation: ColumnDelimitations, bank_properties: BankProperties):
         self.grouped_rows = grouped_rows
         self.column_delimitation = column_delimitation
-        self.statement_properties = statement_properties
+        self.bank_properties = bank_properties
         
     @abstractmethod
-    def classify_columns(self) -> pd.DataFrame:
+    def get_classified_rows(self) -> pd.DataFrame:
         """Classifies the words in the table into columns (date, description 
         and amount columns, that depend on the statement properties)"""
         pass
     
     @abstractmethod
-    def get_structured_table(self) -> pd.DataFrame:
+    def get_structured_table(self) -> ReconstructedTable:
         """Gets the structured table from the segmented rows and columns."""
         pass
     
     @abstractmethod
-    def reconstruct_table(self) -> pd.DataFrame:
+    def reconstruct_table(self) -> ReconstructedTable:
         """Reconstructs the table from the segmented rows and columns."""
         pass
 
 class MetadataExtractor(ABC):
     """Extracts metadata from a given document, like the initial balance, the date of the statement, etc."""
-    def __init__(self, corrected_extracted_words: pd.DataFrame, statement_properties: dict):
+    def __init__(self, corrected_extracted_words: ExtractedWords, bank_properties: BankProperties):
         self.corrected_extracted_words = corrected_extracted_words
-        self.statement_properties = statement_properties
+        self.bank_properties = bank_properties
     
     @abstractmethod
     def get_period(self) -> tuple[str, str]:
@@ -151,34 +197,28 @@ class MetadataExtractor(ABC):
         """Gets the months of the statement."""
         pass
     
-class ColumnNormalizer(ABC):
-    def __init__(self, statement_properties: dict):
-        self.statement_properties = statement_properties
-    
+class ColumnNormalizer(ABC):    
     @abstractmethod
-    def normalize_column(self, column: pd.Series | pd.DataFrame) -> pd.Series:
+    def normalize_column(self, reconstructed_table: pd.DataFrame) -> pd.Series:
         """Normalizes the column into a consistent format."""
         pass
     
 class TableNormalizer(ABC):
     """Normalizes the obtained table into a consistent format."""
-    def __init__(self, reconstructed_table: pd.DataFrame, statement_properties: dict, date_normalizer: ColumnNormalizer, amount_normalizer: ColumnNormalizer):
+    def __init__(self, reconstructed_table: ReconstructedTable, bank_properties: BankProperties, columns_normalizers: Tuple[ColumnNormalizer, ColumnNormalizer]):
         self.reconstructed_table = reconstructed_table
-        self.statement_properties = statement_properties
-        self.date_normalizer = date_normalizer
-        self.amount_normalizer = amount_normalizer
+        self.bank_properties = bank_properties
+        self.columns_normalizers = columns_normalizers
     
     @abstractmethod
-    def normalize_table(self, years: List[int], initial_balance: float) -> pd.DataFrame:
+    def normalize_table(self, years: List[int]) -> TransactionsTable:
         """Normalizes the table into a consistent format."""
         pass
     
 class SpecialDataFiltering(ABC):
     """Filters out special data from the table."""
-    def __init__(self, normalized_table: pd.DataFrame):
-        self.normalized_table = normalized_table
         
     @abstractmethod
-    def filter_special_data(self) -> pd.DataFrame:
+    def filter_special_data(self, normalized_table: TransactionsTable) -> TransactionsTable:
         """Filters out special data from the table."""
         pass

@@ -1,13 +1,11 @@
-from .facade import DataProcessingFacade
 from .metadata_extraction import DefaultMetadataExtractor
 from .table_normalzation import DefaultTableNormalizer, DateNormalizer, AmountNormalizer
-from .data_exportation import CsvExporter
+from .special_data_filtering import NuSpecialDataFiltering
 
 __all__ = [
-    "DataProcessingFacade",
     "DefaultMetadataExtractor",
     "DefaultTableNormalizer",
     "DateNormalizer",
     "AmountNormalizer",
-    "CsvExporter"
+    "NuSpecialDataFiltering"
 ]  

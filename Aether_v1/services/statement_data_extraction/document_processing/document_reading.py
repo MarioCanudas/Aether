@@ -1,9 +1,9 @@
 import pdfplumber
 import pandas as pd
 from io import BytesIO
-import re
-import logging
 from functools import cache
+import logging
+from models.tables import ExtractedWords
 from ..core import Reader
 
 class PDFReader(Reader):
@@ -18,42 +18,6 @@ class PDFReader(Reader):
         super().__init__(file)
         # Suppress pdfminer page warnings
         logging.getLogger('pdfminer.pdfpage').setLevel(logging.ERROR)
-    
-    def _is_bytes_io(self) -> bool:
-        """
-        Check if self.file is a BytesIO object.
-
-        Returns:
-            bool: True if self.file is BytesIO, False if it's a path.
-        """
-        return isinstance(self.file, BytesIO)
-    
-    def _is_path(self) -> bool:
-        """
-        Check if self.file is a path.
-
-        Returns:
-            bool: True if self.file is a path, False if it's a BytesIO object.
-        """
-    
-        pdf_pattern = r'.*\.pdf$'
-        return bool(re.match(pdf_pattern, self.file)) if isinstance(self.file, str) else False
-        
-    
-    def get_valid_file(self) -> str | BytesIO:
-        """
-        Validate the file and return a BytesIO object or a path.
-
-        Returns:
-            BytesIO | str: The validated file.
-
-        Raises:
-            ValueError: If the file is not a path or a BytesIO object.
-        """
-        if self._is_path() or self._is_bytes_io():
-            return self.file
-        else:
-            raise ValueError("Invalid file type")
     
     def get_height(self) -> float:
         """
@@ -80,7 +44,7 @@ class PDFReader(Reader):
             return pdf.pages[0].width
     
     @cache
-    def extract_words(self) -> pd.DataFrame:
+    def extract_words(self) -> ExtractedWords:
         """
         Extract words from the PDF using pdfplumber.
 
@@ -114,4 +78,4 @@ class PDFReader(Reader):
                         }
                     )
                     
-        return pd.DataFrame(extracted_words)
+        return ExtractedWords(df= pd.DataFrame(extracted_words))

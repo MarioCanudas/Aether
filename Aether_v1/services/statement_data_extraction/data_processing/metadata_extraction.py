@@ -4,9 +4,11 @@ from functools import cache
 from datetime import date
 from dateutil.relativedelta import relativedelta
 import pandas as pd
-from ..core import MetadataExtractor
-from ..document_processing import StatementType
 from utils import clean_amount, search_phrase_in_df
+from models.bank_properties import StatementType, Metadata, Balances
+from models.dates import Period
+from models.records import TransactionRecord
+from ..core import MetadataExtractor
 
 class DefaultMetadataExtractor(MetadataExtractor):
     @cache
@@ -15,8 +17,8 @@ class DefaultMetadataExtractor(MetadataExtractor):
         Finds the index position where the statement period information starts.
         Searches for a specific phrase and returns the index after the match.
         """
-        df_extracted_words = self.corrected_extracted_words.copy()
-        period_phrase = self.statement_properties['period_phrase']
+        df_extracted_words = self.corrected_extracted_words.df.copy()
+        period_phrase = self.bank_properties.period_phrase
 
         if not period_phrase or df_extracted_words.empty:
             return None
@@ -35,17 +37,17 @@ class DefaultMetadataExtractor(MetadataExtractor):
         raise ValueError(f"Period phrase '{period_phrase}' not found in the extracted words.")
     
     @cache
-    def get_period(self) -> Tuple[date, date] | None:
+    def get_period(self) -> Period | None:
         """"""
         period_idx = self.get_period_idx()
         
         if period_idx is None:
             raise ValueError("Period phrase not found in the extracted words.")
         
-        search_window: pd.DataFrame = self.corrected_extracted_words.iloc[period_idx : period_idx + 20]
+        search_window: pd.DataFrame = self.corrected_extracted_words.df.iloc[period_idx : period_idx + 20]
         texts: list[str] = search_window['text'].tolist()
         
-        period_pattern: str | None = self.statement_properties['period_pattern']
+        period_pattern: str | None = self.bank_properties.period_pattern
         
         if not period_pattern:
             return None
@@ -70,10 +72,10 @@ class DefaultMetadataExtractor(MetadataExtractor):
         period_dates = []
         for date_match in found_dates:
             # Convert month to number if needed
-            month_pattern: dict[str, str] | None = self.statement_properties['period_month_pattern']
-            year_group: int = self.statement_properties['period_group']['year']
-            month_group: int = self.statement_properties['period_group']['month']
-            day_group: int = self.statement_properties['period_group']['day']
+            month_pattern: dict[str, str] | None = self.bank_properties.period_month_pattern
+            year_group: int = self.bank_properties.period_group.year
+            month_group: int = self.bank_properties.period_group.month
+            day_group: int = self.bank_properties.period_group.day
             
             year: str = date_match.group(year_group)
             month: str = date_match.group(month_group)
@@ -98,25 +100,24 @@ class DefaultMetadataExtractor(MetadataExtractor):
             raise ValueError("No period dates found in the statement.")
         elif len(period_dates) == 1:
             previous_date = period_dates[0] - relativedelta(months=1) + relativedelta(days=1)
-            period = (previous_date, period_dates[0])
-            return period
+            return Period(start_date=previous_date, end_date=period_dates[0])
         elif len(period_dates) == 2:
-            return tuple(sorted(period_dates))
+            period = sorted(period_dates)
+            return Period(start_date= period[0], end_date= period[1])
         else:
             raise ValueError("More than 2 period dates found in the statement.")
         
-    @cache
     def get_generated_amount(self) -> float | None:
         """
         Get the generated amount from the statement text.
         Searches for the generated amount phrase and returns the following numeric value.
         """
-        if self.statement_properties['statement_type'] == StatementType.CREDIT:
+        if self.bank_properties.statement_type == StatementType.CREDIT:
             return None
         
-        df_extracted_words = self.corrected_extracted_words.copy()
+        df_extracted_words = self.corrected_extracted_words.df.copy()
         
-        generated_amount_phrase = self.statement_properties['generated_amount_phrase']
+        generated_amount_phrase = self.bank_properties.generated_amount_phrase
         
         if not generated_amount_phrase or df_extracted_words.empty:
             return None
@@ -141,21 +142,40 @@ class DefaultMetadataExtractor(MetadataExtractor):
                 continue
         else:
             return None
+        
+    def get_generated_amount_row(self, filename: str) -> TransactionRecord | None:
+        generated_amount = self.get_generated_amount()
+        
+        if generated_amount is None:
+            return None
+        
+        period = self.get_period()
+        final_date = pd.to_datetime(period.end_date)
+        
+        return {
+            'date': final_date,
+            'description': 'Intereses generados',
+            'amount': generated_amount,
+            'type': 'Abono',
+            'bank': self.bank_properties.bank.value,
+            'statement_type': self.bank_properties.statement_type.value,
+            'filename': filename,
+        }
                 
     def get_balance(self, balance: Literal['initial', 'final']) -> float | None:
         """
         Extracts the initial balance amount from the statement text.
         Searches for the initial balance phrase and returns the following numeric value.
         """
-        if self.statement_properties['statement_type'] == StatementType.CREDIT:
+        if self.bank_properties.statement_type == StatementType.CREDIT:
             return None
         
-        df_extracted_words = self.corrected_extracted_words.copy()
+        df_extracted_words = self.corrected_extracted_words.df.copy()
         
         if balance == 'initial':
-            balance_phrase = self.statement_properties['initial_balance_phrase']
+            balance_phrase = self.bank_properties.initial_balance_phrase
         elif balance == 'final':
-            balance_phrase = self.statement_properties['final_balance_phrase']
+            balance_phrase = self.bank_properties.final_balance_phrase
         else:
             raise ValueError(f"Invalid balance type: {balance}")
         
@@ -178,6 +198,25 @@ class DefaultMetadataExtractor(MetadataExtractor):
 
         return None    
     
+    def get_initial_balance_row(self, filename: str) -> TransactionRecord | None:
+        initial_balance = self.get_balance('initial')
+        
+        if initial_balance is None:
+            return None
+        
+        period = self.get_period()
+        first_date = pd.to_datetime(period.start_date)
+        
+        return {
+            'date': first_date,
+            'description': 'Saldo inicial',
+            'amount': initial_balance,
+            'type': 'Saldo inicial',
+            'bank': self.bank_properties.bank.value,
+            'statement_type': self.bank_properties.statement_type.value,
+            'filename': filename,
+        }
+    
     def get_years(self) -> List[int]:
         """
         
@@ -187,9 +226,9 @@ class DefaultMetadataExtractor(MetadataExtractor):
         if not period: 
             period_idx = self.get_period_idx()
             
-            df_extracted_words = self.corrected_extracted_words.copy()
-            period_pattern = self.statement_properties['period_pattern']
-            year_group = self.statement_properties['year_group']
+            df_extracted_words = self.corrected_extracted_words.df.copy()
+            period_pattern = self.bank_properties.period_pattern
+            year_group = self.bank_properties.year_group
             detected_years = []
             
             if period_idx is None or df_extracted_words.empty:
@@ -223,7 +262,7 @@ class DefaultMetadataExtractor(MetadataExtractor):
             return sorted(list(set(detected_years)))
         
         else:
-            years = [period[0].year, period[1].year]
+            years = [period.start_date.year, period.end_date.year]
             years = list(set(years))
             
             return sorted(years)
@@ -237,7 +276,19 @@ class DefaultMetadataExtractor(MetadataExtractor):
         if not period:
             return None
         
-        months = [period[0].month, period[1].month]
+        months = [period.start_date.month, period.end_date.month]
         months = list(set(months))
         
         return sorted(months)
+    
+    def get_metadata(self) -> Metadata:
+        bank = self.bank_properties.bank
+        statement_type = self.bank_properties.statement_type
+        period = self.get_period()
+        initial_balance = self.get_balance('initial')
+        final_balance = self.get_balance('final')
+        
+        balances = Balances(initial= initial_balance, final= final_balance)
+        
+        return Metadata(bank= bank, statement_type= statement_type, period= period, balances= balances)
+        

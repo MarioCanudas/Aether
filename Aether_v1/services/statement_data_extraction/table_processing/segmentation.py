@@ -1,22 +1,23 @@
-import pandas as pd
+from models.delimitations import ColumnDelimitations
+from models.tables import GroupedRows
 from ..core import ColumnSegmenter, RowSegmenter
 
 class DefaultColumnSegmenter(ColumnSegmenter):
-    def delimit_column_positions(self) -> dict:
+    def delimit_column_positions(self) -> ColumnDelimitations:
         filtered_words = self.filtered_table_words
         
-        rows = filtered_words.to_dict(orient='records') # Convert the DataFrame to a list of dictionaries
-        columns = self.statement_properties['columns']
+        rows = filtered_words.records # Convert the DataFrame to a list of dictionaries
+        columns = self.bank_properties.columns
         
         # Initialize a dictionary to store the column positions
-        delimitations = {
-            'column': [],
-            'x0': [],
-            'x1': [],
-        }
+        delimitations = ColumnDelimitations(
+            columns=[],
+            x0=[],
+            x1=[]
+        )
         
         for col in columns:
-            delimitations['column'].append(col) # Add the column name to the list
+            delimitations.columns.append(col) # Add the column name to the list
             words_col = col.split() # Split the column name into a list of words
             words_num = len(words_col) # Get the number of words in the column name
             
@@ -54,16 +55,16 @@ class DefaultColumnSegmenter(ColumnSegmenter):
                             break
             
             # Add the x0 and x1 positions to the list, once the loop is finished
-            delimitations['x0'].append(col_x0)
-            delimitations['x1'].append(col_x1)
+            delimitations.x0.append(col_x0)
+            delimitations.x1.append(col_x1)
                     
         return delimitations
     
 class DefaultRowSegmenter(RowSegmenter):
     def get_row_threshold(self) -> float:
-        filtered_words = self.filtered_table_words
+        df_filtered_words = self.filtered_table_words.df
         
-        top_diffs = filtered_words.groupby("page")["top"].diff()
+        top_diffs = df_filtered_words.groupby("page")["top"].diff()
         positive_diffs = top_diffs[top_diffs >= 0].dropna()
 
         q1 = positive_diffs.quantile(0.25)
@@ -80,15 +81,15 @@ class DefaultRowSegmenter(RowSegmenter):
         
         return min(max(filtered_diffs.median(), min_threshold), max_threshold)
     
-    def group_rows(self) -> pd.DataFrame:
-        filtered_words = self.filtered_table_words
+    def group_rows(self) -> GroupedRows:
+        df_filtered_words = self.filtered_table_words.df
         row_threshold = self.get_row_threshold()    
         
-        filtered_words["row_group"] = (filtered_words["top"].diff().abs() > row_threshold).cumsum()
+        df_filtered_words["row_group"] = (df_filtered_words["top"].diff().abs() > row_threshold).cumsum()
         
-        filtered_words["words"] = filtered_words.apply(lambda row: (row['text'], row['x0'], row['x1']), axis=1)
+        df_filtered_words["words"] = df_filtered_words.apply(lambda row: (row['text'], row['x0'], row['x1']), axis=1)
         
-        grouped_rows = filtered_words.groupby("row_group").agg({
+        grouped_rows = df_filtered_words.groupby("row_group").agg({
             "text": lambda x: " ".join(x),  # Concatenate all words in row
             "words": lambda x: list(x),  # Keep all words in row as a list
             "top": "min",  # Top position of row
@@ -96,5 +97,5 @@ class DefaultRowSegmenter(RowSegmenter):
             "page": "first"  # Keep page number
         }).reset_index()
         
-        return grouped_rows
+        return GroupedRows(df= grouped_rows)
     

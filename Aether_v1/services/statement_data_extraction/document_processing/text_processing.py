@@ -1,11 +1,9 @@
-import pandas as pd
 import re
-from functools import cache
+from models.tables import ExtractedWords
 from ..core import TextProcessor
 
 class DefaultTextProcessor(TextProcessor):
-    @cache
-    def correct_text(self) -> pd.DataFrame:
+    def correct_text(self) -> ExtractedWords:
         """
         Corrects the extracted words DataFrame by fixing text parsing issues.
         
@@ -14,15 +12,15 @@ class DefaultTextProcessor(TextProcessor):
         2. Currency amounts with separated signs (+ or -) 
         
         Returns:
-            pd.DataFrame: Corrected DataFrame with properly separated text elements
+            ExtractedWordsTable: Corrected ExtractedWordsTable with properly separated text elements
         """
         # Get a copy of the extracted words to avoid modifying the original
-        extracted_words = self.extracted_words
-        corrected_extracted_words = self.extracted_words.copy()
+        extracted_words = self.extracted_words.df
+        corrected_extracted_words = self.extracted_words.df.copy()
         
         # Define regex patterns for matching amounts and dates
         amount_pattern = r'^\$?(0|[1-9]\d{0,2}(?:,\d{3})*)\.\d{2}$'  # Matches currency amounts like $1,234.56
-        date_pattern = self.statement_properties['date_pattern']  # Bank-specific date pattern
+        date_pattern = self.bank_properties.date_pattern  # Bank-specific date pattern
         
         idx_to_drop = []
         
@@ -89,6 +87,6 @@ class DefaultTextProcessor(TextProcessor):
         # Drop rows with $ sign
         corrected_extracted_words = corrected_extracted_words[corrected_extracted_words['text'] != '$']
         
-        return corrected_extracted_words
+        return ExtractedWords(df= corrected_extracted_words)
     
     

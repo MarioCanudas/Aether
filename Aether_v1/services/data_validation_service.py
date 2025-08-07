@@ -1,7 +1,13 @@
 import pandas as pd
 import numpy as np
+from logging import getLogger
 from typing import Dict, Any, List, Set, Tuple
+from models.bank_properties import Metadata, StatementType
+from models.tables import TransactionsTable, AllTransactionsTable, MonthlyResultsTable
+from models.records import TransactionRecord
 from .database_service import DatabaseService
+
+logger = getLogger(__name__)
 
 class DataValidationService:
     """
@@ -10,7 +16,7 @@ class DataValidationService:
     @staticmethod
     def get_existing_transaction_keys(
         db_service: DatabaseService, 
-        transactions: List[Dict[str, Any]], 
+        transactions: List[TransactionRecord], 
         user_id: int
     ) -> Set[Tuple]:
         """
@@ -19,6 +25,10 @@ class DataValidationService:
         """
         if not transactions:
             return set()
+          
+        if not isinstance(user_id, int):
+            user_id = int(user_id)
+
         # Prepare parameters for batch query
         params_list = []
         for t in transactions:
@@ -81,61 +91,68 @@ class DataValidationService:
         existing = db_service.custom_query(query, params, value_format='dict')
         
         # Return as set of year_month strings
-        return {e['year_month'] for e in existing}
+        to_str = lambda x: x['year_month'].strftime('%Y-%m-%d')
+        
+        return {to_str(e) for e in existing}
     
     @staticmethod
-    def validate_transactions(transactions: pd.DataFrame, metadata: Dict[str, Any]) -> pd.DataFrame:
+    def validate_transactions(transactions: TransactionsTable, metadata: Metadata) -> TransactionsTable:
         """
-        Validate the transactions in function of the metadata.
-        
-        The metadata is a dictionary with the following keys:
+        Validate the transactions based on the provided metadata.
+
+        The metadata is expected to have the following keys:
         - 'bank': The bank of the statement.
         - 'statement_type': The type of statement (credit or debit).
         - 'period': The period of the statement.
         - 'initial_balance': The initial balance of the statement.
         - 'final_balance': The final balance of the statement.
-        
+
         Args:
-            transactions (pd.DataFrame): The transactions to validate.
-            metadata (Dict[str, Any]): The metadata of the statement.
-            
+            transactions (TransactionsTable): The transactions to validate.
+            metadata (Metadata): The metadata of the statement.
+
         Returns:
-            pd.DataFrame: The validated transactions.
+            TransactionsTable: The validated transactions.
+
+        Raises:
+            ValueError: If the final balance does not match the expected value based on the initial balance, incomes, and expenses.
         """
-        transactions_cleaned = transactions.copy()
-        
-        initial_date, final_date = metadata['period']
-        initial_date = pd.to_datetime(initial_date)
-        final_date = pd.to_datetime(final_date)
-        
+        transactions_df = transactions.df.copy()
+
+        initial_date= pd.to_datetime(metadata.period.start_date)
+        final_date = pd.to_datetime(metadata.period.end_date)
+
         # Filter the transactions by the period
-        transactions_cleaned = transactions_cleaned[
-            (transactions_cleaned['date'] >= initial_date) &
-            (transactions_cleaned['date'] <= final_date)
+        transactions_df = transactions_df[
+            (transactions_df['date'] >= initial_date) &
+            (transactions_df['date'] <= final_date)
         ]
-        
-        if metadata['statement_type'] == 'debit':
-            initial_balance = metadata['initial_balance']
-            final_balance = metadata['final_balance']
+
+        if metadata.statement_type == StatementType.DEBIT:
+            initial_balance = metadata.balances.initial
+            final_balance = metadata.balances.final
 
             if initial_balance is not None and final_balance is not None:
-                all_incomes = transactions_cleaned[transactions_cleaned['type'] == 'Abono']['amount'].sum()
-                all_expenses = transactions_cleaned[transactions_cleaned['type'] == 'Cargo']['amount'].sum()
+                transactions_cleaned = TransactionsTable(df=transactions_df)
+                all_incomes = transactions_cleaned.get_all_incomes()
+                all_expenses = transactions_cleaned.get_all_expenses()
 
                 expected_final = initial_balance + all_incomes + all_expenses
-                if not np.isclose(expected_final, final_balance, atol=0.1):
+                if not np.isclose(expected_final, final_balance, atol=1e-2):
                     raise ValueError(
-                        f"El saldo final ({expected_final}) no coincide con el saldo inicial ({initial_balance}) "
-                        f"más ingresos ({all_incomes}) y egresos ({all_expenses}). "
-                        f"Esperado: {final_balance}"
+                        f"Final balance ({expected_final}) does not match the initial balance ({initial_balance}) "
+                        f"plus incomes ({all_incomes}) and expenses ({all_expenses}). "
+                        f"Expected: {final_balance}"
                     )
             else:
-                print("Advertencia: No se validaron los saldos porque falta el saldo inicial o final.")
+                logger.warning(
+                    "Warning: Balances were not validated because either the initial or final balance is missing."
+                )
 
-        return transactions_cleaned
+        return TransactionsTable(df=transactions_df)
 
     @staticmethod
-    def delete_double_transactions(transactions: pd.DataFrame) -> pd.DataFrame:
+    def delete_double_transactions(transactions: AllTransactionsTable) -> AllTransactionsTable:
         """
         Removes duplicate transactions from a financial dataset, specifically targeting credit card payments
         (abonos) and their corresponding debit transactions (cargos) to avoid double-counting.
@@ -161,7 +178,7 @@ class DataValidationService:
         Example:
             cleaned_data = delete_double_transactions(transaction_data)
         """
-        transactions_cleaned = transactions.copy()
+        transactions_cleaned = transactions.df.copy()
 
         credit_transactions = transactions_cleaned[
             (transactions_cleaned['statement_type'] == 'credit') &
@@ -185,14 +202,13 @@ class DataValidationService:
                 last_matching_debit = matching_debit.sort_values(by='date').iloc[-1]
                 # Add indices of credit and the last matching debit to the list
                 indices_to_remove.extend([index, last_matching_debit.name])
+                
+        transactions_cleaned = transactions_cleaned.drop(indices_to_remove)
 
-        return transactions_cleaned.drop(indices_to_remove)
+        return AllTransactionsTable(df=transactions_cleaned)
     
     @staticmethod
-    def validate_monthly_results(monthly_results: pd.DataFrame) -> pd.DataFrame:
+    def validate_monthly_results(monthly_results: MonthlyResultsTable) -> MonthlyResultsTable:
         """
         """
-        
-        monthly_results_cleaned = monthly_results.copy()
-        
-        return monthly_results_cleaned
+        return monthly_results

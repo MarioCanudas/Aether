@@ -5,8 +5,6 @@ from .settings import (
     DOCUMENTS_FOLDER,
     INPUTS_FOLDER,
     OUTPUTS_FOLDER,
-    DATABASE_FOLDER,
-    DATABASE_FILE,
 )
 
 __all__ = [
@@ -14,6 +12,4 @@ __all__ = [
     'DOCUMENTS_FOLDER', 
     'INPUTS_FOLDER', 
     'OUTPUTS_FOLDER', 
-    'DATABASE_FOLDER',
-    'DATABASE_FILE',
     ]
