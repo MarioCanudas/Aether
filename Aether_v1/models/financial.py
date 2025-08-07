@@ -4,6 +4,7 @@ from datetime import date
 from decimal import Decimal
 from .amounts import AmountType
 from .bank_properties import BankName
+from .categories import GoalType
 from .dates import Period
 
 # TODO: Implement transaction model
@@ -21,8 +22,9 @@ class Transaction(BaseModel):
         return amount.quantize(Decimal('0.01'))
     
 
-class Budget(BaseModel):
+class Goal(BaseModel):
     user_id: int
+    type: GoalType
     category_id: int
     amount: Decimal
     name: str
@@ -39,6 +41,8 @@ class Budget(BaseModel):
     def to_record(self) -> Dict[str, Any]:
         record = self.model_dump()
         
+        record['type'] = self.type.value
+        
         record['start_date'] = self.period.start_date
         record['end_date'] = self.period.end_date
         
@@ -46,8 +50,9 @@ class Budget(BaseModel):
         
         return record
     
-class BudgetInfo(BaseModel):
+class GoalInfo(BaseModel):
     name: str
+    type: GoalType
     category: str
     amount: float
     added_amount: float
