@@ -107,6 +107,11 @@ class TransactionProcessorController(BaseController):
                 
         return filtered_records, duplicate_records
     
+    def add_transaction(self, transaction: TransactionRecord) -> None:
+        with self.batch_scope() as db:
+            db.insert_record('transactions', transaction)
+            logger.info(f"Inserted {transaction} into the transactions table")
+    
     def update_transactions(self, transactions: AllTransactionsTable) -> None:
         filtered_records, duplicate_records = self.filter_transactions(transactions)
         
