@@ -20,7 +20,6 @@ from views.home import show_home
 from views.cash_transaction import show_cash_transactions
 from views.income_analysis import show_income_analysis
 from views.expenses_analysis import show_expenses_analysis
-from views.budget import show_budget
 from views.goals import show_goals
 from views.users_config import show_users_config
 from views.data import show_data
@@ -38,21 +37,20 @@ st.logo("frontend/assets/eli-logo.png", size= 'large', icon_image= "frontend/ass
 # -- Page Navigation --
 PAGES = {
     'User': [
-        st.Page(show_login, title= "Login", icon= ':material/login:', default= False if st.session_state.logged_in else True),
+        st.Page(show_login, title= "Login", icon= ':material/login:', default= not st.session_state.logged_in),
     ]
 }
 
 if st.session_state.logged_in:
     PAGES.update({
         'Overview': [
-            st.Page(show_home, title= "Home", icon= ':material/home:', default= True if st.session_state.logged_in else False),
+            st.Page(show_home, title= "Home", icon= ':material/home:', default= st.session_state.logged_in),
             st.Page(show_cash_transactions, title= "Cash Transaction", icon= ':material/add_card:'),
+            st.Page(show_goals, title= "Goals", icon= ':material/trophy:'),
+        ],
+        'Analytics': [
             st.Page(show_income_analysis, title= "Income Analysis", icon= ':material/trending_up:'),
             st.Page(show_expenses_analysis, title= "Expenses Analysis", icon= ':material/trending_down:'),
-        ],
-        'Budget & Goals': [
-            st.Page(show_budget, title= "Budget", icon= ':material/account_balance_wallet:'),
-            st.Page(show_goals, title= "Goals", icon= ':material/trophy:'),
         ],
         'Account': [
             st.Page(logout, title= "Log out", icon= ':material/logout:'),  

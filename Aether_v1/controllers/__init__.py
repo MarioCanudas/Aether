@@ -3,7 +3,7 @@ from .user_configuration_controller import UserConfigurationController
 from .transaction_processor_controller import TransactionProcessorController
 from .analysis_controller import AnalysisController
 from .data_view_controller import DataViewController
-from .budget_controller import BudgetController
+from .goals_controller import GoalsController
 
 __all__ = [
     "LogsController",
@@ -11,5 +11,5 @@ __all__ = [
     "TransactionProcessorController",
     "AnalysisController",
     "DataViewController",
-    "BudgetController"
+    "GoalsController"
 ]

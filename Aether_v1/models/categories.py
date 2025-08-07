@@ -1,6 +1,6 @@
 from enum import Enum
 
-class CategoryGroup(Enum):
+class CategoryGroup(str, Enum):
     HOGAR = 'Hogar'
     TRANSPORTE = 'Transporte'
     ALIMENTACION = 'Alimentación'
@@ -10,5 +10,12 @@ class CategoryGroup(Enum):
     SERVICIOS = 'Servicios'
     INGRESOS = 'Ingresos'
     OTROS = 'Otros'
+    
+class GoalType(str, Enum):
+    BUDGET = 'Presupuesto'
+    SAVINGS = 'Ahorro'
+    DEBT = 'Deuda'
+    INCOME = 'Ingreso'
+    INVESTMENT = 'Inversión'
     
     

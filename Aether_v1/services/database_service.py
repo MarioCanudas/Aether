@@ -40,13 +40,13 @@ class DatabaseService:
         transaction: Context manager for automatic transaction handling.
         batch_operations: Execute multiple operations in a single transaction.
     """
-    ALLOWED_TABLES = {'users', 'categories', 'transactions', 'monthly_results', 'budgets'}
+    ALLOWED_TABLES = {'users', 'categories', 'transactions', 'monthly_results', 'goals'}
     ALLOWED_COLUMNS = {
         'users': {'id', 'username', 'password_hash', 'created_at', 'last_login', 'updated_at'},
         'categories': {'id', 'user_id', 'name', 'group', 'description'},
         'transactions': {'id', 'user_id', 'category_id', 'date', 'description', 'amount', 'type', 'bank', 'statement_type', 'filename'},
         'monthly_results': {'id', 'user_id', 'year_month', 'initial_balance', 'total_income', 'total_withdrawal', 'savings', 'last_calculated_at'},
-        'budgets': {'id', 'user_id', 'category_id', 'amount', 'added_amount', 'name', 'created_at', 'start_date', 'end_date', 'achived'},
+        'goals': {'id', 'user_id', 'type', 'category_id', 'amount', 'added_amount', 'name', 'created_at', 'start_date', 'end_date', 'achived'},
     }
     
     def __init__(self):
@@ -1008,6 +1008,18 @@ class DatabaseService:
             logger.debug(f"Failed query: {query}")
             logger.debug(f"Parameters: {params}")
             raise
+        
+    def query(self, query: str, params: Dict[str, Any] = None) -> Any:
+        if not self.conn:
+            logger.error("Not connected to the database")
+            raise Exception("Not connected to the database")
+        
+        if params:
+            self.cursor.execute(query, params)
+        else:
+            self.cursor.execute(query)
+            
+        return self.cursor.fetchall()
     
     def __enter__(self):
         self.connect()
