@@ -43,7 +43,7 @@ class DataViewController(BaseController):
                 MIN(date) as first_date,
                 MAX(date) as last_date
             FROM transactions
-            WHERE user_id = :user_id
+            WHERE user_id = %(user_id)s
         """
         
         with self.quick_read_scope() as db:
@@ -53,8 +53,6 @@ class DataViewController(BaseController):
                 value_format= 'tuple'
             )
             date_range = list(result[0])
-            date_range[0] = datetime.strptime(date_range[0], '%Y-%m-%d').date()
-            date_range[1] = datetime.strptime(date_range[1], '%Y-%m-%d').date()
             
             return tuple(date_range)
         
@@ -63,7 +61,7 @@ class DataViewController(BaseController):
         
         query = """
             SELECT DISTINCT bank FROM transactions
-            WHERE user_id = :user_id
+            WHERE user_id = %(user_id)s
         """
         
         with self.quick_read_scope() as db:
@@ -92,23 +90,23 @@ class DataViewController(BaseController):
         
         query = """
             SELECT date, description, amount, type, bank, statement_type, filename FROM transactions
-            WHERE user_id = :user_id
-            AND date BETWEEN :first_date AND :last_date
+            WHERE user_id = %(user_id)s
+            AND date BETWEEN %(first_date)s AND %(last_date)s
         """
         
         params = {'user_id': user_id, 'first_date': first_date, 'last_date': last_date}
         
         if banks:
-            query += f" AND bank IN ({', '.join([f':bank_{i}' for i in range(len(banks))])})"
+            query += f" AND bank IN ({', '.join([f'%(bank_{i})s' for i in range(len(banks))])})"
             for i, bank in enumerate(banks):
                 params[f'bank_{i}'] = bank
                 
         if statement_type:
-            query += f" AND statement_type = :statement_type"
+            query += f" AND statement_type = %(statement_type)s"
             params['statement_type'] = statement_type
             
         if amount_type:
-            query += f" AND type IN ({', '.join([f':type_{i}' for i in range(len(amount_type))])})"
+            query += f" AND type IN ({', '.join([f'%(type_{i})s' for i in range(len(amount_type))])})"
             for i, amount_type in enumerate(amount_type):
                 params[f'type_{i}'] = amount_type
                      
@@ -127,7 +125,7 @@ class DataViewController(BaseController):
         with self.quick_read_scope() as db:
             monthly_results = db.get_records(
                 table_name='monthly_results',
-                columns= ['year_month', 'initial_balance', 'total_income', 'total_withdrawal', 'savings', 'balance_valid'],
+                columns= ['year_month', 'initial_balance', 'total_income', 'total_withdrawal', 'savings'],
                 where_conditions={'user_id': user_id},
                 value_format='dataframe'
             )

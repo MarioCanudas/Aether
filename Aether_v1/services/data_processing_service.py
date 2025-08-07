@@ -48,7 +48,7 @@ class DataProcessingService:
         # Group data by 'Year-Month'
         grouped = data.groupby('year_month')
 
-        for name, group in grouped:
+        for year_month, group in grouped:
             # Sort by date within the group for proper calculations
             group = group.sort_values(by='date')
 
@@ -65,7 +65,7 @@ class DataProcessingService:
 
             # Append results
             results.append({
-                'year_month': name,
+                'year_month': year_month.to_timestamp(),
                 'initial_balance': initial_balance if initial_balance is not None else 0,
                 'total_income': total_income,
                 'total_withdrawal': total_withdrawal,

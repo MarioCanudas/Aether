@@ -9,7 +9,6 @@ from services import (
     PlottingService, DataValidationService, DatabaseService
 )
 from .base_controller import BaseController
-from utils import cache_by_transactions
 
 logger = logging.getLogger(__name__)
 

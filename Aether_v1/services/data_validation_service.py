@@ -19,7 +19,6 @@ class DataValidationService:
         """
         if not transactions:
             return set()
-        
         # Prepare parameters for batch query
         params_list = []
         for t in transactions:
@@ -31,34 +30,26 @@ class DataValidationService:
                 'user_id': user_id
             }
             params_list.append(params)
-        
-        # Single query to check all transactions
-        query = """
+        # PostgreSQL: build VALUES and params
+        values_sql = []
+        flat_params = {}
+        for i, params in enumerate(params_list):
+            values_sql.append(f"(%(filename_{i})s, %(date_{i})s::date, %(amount_{i})s, %(description_{i})s, %(user_id_{i})s)")
+            for key, value in params.items():
+                flat_params[f"{key}_{i}"] = value
+        query = f"""
         SELECT filename, date, amount, description 
         FROM transactions
         WHERE (filename, date, amount, description, user_id) IN (
-            VALUES {}
+            VALUES {', '.join(values_sql)}
         )
-        """.format(
-            ", ".join([f"(:filename_{i}, :date_{i}, :amount_{i}, :description_{i}, :user_id_{i})" 
-                      for i in range(len(params_list))])
-        )
-        
-        # Flatten parameters
-        flat_params = {}
-        for i, params in enumerate(params_list):
-            for key, value in params.items():
-                flat_params[f"{key}_{i}"] = value
-        
-        # Execute query
+        """
         existing = db_service.custom_query(query, flat_params, value_format='dict')
-        
-        # Return as set of tuples for fast lookup
         return {
             (e['filename'], e['date'], e['amount'], e['description'])
             for e in existing
         }
-        
+
     @staticmethod
     def get_existing_monthly_result_keys(
         db_service: DatabaseService, 
@@ -74,13 +65,11 @@ class DataValidationService:
         
         # Extract unique year_month values
         year_months = {r['year_month'] for r in monthly_results}
-        placeholders = ', '.join([f':year_month_{i}' for i in range(len(year_months))])
-        
-        # Single query to check all year_months
+        placeholders = ', '.join([f'%(year_month_{i})s' for i in range(len(year_months))])
         query = f"""
         SELECT year_month 
         FROM monthly_results
-        WHERE user_id = :user_id
+        WHERE user_id = %(user_id)s
         AND year_month IN ({placeholders})
         """
         
@@ -144,7 +133,7 @@ class DataValidationService:
                 print("Advertencia: No se validaron los saldos porque falta el saldo inicial o final.")
 
         return transactions_cleaned
-        
+
     @staticmethod
     def delete_double_transactions(transactions: pd.DataFrame) -> pd.DataFrame:
         """
@@ -205,8 +194,5 @@ class DataValidationService:
         """
         
         monthly_results_cleaned = monthly_results.copy()
-        
-        # Implement balance validation, for now just set all to True
-        monthly_results_cleaned['balance_valid'] = True
         
         return monthly_results_cleaned
