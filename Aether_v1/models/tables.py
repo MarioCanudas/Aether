@@ -611,3 +611,51 @@ class MonthlyResultsTable(BaseModel):
     @property
     def records(self) -> List[MonthlyResultRecord]:
         return self.df.to_dict(orient='records') if not self.df.empty else []	
+    
+
+class BudgetsTable(BaseModel):
+    model_config = TABLE_CONFIG
+    
+    columns: List[str] = ['id', 'user_id', 'category_id', 'amount', 'name', 'created_at', 'start_date', 'end_date']
+    df: pd.DataFrame
+    
+    @field_validator('df', mode='before')
+    @classmethod
+    def _validate_df_structure(cls, v: pd.DataFrame) -> pd.DataFrame:
+        if not isinstance(v, pd.DataFrame):
+            raise ValueError(f"BudgetsTable dataframe must be a pandas DataFrame, got {type(v).__name__}")
+            
+        if not all(col in v.columns for col in cls.columns):
+            missing_cols = [col for col in cls.columns if col not in v.columns]
+            raise ValueError(f"BudgetsTable dataframe missing required columns: {missing_cols}. Available columns: {list(v.columns)}")
+            
+        return v
+    
+    @property
+    def user_id(self) -> int:
+        return self.df['user_id'].iloc[0]
+    
+    @property
+    def categories_id(self) -> pd.Series:
+        if 'category_id' in self.df.columns:
+            return self.df['category_id']
+        
+    @property
+    def amounts(self) -> pd.Series:
+        return self.df['amount']
+    
+    @property
+    def names(self) -> pd.Series:
+        return self.df['name']
+    
+    @property
+    def created_at(self) -> pd.Series:
+        return self.df['created_at']
+    
+    @property
+    def start_dates(self) -> pd.Series:
+        return self.df['start_date']
+    
+    @property
+    def end_dates(self) -> pd.Series:
+        return self.df['end_date']

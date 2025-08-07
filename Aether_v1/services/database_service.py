@@ -40,11 +40,13 @@ class DatabaseService:
         transaction: Context manager for automatic transaction handling.
         batch_operations: Execute multiple operations in a single transaction.
     """
-    ALLOWED_TABLES = {'users', 'transactions', 'monthly_results'}
+    ALLOWED_TABLES = {'users', 'categories', 'transactions', 'monthly_results', 'budgets'}
     ALLOWED_COLUMNS = {
         'users': {'id', 'username', 'password_hash', 'created_at', 'last_login', 'updated_at'},
-        'transactions': {'id', 'user_id', 'date', 'description', 'amount', 'type', 'bank', 'statement_type', 'filename'},
+        'categories': {'id', 'user_id', 'name', 'group', 'description'},
+        'transactions': {'id', 'user_id', 'category_id', 'date', 'description', 'amount', 'type', 'bank', 'statement_type', 'filename'},
         'monthly_results': {'id', 'user_id', 'year_month', 'initial_balance', 'total_income', 'total_withdrawal', 'savings', 'last_calculated_at'},
+        'budgets': {'id', 'user_id', 'category_id', 'amount', 'added_amount', 'name', 'created_at', 'start_date', 'end_date', 'achived'},
     }
     
     def __init__(self):
@@ -632,6 +634,30 @@ class DatabaseService:
             logger.error(f"Error getting record from {table_name}: {e}")
             logger.debug(f"Failed query: {query}")
             logger.debug(f"Parameters: {params}")
+            raise
+        
+    def get_unique_values(self, table_name: str, column_name: str) -> List[Any]:
+        """
+        Get unique values from a column in a table.
+        """
+        if self.cursor is None:
+            return []
+        
+        table = self._validate_table_name(table_name)
+        column = self._validate_columns(table, [column_name])[0]
+        
+        query = f"""
+            SELECT DISTINCT {column} FROM {table}
+        """
+        
+        try:
+            self.cursor.execute(query)
+            results = self.cursor.fetchall()
+            return [result[0] for result in results]
+        
+        except Exception as e:
+            logger.error(f"Error getting unique values from {table_name} column {column_name}: {e}")
+            logger.debug(f"Failed query: {query}")
             raise
         
     def update_record(self, table_name: str, new_record: Dict[str, Any], where_conditions: Dict[str, Any]) -> None:
