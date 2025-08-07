@@ -1,7 +1,8 @@
+from enum import Enum
 from pydantic import BaseModel, field_validator
 from dataclasses import dataclass
 from datetime import date
-from typing import Optional, Dict
+from typing import Optional, Dict, Tuple
 
 class DateGroups(BaseModel):
     """
@@ -63,6 +64,19 @@ class Period(BaseModel):
                 raise ValueError("Start date and end date cannot be the same")
         return v
     
+    def to_tuple(self) -> Tuple[date, date]:
+        return (self.start_date, self.end_date)
+
+class PeriodRange(Enum):
+    WEEKLY = 'Semanal'
+    MONTHLY = 'Mensual'
+    FORTNIGHTLY = 'Quincenal'
+    BIMONTHLY = 'Bimestral'
+    QUARTERLY = 'Trimestral'
+    SEMIANNUAL = 'Semestral'
+    ANNUAL = 'Anual'
+    OTHER = 'Otro'
+
 @dataclass(frozen=True)
 class MonthPatterns:
     # Abbreviated month names to numeric month names

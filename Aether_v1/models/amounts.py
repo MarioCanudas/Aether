@@ -2,6 +2,11 @@ from enum import Enum
 from pydantic import BaseModel
 from typing import List, Optional
 
+class AmountType(Enum):
+    INCOME = 'Abono'
+    EXPENSE = 'Cargo'
+    INITIAL_BALANCE = 'Saldo inicial'
+
 class AmountSignType(Enum):
     POSITIVE = '+'
     NEGATIVE = '-'
