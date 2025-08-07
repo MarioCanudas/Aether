@@ -14,7 +14,7 @@ def show_transaction_processor():
         "Upload Bank Statement PDF(s)", 
         accept_multiple_files=True,
         type="pdf", 
-        disabled= controller.user_session_service.get_current_user_id() is None
+        disabled= False if st.session_state.logged_in else True,
     )
     if uploaded_files:
         

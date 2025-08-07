@@ -12,7 +12,7 @@ def show_home():
         "Please upload your Bank Statement PDF files", 
         accept_multiple_files=True, 
         type="pdf",
-        disabled= controller.user_session_service.get_current_user_id() is None,
+        disabled= False if st.session_state.logged_in else True,
         key= 'home_file_uploader'
     )   
 
