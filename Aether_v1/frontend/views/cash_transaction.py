@@ -4,10 +4,9 @@ import pandas as pd
 
 controller = TransactionProcessorController()
 
-@st.dialog('Add a cash transaction')
-def adding_cash_transaction():
-    with st.form(key= 'adding a cash transaction', border=False):
-        controller.initialize_session_state()
+def show_cash_transactions():
+    with st.form(key= 'add_cash_transaction'):
+        st.header('Add a cash transaction')
         
         date = st.date_input(
             label= 'Date',
@@ -45,4 +44,4 @@ def adding_cash_transaction():
                 'filename': None
             }
             
-            controller.update_transactions(pd.DataFrame([transaction_record]))
+            controller.add_transaction(transaction_record)
