@@ -1,5 +1,4 @@
 import streamlit as st
-import datetime
 from controllers import DataViewController
 
 controller = DataViewController()
@@ -9,14 +8,13 @@ def show_data():
 
     # Check if data is available in session state
     if controller.user_have_transactions() and controller.user_have_monthly_results():
-        st.write("Data available in Data View")
         # Get all variables to can filter the transactions
         df_monthly_results = controller.get_monthly_results()
         transactions_date_range = controller.get_transactions_date_range()
         banks_in_transactions = controller.get_banks_in_transactions()
         
         # Display the transactions table
-        st.header("Transactions")
+        st.subheader("Transactions")
         
         col1, col2, col3, col4 = st.columns(4)
         
@@ -55,7 +53,7 @@ def show_data():
         finally:
             st.dataframe(filtered_transactions, hide_index=True)
         
-        st.header("Monthly Results")
+        st.subheader("Monthly Results")
         st.dataframe(df_monthly_results, hide_index=True)
     else:
         st.write("No data available. Please upload files in the Home view.")
