@@ -6,6 +6,12 @@ class NewUser(BaseModel):
     username: str
     password_hash: Optional[str] = None # Optional because it's not required when adding a user for now
     
+class UserUpdate(BaseModel):
+    user_id: int
+    username: str
+    password_hash: Optional[str] = None
+    updated_at: datetime
+
 
 class UserInfo(BaseModel):
     user_id: int

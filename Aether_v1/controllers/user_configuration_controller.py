@@ -1,31 +1,42 @@
 import pandas as pd
+from datetime import datetime
 from typing import Optional
+from services import UserDBService
+from models.users import UserUpdate
 from .base_controller import BaseController
 
 class UserConfigurationController(BaseController):
     def get_users_table(self) -> pd.DataFrame:
-        with self.quick_read_scope() as db:
-            return db.get_records(
-                'users', 
-                columns= ['id', 'username', 'created_at', 'last_login', 'updated_at'],
-                value_format= 'dataframe'
-            )
+        with self.quick_read_conn() as conn:
+            users_db = UserDBService(conn)
+            
+            users = users_db.get_users(columns= ['id', 'username', 'created_at', 'last_login', 'updated_at'])
+            
+            return pd.DataFrame(users)
             
     def modify_user(self, current_username: str, new_username: str, new_password: Optional[str] = None) -> None:
-        user_id = self.get_user_id(current_username)
+        if current_username == new_username:
+            raise ValueError('New username cannot be the same as the current username')
         
-        if new_username not in self.get_users():
-            with self.batch_scope() as db:
-                if new_password is not None:
-                    db.update_record('users', {'username': new_username, 'password': new_password}, {'id': user_id})
-                else:
-                    db.update_record('users', {'username': new_username}, {'id': user_id})
-        else:
-            raise ValueError(f'User {new_username} already exists')
+        with self.session_conn() as conn:
+            users_db = UserDBService(conn)
+            
+            user_id = users_db.find_id(username= current_username)
+            
+            users_db.update_user(
+                UserUpdate(
+                    user_id= user_id, 
+                    username= new_username, 
+                    password_hash= new_password,
+                    updated_at= datetime.now()
+                )
+            )
             
     def add_user(self, username: str) -> None:
         self.user_session_service.add_user(username)
         
     def delete_user(self, user_id: int) -> None:
-        with self.batch_scope() as db:
-            db.delete_record('users', {'id': user_id})
+        with self.session_conn() as conn:
+            users_db = UserDBService(conn)
+            
+            users_db.delete_user(user_id)
