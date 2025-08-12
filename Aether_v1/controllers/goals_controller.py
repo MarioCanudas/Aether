@@ -1,8 +1,8 @@
 import pandas as pd
 from datetime import date
-from streamlit import session_state
 from dateutil.relativedelta import relativedelta
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
+from services import CategoryDBService, GoalsDBService
 from models.categories import GoalType
 from models.dates import PeriodRange
 from models.financial import Goal, GoalInfo
@@ -10,26 +10,16 @@ from .base_controller import BaseController
 
 class GoalsController(BaseController):
     def get_categories(self) -> List[str]:
-        with self.quick_read_scope() as db:
-            return db.get_unique_values('categories', 'name')
+        with self.quick_read_conn() as conn:
+            categories_db = CategoryDBService(conn)
+            
+            return categories_db.get_categories_by_user(self.user_id)
     
     def get_category_id(self, category: str) -> int:
-        query = """
-            SELECT id FROM categories WHERE name = %(category)s
-        """
-        
-        with self.quick_read_scope() as db:
-            return db.custom_query(query, {'category': category}, value_format= 'scalar')
-        
-    def get_categories_map(self) -> Dict[int, str]:
-        query = """
-            SELECT id, name FROM categories WHERE user_id IS NULL OR user_id = %(user_id)s
-        """
-        
-        with self.quick_read_scope() as db:
-            categories: List[Dict[str, Any]] =  db.custom_query(query, {'user_id': session_state.user_id}, value_format= 'dict')
+        with self.quick_read_conn() as conn:
+            categories_db = CategoryDBService(conn)
             
-            return {category['id']: category['name'] for category in categories}
+            return categories_db.find_id(name= category)
         
     @staticmethod
     def get_goal_types() -> List[str]:
@@ -60,9 +50,47 @@ class GoalsController(BaseController):
                 return None
     
     def add_goal(self, new_goal: Goal) -> None:
-        with self.batch_scope() as db:
-            db.insert_record('goals', new_goal.to_record())
+        with self.session_conn() as conn:
+            goals_db = GoalsDBService(conn)
             
+            goals_db.add_goal(new_goal)
+    
+    def get_current_goals_names(self) -> List[str]:
+        with self.quick_read_conn() as conn:
+            goals_db = GoalsDBService(conn)
+            
+            return goals_db.get_unique_values('name', user_id= self.user_id)
+            
+    def get_current_goals(self) -> pd.DataFrame:
+        with self.quick_read_conn() as conn:
+            goals_db = GoalsDBService(conn)
+            
+            goals = goals_db.get_goals(
+                user_id= self.user_id,
+                status= 'current',
+                columns= ['name', 'type', 'amount', 'start_date', 'end_date'],
+                order_by= 'start_date',
+                order= 'asc',
+                show_categories_names= True
+            )
+            
+            return pd.DataFrame(goals) if goals else pd.DataFrame()
+        
+    def get_past_goals(self) -> pd.DataFrame:
+        with self.quick_read_conn() as conn:
+            goals_db = GoalsDBService(conn)
+            
+            goals = goals_db.get_goals(
+                user_id= self.user_id,
+                status= 'past',
+                columns= ['name', 'type', 'amount', 'start_date', 'end_date', 'achieved'],
+                order_by= 'end_date',
+                order= 'desc',
+                show_categories_names= True
+            )
+            
+            return pd.DataFrame(goals) if goals else pd.DataFrame()
+        
     def get_goal_info(self, goal_name: str) -> GoalInfo:
         return GoalInfo(
             name= goal_name,
@@ -76,53 +104,3 @@ class GoalsController(BaseController):
             end_date= date(2025, 1, 31),
             achived= None,
         )
-            
-    def process_goal_table(self, goal_table: pd.DataFrame) -> pd.DataFrame:
-        if goal_table.empty:
-            return goal_table
-        
-        categories_map = self.get_categories_map()
-        
-        goal_table['category'] = goal_table['category_id'].apply(lambda x: categories_map[x])
-        goal_table['start_date'] = goal_table['start_date'].dt.strftime('%Y/%m/%d')
-        goal_table['end_date'] = goal_table['end_date'].dt.strftime('%Y/%m/%d')
-        
-        return goal_table[['name', 'type', 'category', 'amount', 'start_date', 'end_date']]
-            
-    def get_current_goals(self) -> pd.DataFrame:
-        query = """
-            SELECT name, type, category_id, amount, added_amount, start_date, end_date FROM goals 
-            WHERE user_id = %(user_id)s 
-            AND end_date >= %(today)s
-        """
-        
-        with self.quick_read_scope() as db:
-            df = db.custom_query(query, {'user_id': session_state.user_id, 'today': date.today()}, value_format= 'dataframe')
-            
-            return self.process_goal_table(df)
-        
-    def get_current_goals_names(self) -> List[str]:
-        query = """
-            SELECT name FROM goals 
-            WHERE user_id = %(user_id)s 
-            AND achived IS NULL
-            ORDER BY start_date DESC
-        """
-        
-        with self.quick_read_scope() as db:
-            result =  db.custom_query(query, {'user_id': session_state.user_id}, value_format= 'tuple')
-            
-            return [name[0] for name in result]
-        
-    def get_past_goals(self) -> pd.DataFrame:
-        query = """
-            SELECT name, type, category_id, amount, added_amount, start_date, end_date, achived FROM goals 
-            WHERE user_id = %(user_id)s 
-            AND end_date < %(today)s
-        """
-        
-        with self.quick_read_scope() as db:
-            df = db.custom_query(query, {'user_id': session_state.user_id, 'today': date.today()}, value_format= 'dataframe')
-            
-            return self.process_goal_table(df)
-        
