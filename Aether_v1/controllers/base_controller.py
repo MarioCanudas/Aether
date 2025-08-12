@@ -1,8 +1,13 @@
 from abc import ABC
-from services import ConnectionManagementService
+from psycopg2.extensions import connection
 from typing import Generator
 from contextlib import contextmanager
-from services import DatabaseService, UserSessionService
+from services import (
+    ConnectionManagementService, 
+    UserSessionService,
+    TransactionsDBService,
+    MonthlyResultDBService
+)
 
 class BaseController(ABC):
     """
@@ -15,32 +20,48 @@ class BaseController(ABC):
         self.user_session_service = UserSessionService()
     
     @contextmanager
-    def session_scope(self) -> Generator[DatabaseService, None, None]:
+    def session_conn(self) -> Generator[connection, None, None]:
         """
         Context manager for user-interactive operations.
         Use this scope for operations that require a persistent connection
         during a user's session, such as interactive data entry or editing.
         """
-        with self.connection_manager.get_session_scoped_service() as db_service:
-            yield db_service
+        with self.connection_manager.get_session_connection() as conn:
+            yield conn
     
     @contextmanager 
-    def batch_scope(self) -> Generator[DatabaseService, None, None]:
+    def batch_conn(self) -> Generator[connection, None, None]:
         """
         Context manager for batch processing operations.
         Use this scope for high-volume or intensive tasks such as
         processing PDF files or performing bulk database operations.
         """
-        with self.connection_manager.get_batch_processing_service() as db_service:
-            yield db_service
-    
+        with self.connection_manager.get_batch_connection() as conn:
+            yield conn
+
     @contextmanager
-    def quick_read_scope(self) -> Generator[DatabaseService, None, None]:
+    def quick_read_conn(self) -> Generator[connection, None, None]:
         """
         Context manager for fast, read-only operations.
         Use this scope for quick lookups, validations, or dashboard refreshes
         where minimal overhead and read-only safety are desired.
         """
-        with self.connection_manager.get_quick_read_service() as db_service:
-            yield db_service
+        with self.connection_manager.get_quick_read_connection() as conn:
+            yield conn
+            
+    @property
+    def user_id(self) -> int:
+        return self.user_session_service.current_user_id
+            
+    def user_have_transactions(self) -> bool:
+        with self.quick_read_conn() as conn:
+            transactions_db = TransactionsDBService(conn)
+            
+            return transactions_db.exists(user_id= self.user_id)
+        
+    def user_have_monthly_results(self) -> bool:
+        with self.quick_read_conn() as conn:
+            monthly_results_db = MonthlyResultDBService(conn)
+            
+            return monthly_results_db.exists(user_id= self.user_id)
 

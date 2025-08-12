@@ -1,12 +1,15 @@
 import pandas as pd
 from io import BytesIO
-from typing import List, Tuple, Literal
+from typing import List, Tuple, Dict, Any
 import logging
 from services import (
     StatementDataExtractionService,
     DataProcessingService, 
     FinancialAnalysisService,
-    PlottingService, DataValidationService, DatabaseService
+    PlottingService, 
+    DataValidationService,
+    MonthlyResultDBService,
+    TransactionsDBService
 )
 from models.tables import AllTransactionsTable, MonthlyResultsTable
 from models.records import TransactionRecord, MonthlyResultRecord
@@ -21,34 +24,6 @@ class TransactionProcessorController(BaseController):
         self.financial_analysis_service = FinancialAnalysisService()
         self.plotting_service = PlottingService()
         self.data_validation_service = DataValidationService()
-        
-    def user_have_transactions(self) -> bool:
-        user_id = self.user_session_service.current_user_id
-        
-        if user_id is None:
-            logger.warning("No user is logged in")
-            return False
-        
-        with self.quick_read_scope() as db:
-            transactions = db.get_records(
-                table_name='transactions',
-                where_conditions={'user_id': user_id},
-                value_format='tuple',
-                limit=1
-            )
-            return len(transactions) > 0
-        
-    def user_have_monthly_results(self) -> bool:
-        user_id = self.user_session_service.current_user_id
-        
-        with self.quick_read_scope() as db:
-            monthly_results = db.get_records(
-                table_name='monthly_results',
-                where_conditions={'user_id': user_id},
-                value_format='tuple',
-                limit=1
-            )
-            return len(monthly_results) > 0
         
     def process_uploaded_files(self, uploaded_files: list[BytesIO]) -> AllTransactionsTable:
         all_transactions = []
@@ -70,16 +45,12 @@ class TransactionProcessorController(BaseController):
                 
         all_transactions_df = pd.concat(all_transactions, ignore_index=True)
         all_transactions_df['user_id'] = self.user_session_service.current_user_id
-        
+        all_transactions_df['category_id'] = None
+         
         return AllTransactionsTable(df=all_transactions_df)
     
-    def filter_transactions(
-            self, 
-            db_service: DatabaseService, 
-            all_transactions: AllTransactionsTable,
-            value_format: Literal['dataframe', 'records'] = 'records'
-        ) -> Tuple[List[TransactionRecord], List[TransactionRecord]]:
-        user_id = self.user_session_service.current_user_id
+    def filter_transactions(self, all_transactions: AllTransactionsTable) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+        user_id = self.user_id
         
         transactions_cleaned = self.data_validation_service.delete_double_transactions(all_transactions)
         records = transactions_cleaned.records
@@ -87,11 +58,7 @@ class TransactionProcessorController(BaseController):
         # Batch processing optimization
         if records:
             # Get existing transactions in a single query
-            existing_keys = self.data_validation_service.get_existing_transaction_keys(
-                db_service, 
-                records, 
-                user_id
-            )
+            existing_keys = self.data_validation_service.get_existing_transaction_keys(records, user_id)
             
             filtered_records = []
             duplicate_records = []
@@ -99,10 +66,11 @@ class TransactionProcessorController(BaseController):
             for record in records:
                 # Create unique key for comparison
                 key = (
-                    record['filename'],
                     record['date'].strftime('%Y-%m-%d') if hasattr(record['date'], 'strftime') else record['date'],
                     record['amount'],
-                    record['description']
+                    record['description'],
+                    record['bank'],
+                    record['statement_type']
                 )
                 
                 if key in existing_keys:
@@ -113,29 +81,16 @@ class TransactionProcessorController(BaseController):
             filtered_records = []
             duplicate_records = []
                 
-        if value_format == 'dataframe':
-            filtered_records = pd.DataFrame(filtered_records)
-            duplicate_records = pd.DataFrame(duplicate_records)
-                
         return filtered_records, duplicate_records
     
-    def filter_monthly_results(
-            self,
-            db_service: DatabaseService,
-            monthly_results: MonthlyResultsTable,
-            value_format: Literal['dataframe', 'records'] = 'records'
-        ) -> Tuple[List[MonthlyResultRecord], List[MonthlyResultRecord]]:
-        user_id = self.user_session_service.current_user_id
+    def filter_monthly_results(self, monthly_results: MonthlyResultsTable) -> Tuple[List[MonthlyResultRecord], List[MonthlyResultRecord]]:
+        user_id = self.user_id
         records = monthly_results.records
             
         # Batch processing optimization
         if records:
             # Get existing monthly results in a single query
-            existing_keys = self.data_validation_service.get_existing_monthly_result_keys(
-                db_service, 
-                records, 
-                user_id
-            )
+            existing_keys = self.data_validation_service.get_existing_monthly_result_keys(records, user_id)
             
             filtered_records = []
             duplicate_records = []
@@ -150,28 +105,33 @@ class TransactionProcessorController(BaseController):
             filtered_records = []
             duplicate_records = []
                 
-        if value_format == 'dataframe':
-            filtered_records = pd.DataFrame(filtered_records)
-            duplicate_records = pd.DataFrame(duplicate_records)
-                
         return filtered_records, duplicate_records
     
     def update_transactions(self, transactions: AllTransactionsTable) -> None:
-        with self.batch_scope() as db:
-            filtered_records, duplicate_records = self.filter_transactions(db, transactions)
-                    
-            if duplicate_records:   
-                logger.warning(f"{len(duplicate_records)} duplicate records found")
-                
-            if not filtered_records:
-                logger.warning("No records to insert into the transactions table")
-                return
+        filtered_records, duplicate_records = self.filter_transactions(transactions)
+        
+        if duplicate_records:   
+            logger.warning(f"{len(duplicate_records)} duplicate records found")
             
-            db.insert_multiple_records('transactions', filtered_records)
+        if not filtered_records:
+            logger.warning("No records to insert into the transactions table")
+            return
+        
+        with self.batch_conn() as conn:
+            transactions_db = TransactionsDBService(conn)
+            
+            transactions_db.add_records(filtered_records)
+            
             logger.info(f"Inserted {len(filtered_records)} records into the transactions table")
             
     def update_monthly_results(self, transactions: AllTransactionsTable) -> None:
         transactions_cleaned = self.data_validation_service.delete_double_transactions(transactions)
+        
+        if not transactions_cleaned:
+            logger.warning("No transactions to process")
+            return
+        
+        user_id = self.user_session_service.current_user_id
         
         # Get and validate monthly results
         monthly_results = self.data_processing_service.get_monthly_results(transactions_cleaned)
@@ -181,55 +141,52 @@ class TransactionProcessorController(BaseController):
         monthly_results.year_months = monthly_results.year_months.astype(str)
         monthly_results.user_id = self.user_session_service.current_user_id 
         
-        with self.batch_scope() as db:
-            # Filter monthly results to avoid duplicates
-            filtered_records, duplicate_records = self.filter_monthly_results(db, monthly_results)
+        # Filter monthly results to avoid duplicates
+        filtered_records, duplicate_records = self.filter_monthly_results(monthly_results)
+        
+        if duplicate_records:
+            logger.warning(f"{len(duplicate_records)} duplicate records found")
             
-            if duplicate_records:
-                logger.warning(f"{len(duplicate_records)} duplicate records found")
-                
-            if not filtered_records:
-                logger.warning("No records to insert into the monthly_results table")
-                return
-                        
-            db.insert_multiple_records('monthly_results', filtered_records)
+        if not filtered_records:
+            logger.warning("No records to insert into the monthly_results table")
+            return
+        
+        with self.batch_conn() as conn:
+            monthly_results_db = MonthlyResultDBService(conn)
+            
+            monthly_results_db.add_records(filtered_records)
+            
             logger.info(f"Inserted {len(filtered_records)} records into the monthly_results table")
             
     def get_transactions(self) -> pd.DataFrame:
         user_id = self.user_session_service.current_user_id
         
-        with self.quick_read_scope() as db:
-            transactions = db.get_records(
-                table_name='transactions',
-                where_conditions={'user_id': user_id},
-                value_format='dataframe'
-            )
-            # Ensure date is in datetime format
-            transactions['date'] = pd.to_datetime(transactions['date'])
+        with self.quick_read_conn() as conn:
+            transactions_db = TransactionsDBService(conn)
             
-            return transactions
+            transactions = transactions_db.get_transactions(user_id)
+            
+            return pd.DataFrame(transactions) if transactions else pd.DataFrame()
         
     def get_monthly_results(self) -> pd.DataFrame:
         user_id = self.user_session_service.current_user_id
         
-        with self.quick_read_scope() as db:
-            monthly_results = db.get_records(
-                table_name='monthly_results',
-                where_conditions={'user_id': user_id},
-                value_format='dataframe'
-            )
-            return monthly_results
+        with self.quick_read_conn() as conn:
+            monthly_results_db = MonthlyResultDBService(conn)
+            
+            return monthly_results_db.get_monthly_results(user_id)
     
     def get_financial_analysis(self) -> dict:
         user_id = self.user_session_service.current_user_id
         
-        with self.quick_read_scope() as db:
-            total_savings = self.financial_analysis_service.get_total_savings(db, user_id)
-            avg_income_per_month = self.financial_analysis_service.get_avg_income_per_month(db, user_id)
-            avg_withdrawal_per_month = self.financial_analysis_service.get_avg_withdrawal_per_month(db, user_id)
+        with self.quick_read_conn() as conn:
+            monthly_results_db = MonthlyResultDBService(conn)
+            
+            total_savings = monthly_results_db.get_total_savings(user_id)
+            avg_income_per_month = monthly_results_db.get_avg_income_per_month(user_id)
+            avg_withdrawal_per_month = monthly_results_db.get_avg_withdrawal_per_month(user_id)
 
         donut_score_chart, label = self.plotting_service.get_plot_savings_donut_chart(total_savings, avg_income_per_month)
-        
         tips = self.financial_analysis_service.get_financial_tips(label)
 
         return {
