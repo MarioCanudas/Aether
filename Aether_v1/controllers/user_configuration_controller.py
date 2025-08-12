@@ -6,11 +6,17 @@ from models.users import UserUpdate
 from .base_controller import BaseController
 
 class UserConfigurationController(BaseController):
+    def get_users(self) -> list[str]:
+        with self.quick_read_conn() as conn:
+            users_db = UserDBService(conn)
+            
+            return users_db.get_unique_values('username')
+    
     def get_users_table(self) -> pd.DataFrame:
         with self.quick_read_conn() as conn:
             users_db = UserDBService(conn)
             
-            users = users_db.get_users(columns= ['id', 'username', 'created_at', 'last_login', 'updated_at'])
+            users = users_db.get_users(columns= ['user_id', 'username', 'created_at', 'last_login', 'updated_at'])
             
             return pd.DataFrame(users)
             
