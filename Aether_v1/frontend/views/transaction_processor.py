@@ -33,23 +33,27 @@ def show_transaction_processor():
             st.subheader("Monthly Savings & Metrics")
             st.dataframe(monthly_results)
 
-            financial_analysis = controller.get_financial_analysis()
+            financial_analysis = controller.get_financial_summary()
+            
+            total_savings = float(financial_analysis.total_savings) 
+            avg_income_per_month = float(financial_analysis.avg_income_per_month)
+            avg_withdrawal_per_month = float(financial_analysis.avg_withdrawal_per_month)
 
             col1, col2, col3 = st.columns(3)
             with col1:
-                st.metric(label="Total Savings", value=f"${financial_analysis['total_savings']:,.2f}")
+                st.metric(label="Total Savings", value=f"${total_savings:,.2f}")
             with col2:
-                st.metric(label="Avg Income/Month", value=f"${financial_analysis['avg_income_per_month']:,.2f}")
+                st.metric(label="Avg Income/Month", value=f"${avg_income_per_month:,.2f}")
             with col3:
-                st.metric(label="Avg Withdrawal/Month", value=f"${financial_analysis['avg_withdrawal_per_month']:,.2f}")
+                st.metric(label="Avg Withdrawal/Month", value=f"${avg_withdrawal_per_month:,.2f}")
 
-            donut_score_chart = financial_analysis['donut_score_chart']
-            label = financial_analysis['label']
+            donut_score_chart = controller.get_donut_score_chart()
+            label = financial_analysis.label
             
             st.pyplot(donut_score_chart)
             st.markdown(f"<h2 style='text-align: center;'>Financial Health: {label}</h2>", unsafe_allow_html=True)
 
-            tips = financial_analysis['tips']
+            tips = financial_analysis.tips
             st.subheader("Tips")
             for tip in tips:
                 st.write(f"- {tip}")

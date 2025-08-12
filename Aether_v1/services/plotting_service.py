@@ -1,20 +1,23 @@
 import matplotlib.pyplot as plt
 from pandas import DataFrame, Series
 from decimal import Decimal
+from models.configs import DonutChartConfig
+from models.financial import SummaryMetrics
 
 class PlottingService:
     @staticmethod
-    def get_savings_donut_chart_config(total_savings: float, avg_income_per_month: float) -> dict:
-        if total_savings >= Decimal(0.10) * avg_income_per_month:
-            return {'completion_percentage': 100, 'label': "Excellent!", "color": '#1E90FF', "points": '100 pts'}
-        elif 0 <= total_savings < Decimal(0.10) * avg_income_per_month:
-            return {'completion_percentage': 75, 'label': "Good", "color": '#4CAF50', "points": '75 pts'}
-        elif Decimal(-0.10) * avg_income_per_month <= total_savings < 0:
-            return {'completion_percentage': 50, 'label': "Regular", "color": '#FF9800', "points": '50 pts'}
+    def get_savings_donut_chart_config(summary_metrics: SummaryMetrics) -> DonutChartConfig:
+        if summary_metrics.total_savings >= Decimal(0.10) * summary_metrics.avg_income_per_month:
+            return DonutChartConfig(completion_percentage= 100, label= "Excellent!", color= '#1E90FF', points= '100 pts')
+        elif 0 <= summary_metrics.total_savings < Decimal(0.10) * summary_metrics.avg_income_per_month:
+            return DonutChartConfig(completion_percentage= 75, label= "Good", color= '#4CAF50', points= '75 pts')
+        elif Decimal(-0.10) * summary_metrics.avg_income_per_month <= summary_metrics.total_savings < 0:
+            return DonutChartConfig(completion_percentage= 50, label= "Regular", color= '#FF9800', points= '50 pts')
         else:
-            return {'completion_percentage': 25, 'label': "Poor", "color": '#F44336', "points": '25 pts'}
-            
-    def get_plot_savings_donut_chart(self, total_savings: float, avg_income_per_month: float) -> plt.figure:
+            return DonutChartConfig(completion_percentage= 25, label= "Poor", color= '#F44336', points= '25 pts')
+        
+    @staticmethod
+    def get_plot_savings_donut_chart(donut_chart_config: DonutChartConfig) -> plt.Figure:
         """
         Plots a donut chart based on the savings compared to the average income.
 
@@ -23,11 +26,9 @@ class PlottingService:
         :return: A Matplotlib figure containing the donut chart and the corresponding label.
         """
         # Determine completion percentage, label, and color for the donut chart
-        config = self.get_savings_donut_chart_config(total_savings, avg_income_per_month)
-        completion_percentage = config['completion_percentage']
-        label = config['label']
-        color = config['color']
-        points = config['points']
+        completion_percentage = donut_chart_config.completion_percentage
+        color = donut_chart_config.color
+        points = donut_chart_config.points
 
         # Plot the donut chart
         fig, ax = plt.subplots()
@@ -43,7 +44,7 @@ class PlottingService:
         fig.patch.set_alpha(0)  # Make the figure's background transparent
         ax.set_aspect('equal')
 
-        return fig, label
+        return fig
     
     @staticmethod
     def bar_chart_monthly_total_expenses(monthly_results: DataFrame) -> plt.figure:

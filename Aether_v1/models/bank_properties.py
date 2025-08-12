@@ -5,6 +5,7 @@ from .amounts import AmountColumns, AmountSigns, Balances
 from .dates import DateGroups, Period
 
 class BankName(str, Enum):
+    CASH = 'cash'
     AMEX = 'amex'
     BANORTE = 'banorte'
     BBVA = 'bbva'

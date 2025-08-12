@@ -1,9 +1,10 @@
 from pydantic import BaseModel, field_validator
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from datetime import date
 from decimal import Decimal
-from .amounts import AmountType
-from .bank_properties import BankName
+from matplotlib.pyplot import Figure
+from .amounts import TransactionType
+from .bank_properties import BankName, StatementType
 from .categories import GoalType
 from .dates import Period
 
@@ -13,13 +14,25 @@ class Transaction(BaseModel):
     category: str
     description: Optional[str]
     amount: Decimal
-    type: AmountType
+    type: TransactionType
     bank: BankName
     
     @field_validator('amount')
     @classmethod
     def round_amount(cls, amount: Decimal) -> Decimal:
         return amount.quantize(Decimal('0.01'))
+    
+    
+class TransactionRecord(BaseModel):
+    user_id: int
+    category_id: Optional[int]
+    date: date
+    description: Optional[str]
+    amount: Decimal
+    type: TransactionType
+    bank: BankName
+    statement_type: StatementType
+    filename: Optional[str]
     
 
 class Goal(BaseModel):
@@ -61,3 +74,25 @@ class GoalInfo(BaseModel):
     achived: Optional[bool]
     expenses: float
     remaining: float
+    
+class SummaryMetrics(BaseModel):
+    total_savings: Decimal
+    avg_income_per_month: Decimal
+    avg_withdrawal_per_month: Decimal
+    
+class FinancialSummary(BaseModel):
+    summary_metrics: SummaryMetrics
+    label: str
+    tips: List[str]
+    
+    @property
+    def total_savings(self) -> Decimal:
+        return self.summary_metrics.total_savings
+    
+    @property
+    def avg_income_per_month(self) -> Decimal:
+        return self.summary_metrics.avg_income_per_month
+    
+    @property
+    def avg_withdrawal_per_month(self) -> Decimal:
+        return self.summary_metrics.avg_withdrawal_per_month
