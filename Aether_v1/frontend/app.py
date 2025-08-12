@@ -40,7 +40,7 @@ PAGES = {
 }
 
 user_session_service = UserSessionService()
-users = user_session_service.get_available_df_users()
+users = user_session_service.get_available_users()
 
 # -- Sidebar configuration --
 with st.sidebar:

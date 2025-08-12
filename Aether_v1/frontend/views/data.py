@@ -49,8 +49,7 @@ def show_data():
 
         try:
             filtered_transactions = controller.get_filtered_transactions(date_range, banks, statement_type, amount_type)
-        except:
-            st.warning("Select a date range to view transactions")
+        except Exception as e:
             filtered_transactions = controller.get_filtered_transactions(transactions_date_range, banks, statement_type, amount_type)
         finally:
             st.dataframe(filtered_transactions, hide_index=True)
