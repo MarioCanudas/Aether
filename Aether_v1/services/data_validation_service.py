@@ -1,11 +1,13 @@
 import pandas as pd
 import numpy as np
 from logging import getLogger
-from typing import Dict, Any, List, Set, Tuple
+from typing import List, Set, Tuple, Any
 from models.bank_properties import Metadata, StatementType
 from models.tables import TransactionsTable, AllTransactionsTable, MonthlyResultsTable
-from models.records import TransactionRecord
-from .database_service import DatabaseService
+from models.records import TransactionRecord, MonthlyResultRecord
+from .connection_management_service import ConnectionManagementService
+from .database.transactions import TransactionsDBService
+from .database.monthly_results import MonthlyResultDBService
 
 logger = getLogger(__name__)
 
@@ -13,59 +15,36 @@ class DataValidationService:
     """
     This class is used to validate the transactions data to prevent duplicates and other errors.
     """
-    @staticmethod
-    def get_existing_transaction_keys(
-        db_service: DatabaseService, 
-        transactions: List[TransactionRecord], 
-        user_id: int
-    ) -> Set[Tuple]:
+    def __init__(self):
+        self.connection_manager = ConnectionManagementService()
+        
+    def get_existing_transaction_keys(self, transactions: List[TransactionRecord], user_id: int) -> Set[Tuple[Any, ...]]:
         """
         Check which transactions exist in the database in a single query
-        Returns set of unique keys (filename, date, amount, description)
+        Returns set of unique keys (date, amount, description, bank, statement_type)
         """
         if not transactions:
             return set()
           
         if not isinstance(user_id, int):
-            user_id = int(user_id)
+            raise ValueError("User ID must be an integer")
+            
+        key_columns = ['date', 'description', 'amount', 'bank', 'statement_type']
+        all_params = {'user_id': user_id}
+        query_values = []
+        
+        for i, t in enumerate(transactions):
+            query_values.append('(' + ', '.join(f'%({key}_{i})s' for key in t.keys() if key in key_columns) + ')')
+            for key, value in t.items():
+                if key in key_columns:
+                    all_params[f'{key}_{i}'] = value
+            
+        with self.connection_manager.get_session_connection() as conn:
+            transactions_db = TransactionsDBService(conn)
+            
+            return transactions_db.get_existing_keys(all_params, query_values)
 
-        # Prepare parameters for batch query
-        params_list = []
-        for t in transactions:
-            params = {
-                'filename': t['filename'],
-                'date': t['date'].strftime('%Y-%m-%d') if hasattr(t['date'], 'strftime') else t['date'],
-                'amount': t['amount'],
-                'description': t['description'],
-                'user_id': user_id
-            }
-            params_list.append(params)
-        # PostgreSQL: build VALUES and params
-        values_sql = []
-        flat_params = {}
-        for i, params in enumerate(params_list):
-            values_sql.append(f"(%(filename_{i})s, %(date_{i})s::date, %(amount_{i})s, %(description_{i})s, %(user_id_{i})s)")
-            for key, value in params.items():
-                flat_params[f"{key}_{i}"] = value
-        query = f"""
-        SELECT filename, date, amount, description 
-        FROM transactions
-        WHERE (filename, date, amount, description, user_id) IN (
-            VALUES {', '.join(values_sql)}
-        )
-        """
-        existing = db_service.custom_query(query, flat_params, value_format='dict')
-        return {
-            (e['filename'], e['date'], e['amount'], e['description'])
-            for e in existing
-        }
-
-    @staticmethod
-    def get_existing_monthly_result_keys(
-        db_service: DatabaseService, 
-        monthly_results: List[Dict[str, Any]], 
-        user_id: int
-    ) -> Set[str]:
+    def get_existing_monthly_result_keys(self, monthly_results: List[MonthlyResultRecord], user_id: int) -> Set[str]:
         """
         Check which monthly results exist in the database in a single query
         Returns set of existing year_month strings
@@ -74,26 +53,13 @@ class DataValidationService:
             return set()
         
         # Extract unique year_month values
-        year_months = {r['year_month'] for r in monthly_results}
-        placeholders = ', '.join([f'%(year_month_{i})s' for i in range(len(year_months))])
-        query = f"""
-        SELECT year_month 
-        FROM monthly_results
-        WHERE user_id = %(user_id)s
-        AND year_month IN ({placeholders})
-        """
+        all_params = {f'year_month_{i}': m['year_month'] for i, m in enumerate(monthly_results, start= 1)} 
+        all_params['user_id'] = user_id
         
-        params = {
-            'user_id': user_id,
-            **{f'year_month_{i}': year_month for i, year_month in enumerate(year_months)}
-        }
-        
-        existing = db_service.custom_query(query, params, value_format='dict')
-        
-        # Return as set of year_month strings
-        to_str = lambda x: x['year_month'].strftime('%Y-%m-%d')
-        
-        return {to_str(e) for e in existing}
+        with self.connection_manager.get_session_connection() as conn:
+            monthly_results_db = MonthlyResultDBService(conn)
+            
+            return monthly_results_db.get_existing_keys(all_params)
     
     @staticmethod
     def validate_transactions(transactions: TransactionsTable, metadata: Metadata) -> TransactionsTable:

@@ -1,31 +1,5 @@
-import pandas as pd
-from .database_service import DatabaseService
 
-class FinancialAnalysisService: 
-    @staticmethod
-    def get_total_savings(db_service: DatabaseService, user_id: int) -> float:
-        query = """
-        SELECT SUM(savings) FROM monthly_results
-        WHERE user_id = %(user_id)s
-        """
-        return db_service.custom_query(query, {'user_id': user_id}, value_format='scalar')
-    
-    @staticmethod
-    def get_avg_income_per_month(db_service: DatabaseService, user_id: int) -> float:
-        query = """
-        SELECT AVG(total_income) FROM monthly_results
-        WHERE user_id = %(user_id)s
-        """
-        return db_service.custom_query(query, {'user_id': user_id}, value_format='scalar')
-    
-    @staticmethod
-    def get_avg_withdrawal_per_month(db_service: DatabaseService, user_id: int) -> float:
-        query = """
-        SELECT AVG(total_withdrawal) FROM monthly_results
-        WHERE user_id = %(user_id)s
-        """
-        return db_service.custom_query(query, {'user_id': user_id}, value_format='scalar')
-        
+class FinancialAnalysisService:   
     @staticmethod
     def get_financial_tips(label: str) -> list[str]:
         """
