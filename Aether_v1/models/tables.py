@@ -500,6 +500,9 @@ class AllTransactionsTable(TransactionsTable):
         
         if 'user_id' not in v.columns:
             raise ValueError(f"AllTransactionsTable dataframe missing required column 'user_id'. Available columns: {list(v.columns)}")
+        
+        if 'category_id' not in v.columns:
+            v['category_id'] = None
             
         return v
     
@@ -515,6 +518,17 @@ class AllTransactionsTable(TransactionsTable):
     def user_id(self) -> int:
         return self.df['user_id'].iloc[0]
     
+    @property
+    def category_id(self) -> pd.Series:
+        return self.df['category_id']
+    
+    @category_id.setter
+    def category_id(self, category_id: pd.Series) -> None:
+        if not isinstance(category_id, pd.Series):
+            raise ValueError("The category id must be a pandas series")
+        
+        self.df['category_id'] = category_id
+        
 class MonthlyResultsTable(BaseModel):
     """Represents a table of monthly results with the following columns:
     - year_month: The year and month of the result
