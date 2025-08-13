@@ -1,6 +1,8 @@
 import streamlit as st
+from decimal import Decimal
 from controllers import TransactionProcessorController
-import pandas as pd
+from models.bank_properties import BankName, StatementType
+from models.financial import TransactionRecord
 
 controller = TransactionProcessorController()
 
@@ -22,26 +24,37 @@ def show_cash_transactions():
         
         transaction_amount = right.number_input(
             label= 'Amount',
+            min_value= 0.01,
             value= None
         )
         
-        description = st.text_input(
+        category = left.selectbox(
+            label= 'Category',
+            options= controller.get_categories(),
+            index= None,
+        )
+        
+        description = right.text_input(
             label= 'Description',
             max_chars= 200
         )
         
-        user_id = controller.user_session_service.get_current_user_id()
-        
         if st.form_submit_button(label= 'Sumbit'):
-            transaction_record = {
-                'user_id': user_id,
-                'date': date,
-                'description': description,
-                'amount': transaction_amount if transaction_type == 'Abono' else -1 * transaction_amount,
-                'type': transaction_type,
-                'bank': 'cash',
-                'statement_type': 'debit',
-                'filename': None
-            }
-            
-            controller.add_transaction(transaction_record)
+            try:
+                transaction_record = TransactionRecord(
+                    user_id= controller.user_id,
+                    category_id= controller.get_category_id(category),
+                    date= date,
+                    description= description,
+                    amount= Decimal(transaction_amount if transaction_type == 'Abono' else -1 * transaction_amount),
+                    type= transaction_type,
+                    bank= BankName.CASH,
+                    statement_type= StatementType.DEBIT,
+                    filename= None
+                )
+                
+                controller.add_transaction(transaction_record)
+            except TypeError:
+                st.warning('Please, fill all the fields')
+            except Exception as e:
+                raise e

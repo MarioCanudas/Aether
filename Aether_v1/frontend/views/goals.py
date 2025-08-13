@@ -25,7 +25,12 @@ def show_goals():
         st.info('No goal selected')
     
     with st.expander('Current Goals'):
-        st.dataframe(controller.get_current_goals(), hide_index= True, use_container_width= True)
+        df = controller.get_current_goals()
+        
+        if df.empty:
+            st.write('No current goals')
+        else:
+            st.dataframe(df, hide_index= True, use_container_width= True)
     
     with st.expander('Past Goals'):
         df = controller.get_past_goals()
