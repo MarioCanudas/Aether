@@ -4,17 +4,13 @@ from controllers import DataViewController
 controller = DataViewController()
 
 def show_data():
-    st.title('Data')
+    st.title('Transactions')
 
     # Check if data is available in session state
-    if controller.user_have_transactions() and controller.user_have_monthly_results():
+    if controller.user_have_transactions():
         # Get all variables to can filter the transactions
-        df_monthly_results = controller.get_monthly_results()
         transactions_date_range = controller.get_transactions_date_range()
         banks_in_transactions = controller.get_banks_in_transactions()
-        
-        # Display the transactions table
-        st.subheader("Transactions")
         
         col1, col2, col3, col4 = st.columns(4)
         
@@ -47,12 +43,20 @@ def show_data():
 
         try:
             filtered_transactions = controller.get_filtered_transactions(date_range, banks, statement_type, amount_type)
-        except Exception as e:
+        except Exception:
             filtered_transactions = controller.get_filtered_transactions(transactions_date_range, banks, statement_type, amount_type)
         finally:
             st.dataframe(filtered_transactions, hide_index=True)
+    else:
+        st.write("No transactions available. Please upload files or input transactions manually.")
         
-        st.subheader("Monthly Results")
+    st.divider()
+    
+    st.title("Monthly Results")
+    
+    if controller.user_have_monthly_results():
+        df_monthly_results = controller.get_monthly_results()
+        
         st.dataframe(df_monthly_results, hide_index=True)
     else:
-        st.write("No data available. Please upload files in the Home view.")
+        st.write("No monthly results available.")
