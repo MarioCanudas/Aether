@@ -1,6 +1,7 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 from io import BytesIO
+import asyncio
 from typing import Optional, List, Tuple, Dict, Any
 import logging
 from services import (
@@ -185,34 +186,43 @@ class TransactionProcessorController(BaseController):
             
             return monthly_results_db.get_monthly_results(user_id)
         
-    def get_summary_metrics(self) -> SummaryMetrics:
+    async def get_summary_metrics(self) -> SummaryMetrics:
         with self.quick_read_conn() as conn:
             monthly_results_db = MonthlyResultDBService(conn)
             
-            total_savings = monthly_results_db.get_total_savings(self.user_id)
-            avg_income_per_month = monthly_results_db.get_avg_income_per_month(self.user_id)
-            avg_withdrawal_per_month = monthly_results_db.get_avg_withdrawal_per_month(self.user_id)
+            async with asyncio.TaskGroup() as tg:
+                total_savings = tg.create_task(
+                    monthly_results_db.get_total_savings(self.user_id)
+                )
+                avg_income_per_month = tg.create_task(
+                    monthly_results_db.get_avg_income_per_month(self.user_id)
+                )
+                avg_withdrawal_per_month = tg.create_task(
+                    monthly_results_db.get_avg_withdrawal_per_month(self.user_id)
+                )
             
             return SummaryMetrics(
-                total_savings= total_savings,
-                avg_income_per_month= avg_income_per_month,
-                avg_withdrawal_per_month= avg_withdrawal_per_month
+                total_savings= total_savings.result(),
+                avg_income_per_month= avg_income_per_month.result(),
+                avg_withdrawal_per_month= avg_withdrawal_per_month.result()
             )
             
     def get_financial_summary(self) -> FinancialSummary:
-        summary_metrics = self.get_summary_metrics()
-        donut_config = self.plotting_service.get_savings_donut_chart_config(summary_metrics)
-        tips = self.financial_analysis_service.get_financial_tips(donut_config.label)
+        summary_metrics = asyncio.run(self.get_summary_metrics())
+        
+        label = self.financial_analysis_service.get_financial_status_label(summary_metrics)
+        tips = self.financial_analysis_service.get_financial_tips(label)
 
         return FinancialSummary(
             summary_metrics= summary_metrics,
-            label= donut_config.label,
+            label= label.value,
             tips= tips
         )
         
     def get_donut_score_chart(self) -> plt.Figure:
-        summary_metrics = self.get_summary_metrics()
-        donut_config = self.plotting_service.get_savings_donut_chart_config(summary_metrics)
+        summary_metrics = asyncio.run(self.get_summary_metrics())
+        label = self.financial_analysis_service.get_financial_status_label(summary_metrics)
+        donut_config = self.plotting_service.get_savings_donut_chart_config(label)
         
         return self.plotting_service.get_plot_savings_donut_chart(donut_config)
         

@@ -1,20 +1,21 @@
 import matplotlib.pyplot as plt
 from pandas import DataFrame, Series
-from decimal import Decimal
 from models.configs import DonutChartConfig
-from models.financial import SummaryMetrics
+from models.financial import FinancialStatus
 
 class PlottingService:
     @staticmethod
-    def get_savings_donut_chart_config(summary_metrics: SummaryMetrics) -> DonutChartConfig:
-        if summary_metrics.total_savings >= Decimal(0.10) * summary_metrics.avg_income_per_month:
-            return DonutChartConfig(completion_percentage= 100, label= "Excellent!", color= '#1E90FF', points= '100 pts')
-        elif 0 <= summary_metrics.total_savings < Decimal(0.10) * summary_metrics.avg_income_per_month:
-            return DonutChartConfig(completion_percentage= 75, label= "Good", color= '#4CAF50', points= '75 pts')
-        elif Decimal(-0.10) * summary_metrics.avg_income_per_month <= summary_metrics.total_savings < 0:
-            return DonutChartConfig(completion_percentage= 50, label= "Regular", color= '#FF9800', points= '50 pts')
+    def get_savings_donut_chart_config(label: FinancialStatus) -> DonutChartConfig:
+        if label == FinancialStatus.EXCELLENT:
+            return DonutChartConfig(completion_percentage= 100, label= label, color= '#1E90FF', points= '100 pts')
+        elif label == FinancialStatus.GOOD:
+            return DonutChartConfig(completion_percentage= 75, label= label, color= '#4CAF50', points= '75 pts')
+        elif label == FinancialStatus.REGULAR:
+            return DonutChartConfig(completion_percentage= 50, label= label, color= '#FF9800', points= '50 pts')
+        elif label == FinancialStatus.POOR:
+            return DonutChartConfig(completion_percentage= 25, label= label, color= '#F44336', points= '25 pts')
         else:
-            return DonutChartConfig(completion_percentage= 25, label= "Poor", color= '#F44336', points= '25 pts')
+            raise ValueError(f"Invalid label: {label}")
         
     @staticmethod
     def get_plot_savings_donut_chart(donut_chart_config: DonutChartConfig) -> plt.Figure:

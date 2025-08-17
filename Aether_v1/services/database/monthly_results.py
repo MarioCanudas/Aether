@@ -49,7 +49,7 @@ class MonthlyResultDBService(BaseDBService):
             
             self.execute_query(query, params= records, batch= True)  
     
-    def get_total_savings(self, user_id: int) -> Decimal:
+    async def get_total_savings(self, user_id: int) -> Decimal:
         query = f"""
             SELECT SUM({self.savings}) FROM {self.table_name}
             WHERE user_id = %(user_id)s
@@ -59,7 +59,7 @@ class MonthlyResultDBService(BaseDBService):
         
         return result[0] if result else 0
     
-    def get_avg_income_per_month(self, user_id: int) -> Decimal:
+    async def get_avg_income_per_month(self, user_id: int) -> Decimal:
         query = f"""
             SELECT AVG({self.total_income}) FROM {self.table_name}
             WHERE user_id = %(user_id)s
@@ -69,7 +69,7 @@ class MonthlyResultDBService(BaseDBService):
         
         return result[0] if result else 0
     
-    def get_avg_withdrawal_per_month(self, user_id: int) -> Decimal:
+    async def get_avg_withdrawal_per_month(self, user_id: int) -> Decimal:
         query = f"""
             SELECT AVG({self.total_withdrawal}) FROM {self.table_name}
             WHERE user_id = %(user_id)s
