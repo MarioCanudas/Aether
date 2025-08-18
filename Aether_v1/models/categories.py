@@ -11,11 +11,4 @@ class CategoryGroup(str, Enum):
     INGRESOS = 'Ingresos'
     OTROS = 'Otros'
     
-class GoalType(str, Enum):
-    BUDGET = 'Presupuesto'
-    SAVINGS = 'Ahorro'
-    DEBT = 'Deuda'
-    INCOME = 'Ingreso'
-    INVESTMENT = 'Inversión'
-    
     
