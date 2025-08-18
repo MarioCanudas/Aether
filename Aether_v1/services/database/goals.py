@@ -1,13 +1,13 @@
 from datetime import date
 from typing import Literal, Optional, List, Dict, Any
-from models.financial import Goal
+from models.goals import Goal
 from .base_db import BaseDBService
 
 class GoalsDBService(BaseDBService):
     # Table information
     table_name = 'goals'
     allowed_columns = {'goal_id', 'user_id', 'type', 'category_id', 'name', 'amount', 'added_amount', 
-                       'created_at', 'updated_at', 'start_date', 'end_date', 'achieved'}
+                       'created_at', 'updated_at', 'start_date', 'end_date', 'status', 'related_transaction_type'}
     
     # Column names
     id_col = 'goal_id'
@@ -21,7 +21,8 @@ class GoalsDBService(BaseDBService):
     updated_at = 'updated_at'
     start_date = 'start_date'
     end_date = 'end_date'
-    achieved = 'achieved'
+    status = 'status'
+    related_transaction_type = 'related_transaction_type'
     
     def add_goal(self, goal: Goal) -> None:
         with self.transaction():

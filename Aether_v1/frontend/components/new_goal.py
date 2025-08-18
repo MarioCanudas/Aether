@@ -2,9 +2,9 @@ import streamlit as st
 from datetime import date, timedelta
 from utils import to_decimal
 from controllers import GoalsController
-from models.categories import GoalType
+from utils import to_decimal
 from models.dates import Period, PeriodRange
-from models.financial import Goal
+from models.goals import Goal, GoalType
 
 today = date.today()
 controller = GoalsController()
@@ -37,6 +37,7 @@ def new_goal_popup():
         
     if name and goal_type and category and amount > 0 and start_date and end_date and st.session_state.user_id:
         category_id = controller.get_category_id(category)
+        goal_type = GoalType(goal_type)
         
         new_budget = Goal(
             user_id= st.session_state.user_id,
@@ -50,4 +51,13 @@ def new_goal_popup():
     
     if st.button('Add budget', type= 'primary', key= 'new_budget_add_button', disabled= new_budget is None) and new_budget is not None:
         controller.add_goal(new_budget)
+        st.rerun()
+        
+@st.dialog('Add amount')
+def add_amount_popup(goal_id: int) -> None:
+    amount = st.number_input('Amount', value= 0, key= f'add_amount_amount_{goal_id}')
+    
+    if st.button('Add amount', type= 'primary', key= f'add_amount_add_button_{goal_id}', disabled= amount <= 0):
+        amount = to_decimal(amount)
+        controller.add_amount(goal_id, amount)
         st.rerun()

@@ -1,11 +1,11 @@
 import pandas as pd
+from decimal import Decimal
 from datetime import date
 from dateutil.relativedelta import relativedelta
 from typing import List, Optional
-from services import CategoryDBService, GoalsDBService
-from models.categories import GoalType
+from services import CategoryDBService, GoalsDBService, TransactionsDBService
 from models.dates import PeriodRange
-from models.financial import Goal, GoalInfo
+from models.goals import Goal, GoalInfo, GoalStatus, GoalType
 from .base_controller import BaseController
 
 class GoalsController(BaseController):
@@ -20,6 +20,14 @@ class GoalsController(BaseController):
             categories_db = CategoryDBService(conn)
             
             return categories_db.find_id(name= category)
+        
+    def get_category_by_id(self, category_id: int) -> str | None:
+        with self.quick_read_conn() as conn:
+            categories_db = CategoryDBService(conn)
+            
+            result =  categories_db.find_by_id(category_id, columns= ['name'])
+            
+            return result['name'] if result else None
         
     @staticmethod
     def get_goal_types() -> List[str]:
@@ -68,7 +76,7 @@ class GoalsController(BaseController):
             goals = goals_db.get_goals(
                 user_id= self.user_id,
                 status= 'current',
-                columns= ['name', 'type', 'amount', 'start_date', 'end_date'],
+                columns= ['name', 'type', 'amount', 'added_amount', 'start_date', 'end_date', 'status'],
                 order_by= 'start_date',
                 order= 'asc',
                 show_categories_names= True
@@ -83,7 +91,7 @@ class GoalsController(BaseController):
             goals = goals_db.get_goals(
                 user_id= self.user_id,
                 status= 'past',
-                columns= ['name', 'type', 'amount', 'start_date', 'end_date', 'achieved'],
+                columns= ['name', 'type', 'amount', 'added_amount', 'start_date', 'end_date', 'status'],
                 order_by= 'end_date',
                 order= 'desc',
                 show_categories_names= True
@@ -92,15 +100,46 @@ class GoalsController(BaseController):
             return pd.DataFrame(goals) if goals else pd.DataFrame()
         
     def get_goal_info(self, goal_name: str) -> GoalInfo:
-        return GoalInfo(
-            name= goal_name,
-            type= GoalType.BUDGET.value,
-            category= 'test',
-            amount= 100,
-            added_amount= 50,
-            remaining= 50,
-            expenses= 0,
-            start_date= date(2025, 1, 1),
-            end_date= date(2025, 1, 31),
-            achived= None,
-        )
+        with self.quick_read_conn() as conn:
+            goals_db = GoalsDBService(conn)
+            
+            goal_id = goals_db.find_id(name= goal_name)
+            goal_dict = goals_db.find_by_id(
+                goal_id, 
+                columns= ['goal_id', 'name', 'type', 'category_id', 'amount', 'added_amount', 'start_date', 
+                          'end_date', 'status', 'related_transaction_type']
+            )
+            
+            transactions_db = TransactionsDBService(conn)
+            
+            current_amount = transactions_db.get_sum(
+                'amount',
+                start_date= goal_dict['start_date'],
+                end_date= goal_dict['end_date'],
+                user_id= self.user_id,
+                category_id= goal_dict['category_id'],
+                type= goal_dict['related_transaction_type']
+            )
+            
+            remaining = (goal_dict['amount'] + goal_dict['added_amount']) - current_amount 
+            
+            return GoalInfo(
+                goal_id= goal_dict['goal_id'],
+                name= goal_dict['name'],
+                type= GoalType(goal_dict['type']),
+                category= self.get_category_by_id(goal_dict['category_id']),
+                amount= goal_dict['amount'],
+                added_amount= goal_dict['added_amount'],
+                start_date= goal_dict['start_date'],
+                end_date= goal_dict['end_date'],
+                status= GoalStatus(goal_dict['status']),    
+                current_amount= current_amount,
+                remaining= remaining,
+                progress_porcentage= current_amount / goal_dict['amount']
+            )
+        
+    def add_amount(self, goal_id: int, amount: Decimal) -> None:
+        with self.session_conn() as conn:
+            goals_db = GoalsDBService(conn)
+            
+            goals_db.update(goal_id, added_amount= amount)
