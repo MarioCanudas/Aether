@@ -6,7 +6,8 @@ from .helper_functions import (
     classify_words,
     clean_amount,
     identify_date_separator,
-    to_decimal
+    to_decimal,
+    give_amount_format
 )
 
 __all__ = [
@@ -17,5 +18,6 @@ __all__ = [
     'classify_words',
     'clean_amount',
     'identify_date_separator',
-    'to_decimal'
+    'to_decimal',
+    'give_amount_format'
 ]

@@ -165,3 +165,11 @@ def to_decimal(value: float | str) -> Decimal:
             raise ValueError(f"Value {value} is not a valid number")
         
     return Decimal(value).quantize(Decimal('0.01'))
+
+def give_amount_format(amount: Decimal | float | int | str) -> str | None:
+    if isinstance(amount, str):
+        if amount.isnumeric():
+            amount = float(amount)
+        else: None
+    
+    return f'${amount:,.2f}' if amount > 0 else f'-${abs(amount):,.2f}'
