@@ -132,6 +132,14 @@ class GoalInfo(BaseModel):
     remaining: float
     progress_porcentage: float
     
+    @field_validator('progress_porcentage')
+    @classmethod
+    def validate_progress_porcentage(cls, progress_porcentage: float) -> float:
+        if progress_porcentage < 0:
+            raise ValueError('Progress porcentage must be greater than 0')
+        else:
+            return progress_porcentage
+    
     @property
     def custom_current_amount_name(self) -> str:
         match self.type:
