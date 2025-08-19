@@ -1,7 +1,7 @@
 import streamlit as st
+from utils import give_amount_format
 from controllers import GoalsController
 from components.new_goal import new_goal_popup, add_amount_popup
-from models.goals import GoalStatus
 
 controller = GoalsController()
 
@@ -38,13 +38,17 @@ def show_goals():
         
         left, center, right = st.columns(3)
         
-        left.metric('Goal', goal_info.amount + goal_info.added_amount)
-        center.metric('Remaining', goal_info.remaining)
+        left.metric('Goal', give_amount_format(goal_info.amount + goal_info.added_amount))
+        center.metric('Remaining', give_amount_format(goal_info.remaining))
         right.metric(
-            goal_info.custom_current_amount_name, goal_info.current_amount,
-            delta= f'{goal_info.progress_porcentage * 100:.2f}%',
+            goal_info.custom_current_amount_name, give_amount_format(goal_info.current_amount),
+            delta= f'{int(goal_info.progress_porcentage * 100)}%',
             delta_color= 'normal' if goal_info.progress_porcentage < 1 else 'inverse'
-            )
+        )
+        
+        progress_donut_chart = controller.get_donut_chart_goal_progress(goal_info)
+        
+        st.pyplot(progress_donut_chart)
         
         if st.button('Add amount', type= 'primary', key= 'add_amount_button'):
             add_amount_popup(goal_info.goal_id)

@@ -1,7 +1,9 @@
 import matplotlib.pyplot as plt
+from datetime import date
 from pandas import DataFrame, Series
 from models.configs import DonutChartConfig
 from models.financial import FinancialStatus
+from models.goals import GoalInfo
 
 class PlottingService:
     @staticmethod
@@ -108,3 +110,66 @@ class PlottingService:
         ax_avg_income_per_day.set_yticklabels(ax_avg_income_per_day.get_yticks(), color='white')
         
         return income_bar_chart
+    
+    @staticmethod
+    def get_donut_chart_goal_progress_color(goal_info: GoalInfo) -> str:
+        # Calculate total days in the period
+        total_days = (goal_info.end_date - goal_info.start_date).days
+        
+        # Calculate days elapsed since start
+        today = date.today()
+        days_elapsed = (today - goal_info.start_date).days
+        
+        # Ensure days_elapsed is within bounds
+        days_elapsed = max(0, min(days_elapsed, total_days))
+        
+        # Calculate expected progress based on time elapsed
+        expected_progress_ratio = days_elapsed / total_days if total_days > 0 else 0
+        
+        # Calculate actual progress ratio
+        actual_progress_ratio = goal_info.progress_porcentage
+        
+        # Calculate spending efficiency
+        # If actual > expected = overspending (bad) = closer to red
+        # If actual < expected = underspending (good) = closer to green
+        # If actual = expected = on track = green
+        if expected_progress_ratio == 0:
+            # If no time has passed, any spending is overspending
+            spending_efficiency = 0.0 if actual_progress_ratio > 0 else 1.0
+        else:
+            # Calculate how much over/under budget we are
+            spending_efficiency = 1.0 - (actual_progress_ratio / expected_progress_ratio)
+            # Clamp to 0-1 range
+            spending_efficiency = max(0.0, min(1.0, spending_efficiency))
+        
+        # Define color range from red to green
+        red_r, red_g, red_b = 255, 68, 68    # #FF4444 - Bad progress (red)
+        green_r, green_g, green_b = 76, 175, 80  # #4CAF50 - Good progress (green)
+        
+        # Interpolate between red and green based on efficiency
+        r = int(red_r + (green_r - red_r) * spending_efficiency)
+        g = int(red_g + (green_g - red_g) * spending_efficiency)
+        b = int(red_b + (green_b - red_b) * spending_efficiency)
+        
+        return f'#{r:02x}{g:02x}{b:02x}'
+        
+    def donut_chart_goal_progress(self, goal_info: GoalInfo) -> plt.figure:
+        completion_percentage = goal_info.progress_porcentage * 100
+        color = self.get_donut_chart_goal_progress_color(goal_info)
+        porcentage_text = f'{int(completion_percentage)}%'
+        
+        fig, ax = plt.subplots()
+        
+        sizes = [completion_percentage, 100 - completion_percentage]
+        colors = [color, '#E0E0E0']  # Color for the completed part and light gray for the remaining part
+        ax.pie(sizes, labels=['', ''], colors=colors, startangle=90, counterclock=False,
+            wedgeprops=dict(width=0.3))
+
+        # Add the label in the center of the donut
+        ax.text(0, 0, porcentage_text, ha='center', va='center', fontsize=14, weight='bold', color ='white')
+
+        # Make the plot background transparent
+        fig.patch.set_alpha(0)  # Make the figure's background transparent
+        ax.set_aspect('equal')
+
+        return fig
