@@ -46,6 +46,7 @@ def new_goal_popup():
             category_id= category_id, 
             amount= to_decimal(amount), 
             period= Period(start_date= start_date, end_date= end_date),
+            related_transaction_type= goal_type.transaction_type
         )
     else: new_budget = None
     

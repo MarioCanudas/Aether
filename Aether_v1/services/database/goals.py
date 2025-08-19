@@ -27,8 +27,8 @@ class GoalsDBService(BaseDBService):
     def add_goal(self, goal: Goal) -> None:
         with self.transaction():
             query = """
-                INSERT INTO goals (user_id, type, category_id, name, amount, start_date, end_date)
-                VALUES (%(user_id)s, %(type)s, %(category_id)s, %(name)s, %(amount)s, %(start_date)s, %(end_date)s)
+                INSERT INTO goals (user_id, type, related_transaction_type, category_id, name, amount, start_date, end_date)
+                VALUES (%(user_id)s, %(type)s, %(related_transaction_type)s, %(category_id)s, %(name)s, %(amount)s, %(start_date)s, %(end_date)s)
             """
             
             self.execute_query(query, params= goal.to_record())
