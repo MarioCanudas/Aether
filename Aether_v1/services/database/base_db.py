@@ -252,3 +252,14 @@ class BaseDBService(ABC):
             query += f" WHERE {self.id_col} = %(id)s"
             
             self.execute_query(query, params= {'id': id, **updates})
+            
+    def add_value(self, column: str, value: float | Decimal, **conditions: Any) -> None:
+        """Add a value to a column."""
+        with self.transaction():
+            query = f"UPDATE {self.table_name} SET {column} = {column} + %(value)s"
+            
+            if conditions:
+                query += " WHERE "
+                query += " AND ".join([f"{col} = %({col})s" for col in conditions])
+                
+            self.execute_query(query, params= {'value': value, **conditions})

@@ -11,9 +11,21 @@ def show_goals():
     if st.button('New Goal', type= 'primary', key= 'new_goal_button'):
         new_goal_popup()
         
-    st.subheader('Info')
+    st.header('Info')
     
-    goal_to_view = st.selectbox('Choose a goal', controller.get_current_goals_names(), key= 'view_goals_status')
+    left, right = st.columns([3, 1])
+    
+    goal_to_view = left.selectbox(
+        'Choose a goal', 
+        controller.get_current_goals_names(), 
+        key= 'view_goals_status', 
+        label_visibility= 'collapsed',
+        placeholder= 'Select a goal',
+        help= 'Select a goal to view its information'
+    )
+    
+    if right.button('Modify', type= 'primary', key= 'modify_goal_button', disabled= not goal_to_view):
+        add_amount_popup(goal_to_view)
     
     if goal_to_view:
         goal_info = controller.get_goal_info(goal_to_view)
@@ -22,19 +34,17 @@ def show_goals():
         
         left.write(
             f"""
-            **Name:** {goal_info.name} \n
-            **Type:** {goal_info.type.value}
+            **Type:** {goal_info.type.value} \n
+            **Category:** {goal_info.category}
             """
         )
         
         right.write(
             f"""
-            **Category:** {goal_info.category} \n
-            **Period:** {goal_info.start_date} - {goal_info.end_date}
+            **Period:** {goal_info.start_date} - {goal_info.end_date} \n
             """
         )
-        
-        st.badge(goal_info.status.value, icon= goal_info.status.icon, color= goal_info.status.color)
+        right.badge(goal_info.status.value, icon= goal_info.status.icon, color= goal_info.status.color)
         
         left, center, right = st.columns(3)
         
@@ -48,10 +58,14 @@ def show_goals():
         
         progress_donut_chart = controller.get_donut_chart_goal_progress(goal_info)
         
+        st.subheader('Progress', help= 'The graph shows the progress of the goal in fuction of the amounts.')
         st.pyplot(progress_donut_chart)
         
-        if st.button('Add amount', type= 'primary', key= 'add_amount_button'):
-            add_amount_popup(goal_info.goal_id)
+        progress_score = controller.get_goal_progress_score(goal_info)
+        st.markdown(
+            f"<h2 style='text-align: center;'>Progress Score: {int(progress_score * 100)} pts</h2>", 
+            unsafe_allow_html=True,
+        )
         
     else:
         st.info('No goal selected')

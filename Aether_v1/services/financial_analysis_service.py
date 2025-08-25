@@ -1,6 +1,8 @@
 from decimal import Decimal
+from datetime import date
 from typing import List
 from models.financial import SummaryMetrics, FinancialStatus
+from models.goals import GoalInfo, TransactionType
 
 class FinancialAnalysisService:   
     @staticmethod
@@ -48,3 +50,32 @@ class FinancialAnalysisService:
             ]
         else:
             return ["No specific tips available for this financial health situation."]
+
+    @staticmethod
+    def get_goal_progress_score(goal_info: GoalInfo) -> float:
+        total_amount = goal_info.amount + goal_info.added_amount
+        total_days = (goal_info.end_date - goal_info.start_date).days
+        days_elapsed = (date.today() - goal_info.start_date).days
+        current_amount = goal_info.current_amount
+        
+        eps = 1e-9
+        p = 3
+        
+        if total_amount <= 0 or total_days <= 0:
+            raise ValueError("Total amount and total days must be greater than 0")
+        amount_progress = abs(current_amount) / total_amount
+        
+        days_progress = max(days_elapsed / total_days, 1.0 / total_days)
+        if goal_info.type.transaction_type == TransactionType.INCOME:
+            r = amount_progress / max(days_progress, eps)
+        elif goal_info.type.transaction_type == TransactionType.EXPENSE:
+            rem = max(0.0, 1.0 - amount_progress)
+            re  = max(0.0, 1.0 - days_progress)
+            re = max(re, 1.0 / total_amount)  
+            r = rem / max(re, eps)
+        else:
+            raise ValueError("kind must be 'positive' or 'budget'")
+        
+        score = (r**p) / (1.0 + r**p)
+        
+        return float(max(0.0, min(1.0, score)))

@@ -1,10 +1,10 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 from decimal import Decimal
-from datetime import date
+from datetime import date, datetime
 from dateutil.relativedelta import relativedelta
-from typing import List, Optional
-from services import CategoryDBService, GoalsDBService, TransactionsDBService, PlottingService
+from typing import List, Optional, Dict, Any
+from services import CategoryDBService, GoalsDBService, TransactionsDBService, PlottingService, FinancialAnalysisService
 from models.dates import PeriodRange
 from models.goals import Goal, GoalInfo, GoalStatus, GoalType
 from .base_controller import BaseController
@@ -100,11 +100,57 @@ class GoalsController(BaseController):
             
             return pd.DataFrame(goals) if goals else pd.DataFrame()
         
+    def update_goal_status(self, goal_dict: Dict[str, Any], remaining: Decimal) -> GoalStatus:
+        today = datetime.today()
+        current_status = goal_dict['status']
+        
+        if current_status == GoalStatus.ACTIVE:
+            match goal_dict['type']:
+                case GoalType.SAVINGS:
+                    if goal_dict['end_date'] < today and remaining > 0:
+                        status = GoalStatus.FAILED
+                    elif goal_dict['end_date'] > today and remaining <= 0:
+                        status = GoalStatus.ACHIEVED
+                    else:
+                        return current_status
+                case GoalType.BUDGET:
+                    if goal_dict['end_date'] < today and remaining >= 0:
+                        status = GoalStatus.ACHIEVED
+                    elif goal_dict['end_date'] > today and remaining < 0:
+                        status = GoalStatus.FAILED
+                    else:
+                        return current_status
+                case GoalType.DEBT:
+                    if goal_dict['end_date'] < today and remaining >= 0:
+                        status = GoalStatus.ACHIEVED
+                    elif goal_dict['end_date'] > today and remaining < 0:
+                        status = GoalStatus.FAILED
+                    else:
+                        return current_status
+                case GoalType.INVESTMENT:
+                    if goal_dict['end_date'] < today and remaining > 0:
+                        status = GoalStatus.FAILED
+                    elif goal_dict['end_date'] > today and remaining <= 0:
+                        status = GoalStatus.ACHIEVED
+                    else:
+                        return current_status
+                case _:
+                    return current_status
+                
+            with self.session_conn() as conn:
+                goals_db = GoalsDBService(conn)
+                
+                goals_db.update(goal_dict['goal_id'], status= status)
+                
+                return status
+        else:
+            return current_status
+        
     def get_goal_info(self, goal_name: str) -> GoalInfo:
         with self.quick_read_conn() as conn:
             goals_db = GoalsDBService(conn)
             
-            goal_id = goals_db.find_id(name= goal_name)
+            goal_id = goals_db.find_id(name= goal_name, user_id= self.user_id)
             goal_dict = goals_db.find_by_id(
                 goal_id, 
                 columns= ['goal_id', 'name', 'type', 'category_id', 'amount', 'added_amount', 'start_date', 
@@ -124,6 +170,8 @@ class GoalsController(BaseController):
             
             remaining = (goal_dict['amount'] + goal_dict['added_amount']) - abs(current_amount) 
             
+            status = self.update_goal_status(goal_dict, remaining)
+            
             return GoalInfo(
                 goal_id= goal_dict['goal_id'],
                 name= goal_dict['name'],
@@ -133,17 +181,20 @@ class GoalsController(BaseController):
                 added_amount= goal_dict['added_amount'],
                 start_date= goal_dict['start_date'],
                 end_date= goal_dict['end_date'],
-                status= GoalStatus(goal_dict['status']),    
+                status= status,    
                 current_amount= current_amount,
                 remaining= remaining,
-                progress_porcentage= abs(current_amount) / goal_dict['amount']
+                progress_porcentage= abs(current_amount) / (goal_dict['amount'] + goal_dict['added_amount'])
             )
         
     def add_amount(self, goal_id: int, amount: Decimal) -> None:
         with self.session_conn() as conn:
             goals_db = GoalsDBService(conn)
             
-            goals_db.update(goal_id, added_amount= amount)
+            goals_db.add_value('added_amount', amount, goal_id= goal_id)
             
     def get_donut_chart_goal_progress(self, goal_info: GoalInfo) -> plt.figure:
         return PlottingService().donut_chart_goal_progress(goal_info)
+    
+    def get_goal_progress_score(self, goal_info: GoalInfo) -> float:
+        return FinancialAnalysisService.get_goal_progress_score(goal_info) if goal_info.status != GoalStatus.ACHIEVED else 1.0
