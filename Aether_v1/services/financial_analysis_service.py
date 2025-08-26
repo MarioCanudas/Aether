@@ -59,7 +59,7 @@ class FinancialAnalysisService:
         current_amount = goal_info.current_amount
         
         eps = 1e-9
-        p = 3
+        p = 2
         
         if total_amount <= 0 or total_days <= 0:
             raise ValueError("Total amount and total days must be greater than 0")

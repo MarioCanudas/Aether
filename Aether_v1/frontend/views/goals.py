@@ -61,6 +61,9 @@ def show_goals():
         st.subheader('Progress', help= 'The graph shows the progress of the goal in fuction of the amounts.')
         st.pyplot(progress_donut_chart)
         
+        progress_line_chart = controller.get_line_chart_goal_progress(goal_info)
+        st.altair_chart(progress_line_chart, use_container_width= True)
+        
         progress_score = controller.get_goal_progress_score(goal_info)
         st.markdown(
             f"<h2 style='text-align: center;'>Progress Score: {int(progress_score * 100)} pts</h2>", 

@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import altair as alt
 from datetime import date
 from pandas import DataFrame, Series
 from models.configs import DonutChartConfig
@@ -130,3 +131,23 @@ class PlottingService:
         ax.set_aspect('equal')
 
         return fig
+    
+    def line_chart_goal_progress(self, goal_info: GoalInfo, transactions: DataFrame) -> alt.Chart:
+        target_amount = float(goal_info.amount + goal_info.added_amount)
+                
+        transactions_chart = alt.Chart(transactions).mark_line(color='blue').encode(
+            x= alt.X('date:T', title= 'Date', scale= alt.Scale(domain= [goal_info.start_date, goal_info.end_date])),
+            y= alt.Y('acumulated_amount:Q', title= 'Amount', scale= alt.Scale(domain= [0, target_amount + target_amount * 0.2])),
+        ).properties(
+            title= f'Goal Progress: {goal_info.name}',
+        )
+        
+        target_chart = alt.Chart().mark_rule(color='red', strokeWidth= 2).encode(
+            x= alt.datum(goal_info.start_date),
+            x2= alt.datum(goal_info.end_date),
+            y= alt.datum(target_amount)
+        )
+        
+        return alt.layer(transactions_chart, target_chart)
+    
+    

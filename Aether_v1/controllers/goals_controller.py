@@ -1,4 +1,5 @@
 import pandas as pd
+import altair as alt
 import matplotlib.pyplot as plt
 from decimal import Decimal
 from datetime import date, datetime
@@ -176,6 +177,7 @@ class GoalsController(BaseController):
                 goal_id= goal_dict['goal_id'],
                 name= goal_dict['name'],
                 type= GoalType(goal_dict['type']),
+                category_id= goal_dict['category_id'],
                 category= self.get_category_by_id(goal_dict['category_id']),
                 amount= goal_dict['amount'],
                 added_amount= goal_dict['added_amount'],
@@ -198,3 +200,27 @@ class GoalsController(BaseController):
     
     def get_goal_progress_score(self, goal_info: GoalInfo) -> float:
         return FinancialAnalysisService.get_goal_progress_score(goal_info) if goal_info.status != GoalStatus.ACHIEVED else 1.0
+    
+    def get_line_chart_goal_progress(self, goal_info: GoalInfo) -> alt.Chart:
+        with self.quick_read_conn() as conn:
+            transactions_db = TransactionsDBService(conn)
+            
+            transactions = transactions_db.get_transactions(
+                user_id= self.user_id,
+                period= (goal_info.start_date, goal_info.end_date),
+                columns= ['date', 'amount'],
+                category_id= goal_info.category_id,
+            )
+            
+            if transactions:
+                df = pd.DataFrame(transactions)
+                df['amount'] = df['amount'].abs()
+                df['date'] = pd.to_datetime(df['date'])
+                df.sort_values(by= 'date')
+
+                df = df.groupby('date').agg({'amount': 'sum'}).reset_index()
+                df['acumulated_amount'] = df['amount'].cumsum().astype(float)
+            else:
+                df = pd.DataFrame(columns= ['date', 'amount', 'acumulated_amount'])
+            
+            return PlottingService().line_chart_goal_progress(goal_info, df)

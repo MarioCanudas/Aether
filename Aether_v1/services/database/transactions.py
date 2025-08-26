@@ -28,7 +28,8 @@ class TransactionsDBService(BaseDBService):
             banks: Optional[List[str]] = None,
             statement_type: Optional[Literal['debit', 'credit']] = None,
             amount_type: Optional[List[Literal['Abono', 'Cargo', 'Saldo inicial']]] = None,
-            show_categories_names: Optional[bool] = False
+            show_categories_names: Optional[bool] = False,
+            **conditions: Any
         ) -> List[TransactionRecord]:
         
         if columns:
@@ -43,7 +44,7 @@ class TransactionsDBService(BaseDBService):
             query = f"""
                 SELECT * FROM {self.table_name} AS t
         """
-        
+            
         if show_categories_names:
             query += f" LEFT JOIN categories ON t.{self.category_id} = categories.{self.category_id}"
         
@@ -71,6 +72,11 @@ class TransactionsDBService(BaseDBService):
             query += f" AND type IN ({', '.join([f'%(type_{i})s' for i in range(len(amount_type))])})"
             for i, amount_type in enumerate(amount_type):
                 params[f'type_{i}'] = amount_type
+                
+        if conditions:
+            query += " AND "
+            query += " AND ".join([f"{col} = %({col})s" for col in conditions])
+            params.update(conditions)
             
         return self.execute_query(query, params= params, fetch= 'all', dict_cursor= True)
         

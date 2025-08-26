@@ -122,6 +122,7 @@ class GoalInfo(BaseModel):
     goal_id: int
     name: str
     type: GoalType
+    category_id: int
     category: str
     amount: float
     added_amount: float
