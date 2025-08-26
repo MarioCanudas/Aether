@@ -5,7 +5,6 @@ from typing import Dict, Any, Generator
 from contextlib import contextmanager
 from dotenv import load_dotenv
 import os
-from .database_service import DatabaseService
 
 load_dotenv()
 
@@ -19,10 +18,8 @@ DB_PASSWORD = os.getenv('DB_PASSWORD')
 
 class ConnectionManagementService:
     """
-    Centralized connection manager for all Aether controllers.
-    Handles different connection scopes based on operation patterns.
-    Creates and configures psycopg2 connections for each use case, and returns
-    DatabaseService instances initialized with those connections.
+    Centralized connection manager that returns raw psycopg2 connections
+    configured for different use cases.
     """
     _instance = None
     _lock = threading.Lock()
@@ -38,12 +35,12 @@ class ConnectionManagementService:
     def __init__(self):
         if getattr(self, '_initialized', False):
             return
-        self._local = threading.local()
         self._connection_stats = {'created': 0, 'active': 0, 'closed': 0}
         self._initialized = True
         logger.info("ConnectionManagementService initialized")
 
     def _create_base_connection(self) -> psycopg2.extensions.connection:
+        """Create a base PostgreSQL connection."""
         connection = psycopg2.connect(
             host=DB_HOST,
             port=DB_PORT,
@@ -59,19 +56,13 @@ class ConnectionManagementService:
         return connection
 
     def _configure_for_session(self, connection: psycopg2.extensions.connection) -> None:
-        """
-        Configure connection for session-scoped operations (default settings).
-        """
-        # Example: Set a moderate statement timeout
+        """Configure connection for session-scoped operations."""
         with connection.cursor() as cur:
             cur.execute("SET statement_timeout = 10000;")  # 10 seconds
         logger.debug("Configured connection for session scope")
 
     def _configure_for_batch(self, connection: psycopg2.extensions.connection) -> None:
-        """
-        Configure connection for batch processing operations (bulk inserts, etc).
-        """
-        # Example: Increase work_mem, disable synchronous_commit for speed
+        """Configure connection for batch processing operations."""
         with connection.cursor() as cur:
             cur.execute("SET work_mem = '128MB';")
             cur.execute("SET synchronous_commit = OFF;")
@@ -79,16 +70,14 @@ class ConnectionManagementService:
         logger.debug("Configured connection for batch scope")
 
     def _configure_for_quick_read(self, connection: psycopg2.extensions.connection) -> None:
-        """
-        Configure connection for quick, read-only operations.
-        """
-        # Example: Set read-only transaction, lower timeout
+        """Configure connection for quick, read-only operations."""
         with connection.cursor() as cur:
             cur.execute("SET default_transaction_read_only = ON;")
             cur.execute("SET statement_timeout = 2000;")  # 2 seconds
         logger.debug("Configured connection for quick-read scope")
 
     def _close_connection(self, connection: psycopg2.extensions.connection) -> None:
+        """Close a connection and update stats."""
         try:
             connection.close()
             with self._lock:
@@ -99,74 +88,37 @@ class ConnectionManagementService:
             logger.error(f"Error closing connection: {e}")
 
     @contextmanager
-    def get_session_scoped_service(self) -> Generator[DatabaseService, None, None]:
-        """
-        Get DatabaseService with session-scoped connection.
-        Use for user interactions, session workflows, etc.
-        """
+    def get_session_connection(self) -> Generator[psycopg2.extensions.connection, None, None]:
+        """Get session-scoped connection for user interactions."""
         connection = self._create_base_connection()
         self._configure_for_session(connection)
-        db_service = DatabaseService()
-        db_service.conn = connection
-        db_service.cursor = connection.cursor()
-        db_service._managed_connection = True
         try:
-            yield db_service
+            yield connection
         finally:
-            if db_service.cursor:
-                db_service.cursor.close()
             self._close_connection(connection)
 
     @contextmanager
-    def get_batch_processing_service(self) -> Generator[DatabaseService, None, None]:
-        """
-        Get DatabaseService optimized for batch operations (bulk inserts, data migration).
-        """
+    def get_batch_connection(self) -> Generator[psycopg2.extensions.connection, None, None]:
+        """Get batch processing connection for bulk operations."""
         connection = self._create_base_connection()
         self._configure_for_batch(connection)
-        db_service = DatabaseService()
-        db_service.conn = connection
-        db_service.cursor = connection.cursor()
-        db_service._managed_connection = True
         try:
-            yield db_service
+            yield connection
         finally:
-            if db_service.cursor:
-                db_service.cursor.close()
             self._close_connection(connection)
 
     @contextmanager
-    def get_quick_read_service(self) -> Generator[DatabaseService, None, None]:
-        """
-        Get DatabaseService for quick, isolated read-only operations.
-        """
+    def get_quick_read_connection(self) -> Generator[psycopg2.extensions.connection, None, None]:
+        """Get quick read connection for fast, read-only operations."""
         connection = self._create_base_connection()
         self._configure_for_quick_read(connection)
-        db_service = DatabaseService()
-        db_service.conn = connection
-        db_service.cursor = connection.cursor()
-        db_service._managed_connection = True
         try:
-            yield db_service
+            yield connection
         finally:
-            if db_service.cursor:
-                db_service.cursor.close()
             self._close_connection(connection)
 
-    def cleanup_session(self) -> None:
-        """
-        Clean up current thread's session-scoped connections.
-        Call this when Streamlit session ends or user logs out.
-        """
-        # No-op for PostgreSQL, but kept for API compatibility
-        logger.info("Session cleanup called (no-op for PostgreSQL)")
-
     def get_connection_stats(self) -> Dict[str, Any]:
-        """
-        Get current connection statistics for monitoring and debugging.
-        Returns:
-            dict: Dictionary with connection stats and database info.
-        """
+        """Get current connection statistics."""
         with self._lock:
             return {
                 'connections_created': self._connection_stats['created'],

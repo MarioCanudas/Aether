@@ -2,18 +2,26 @@ from .statement_data_extraction import StatementDataExtractionService
 from .data_processing_service import DataProcessingService
 from .financial_analysis_service import FinancialAnalysisService
 from .plotting_service import PlottingService
-from .database_service import DatabaseService
 from .connection_management_service import ConnectionManagementService
 from .data_validation_service import DataValidationService
 from .user_session_service import UserSessionService
+from .database.users import UserDBService
+from .database.categories import CategoryDBService
+from .database.transactions import TransactionsDBService
+from .database.monthly_results import MonthlyResultDBService
+from .database.goals import GoalsDBService
 
 __all__ = [
     'DataProcessingService',
     'FinancialAnalysisService',
     'PlottingService',
-    'DatabaseService',
     'ConnectionManagementService',
     'DataValidationService',
     'UserSessionService',
-    'StatementDataExtractionService'
+    'StatementDataExtractionService',
+    'MonthlyResultDBService',
+    'TransactionsDBService',
+    'UserDBService',
+    'CategoryDBService',
+    'GoalsDBService',
 ]
