@@ -1,5 +1,6 @@
 import datetime
 from typing import Optional, Literal, List, Dict, Set, Tuple, Any
+from models.bank_properties import BankName
 from models.records import TransactionRecord
 from .base_db import BaseDBService
 
@@ -62,7 +63,11 @@ class TransactionsDBService(BaseDBService):
             
         if banks:
             query += f" AND bank IN ({', '.join([f'%(bank_{i})s' for i in range(len(banks))])})"
+            allowed_banks = [bank.value for bank in BankName]
             for i, bank in enumerate(banks):
+                if bank not in allowed_banks:
+                    raise ValueError(f"Invalid bank: {bank}")
+                
                 params[f'bank_{i}'] = bank
                 
         if statement_type:
