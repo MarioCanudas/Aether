@@ -23,6 +23,8 @@ class UserDBService(BaseDBService):
             
             query += " WHERE "
             query += " AND ".join([f"{col} = %({col})s" for col in params.keys()])
+        else:
+            params = {}
             
         result = self.execute_query(query, params= params, fetch='one', dict_cursor=True)
         
@@ -42,7 +44,6 @@ class UserDBService(BaseDBService):
                 INSERT INTO {self.table_name} ({self.username}, {self.password_hash}) 
                 VALUES (%(username)s, %(password_hash)s)
             """
-            print(user.model_dump())
 
             self.execute_query(query, params= user.model_dump())
             

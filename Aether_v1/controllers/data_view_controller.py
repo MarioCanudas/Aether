@@ -15,7 +15,9 @@ class DataViewController(BaseController):
         with self.quick_read_conn() as conn:
             transactions_db = TransactionsDBService(conn)
             
-            return transactions_db.get_transactions_date_range(user_id)
+            period = transactions_db.get_transactions_period(user_id)
+            
+            return period.to_tuple()
         
     def get_banks_in_transactions(self) -> List[str]:
         user_id = self.user_session_service.current_user_id

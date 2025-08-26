@@ -1,6 +1,7 @@
 import datetime
 from typing import Optional, Literal, List, Dict, Set, Tuple, Any
 from models.bank_properties import BankName
+from models.dates import Period
 from models.records import TransactionRecord
 from .base_db import BaseDBService
 
@@ -79,9 +80,10 @@ class TransactionsDBService(BaseDBService):
                 params[f'type_{i}'] = amount_type
                 
         if conditions:
+            validated_conditions = self._validate_conditions(conditions)
             query += " AND "
-            query += " AND ".join([f"{col} = %({col})s" for col in conditions])
-            params.update(conditions)
+            query += " AND ".join([f"{col} = %({col})s" for col in validated_conditions.keys()])
+            params.update(validated_conditions)
             
         return self.execute_query(query, params= params, fetch= 'all', dict_cursor= True)
         
@@ -105,16 +107,16 @@ class TransactionsDBService(BaseDBService):
             
             self.execute_query(query, params= records, batch= True)
         
-    def get_transactions_date_range(self, user_id: int) -> Tuple[datetime.date, datetime.date]:
+    def get_transactions_period(self, user_id: int) -> Period:
         query = f"""
-            SELECT MIN({self.date}) as first_date, MAX({self.date}) as last_date
+            SELECT MIN({self.date}) as start_date, MAX({self.date}) as end_date
             FROM {self.table_name}
             WHERE {self.user_id} = %(user_id)s
         """
         
-        result = self.execute_query(query, params= {'user_id': user_id}, fetch= 'one')
+        result = self.execute_query(query, params= {'user_id': user_id}, fetch= 'one', dict_cursor= True)
         
-        return sorted(result)
+        return Period(start_date= result['start_date'], end_date= result['end_date'])
     
     def get_existing_keys(self, all_params: Dict[str, Any], query_values: List[str]) -> Set[Tuple[Any, ...]]:
         query = f"""

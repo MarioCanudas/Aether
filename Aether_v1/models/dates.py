@@ -53,15 +53,15 @@ class Period(BaseModel):
     
     @field_validator('end_date')
     @classmethod
-    def validate_dates_not_equal(cls, v, info):
+    def validate_dates_not_equal_or_greater(cls, v, info):
         """
-        Validate that the start and end dates are not equal.
+        Validate that the start date is less than the end date.
         """
         start_date = info.data.get('start_date')
         end_date = v
         if start_date is not None and end_date is not None:
-            if start_date == end_date:
-                raise ValueError("Start date and end date cannot be the same")
+            if start_date >= end_date:
+                raise ValueError("Start date cannot be greater than or equal to end date")
         return v
     
     def to_tuple(self) -> Tuple[date, date]:
