@@ -19,10 +19,12 @@ class UserDBService(BaseDBService):
         query = f"SELECT * FROM {self.table_name}"
         
         if conditions:
-            query += " WHERE "
-            query += " AND ".join([f"{col} = %({col})s" for col in conditions])
+            params = self._validate_conditions(conditions)
             
-        result = self.execute_query(query, params= conditions, fetch='one', dict_cursor=True)
+            query += " WHERE "
+            query += " AND ".join([f"{col} = %({col})s" for col in params.keys()])
+            
+        result = self.execute_query(query, params= params, fetch='one', dict_cursor=True)
         
         return UserInfo.from_dict(result) if result else None
     

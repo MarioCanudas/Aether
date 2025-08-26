@@ -129,6 +129,21 @@ class BaseDBService(ABC):
         
         return validated_columns
     
+    def _validate_conditions(self, conditions: Dict[str, Any]) -> Dict[str, Any]:
+        """Validate conditions for the query, based on the allowed columns for the table."""
+        validated_conditions = {}
+        
+        for col, value in conditions.items():
+            if not col or not isinstance(col, str):
+                raise ValueError(f"Invalid column name: {col}")
+            
+            if col not in self.allowed_columns:
+                raise ValueError(f"Column '{col}' not allowed for table '{self.table_name}'")
+            else:
+                validated_conditions[col] = value
+                
+        return validated_conditions
+    
     def execute_query(
         self,
         query: str,
@@ -158,7 +173,7 @@ class BaseDBService(ABC):
     
     def find_by_id(self, id: int) -> Optional[Dict[str, Any]]:
         """Find a record by its ID."""
-        query = f"SELECT * FROM {self.table_name} WHERE id = %(id)s"
+        query = f"SELECT * FROM {self.table_name} WHERE {self.id_col} = %(id)s"
         
         result = self.execute_query(query, params={'id': id}, fetch='one', dict_cursor=True)
         
@@ -169,10 +184,12 @@ class BaseDBService(ABC):
         query = f"SELECT COUNT(*) FROM {self.table_name}"
         
         if conditions:
+            params = self._validate_conditions(conditions)
+            
             query += " WHERE "
-            query += " AND ".join([f"{col} = %({col})s" for col in conditions])
-        
-        result = self.execute_query(query, params= conditions, fetch= 'one')
+            query += " AND ".join([f"{col} = %({col})s" for col in params.keys()])
+
+        result = self.execute_query(query, params= params, fetch= 'one')
         return result[0] if result else 0
     
     def find_id(self, **conditions: Any) -> int | None:
@@ -184,10 +201,12 @@ class BaseDBService(ABC):
         query = f"SELECT {self.id_col} FROM {self.table_name}"
         
         if conditions:
-            query += " WHERE "
-            query += " AND ".join([f"{col} = %({col})s" for col in conditions])
+            params = self._validate_conditions(conditions)
             
-        result = self.execute_query(query, params= conditions, fetch= 'one')
+            query += " WHERE "
+            query += " AND ".join([f"{col} = %({col})s" for col in params.keys()])
+            
+        result = self.execute_query(query, params= params, fetch= 'one')
         
         return result[0] if result else None
     
@@ -196,22 +215,29 @@ class BaseDBService(ABC):
         query = f"SELECT EXISTS(SELECT 1 FROM {self.table_name}"
         
         if conditions:
+            params = self._validate_conditions(conditions)
+            
             query += " WHERE "
-            query += " AND ".join([f"{col} = %({col})s" for col in conditions])
+            query += " AND ".join([f"{col} = %({col})s" for col in params.keys()])
         
         query += ")"
         
-        return self.execute_query(query, params= conditions, fetch= 'one')[0]
+        return self.execute_query(query, params= params, fetch= 'one')[0]
     
     def get_unique_values(self, column: str, **conditions: Any) -> List[Any]:
         """Get unique values for a column."""
+        if column not in self.allowed_columns:
+            raise ValueError(f"Column '{column}' not allowed for table '{self.table_name}'")
+        
         query = f"SELECT DISTINCT {column} FROM {self.table_name}"
         
         if conditions:
+            params = self._validate_conditions(conditions)
+            
             query += " WHERE "
-            query += " AND ".join([f"{col} = %({col})s" for col in conditions])
+            query += " AND ".join([f"{col} = %({col})s" for col in params.keys()])
         
-        result = self.execute_query(query, params= conditions, fetch= 'all')
+        result = self.execute_query(query, params= params, fetch= 'all')
         
         return [value[0] for value in result] if result else []
     
