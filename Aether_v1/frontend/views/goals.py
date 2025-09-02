@@ -66,7 +66,7 @@ def show_goals():
         
         progress_score = controller.get_goal_progress_score(goal_info)
         st.markdown(
-            f"<h2 style='text-align: center;'>Progress Score: {int(progress_score * 100)} pts</h2>", 
+            f"<h2 style='text-align: center;'>{progress_score.label} progress</h2>", 
             unsafe_allow_html=True,
         )
         

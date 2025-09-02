@@ -1,8 +1,9 @@
 from decimal import Decimal
 from datetime import date
 from typing import List
+from models.amounts import TransactionType
 from models.financial import SummaryMetrics, FinancialStatus
-from models.goals import GoalInfo, TransactionType
+from models.goals import GoalInfo, GoalProgressScore
 
 class FinancialAnalysisService:   
     @staticmethod
@@ -78,4 +79,4 @@ class FinancialAnalysisService:
         
         score = (r**p) / (1.0 + r**p)
         
-        return float(max(0.0, min(1.0, score)))
+        return GoalProgressScore(score= float(max(0.0, min(1.0, score))))
