@@ -1,10 +1,12 @@
 import matplotlib.pyplot as plt
 import altair as alt
+import pandas as pd
+import numpy as np
 from datetime import date
 from pandas import DataFrame, Series
 from models.configs import DonutChartConfig
 from models.financial import FinancialStatus
-from models.goals import GoalInfo, TransactionType, GoalStatus  
+from models.goals import GoalInfo
 
 class PlottingService:
     @staticmethod
@@ -132,22 +134,113 @@ class PlottingService:
 
         return fig
     
-    def line_chart_goal_progress(self, goal_info: GoalInfo, transactions: DataFrame) -> alt.Chart:
+    @staticmethod
+    def goal_transactions_line_chart(goal_info: GoalInfo, transactions: DataFrame) -> alt.Chart:
         target_amount = float(goal_info.amount + goal_info.added_amount)
-                
-        transactions_chart = alt.Chart(transactions).mark_line(color='blue').encode(
-            x= alt.X('date:T', title= 'Date', scale= alt.Scale(domain= [goal_info.start_date, goal_info.end_date])),
-            y= alt.Y('acumulated_amount:Q', title= 'Amount', scale= alt.Scale(domain= [0, target_amount + target_amount * 0.2])),
+        
+        days = (goal_info.end_date - goal_info.start_date).days
+        tick_interval = days / 2 if days < 30 else days / 3
+        
+        relative_date_range = pd.date_range(start= goal_info.start_date, end= date.today(), freq= 'D')
+        complete_dates_df = pd.DataFrame({
+            'date': relative_date_range
+        })
+        
+        if not transactions.empty:
+            # Merge complete dates with transactions, filling missing amounts with 0
+            complete_transactions = complete_dates_df.merge(
+                transactions[['date', 'amount']], 
+                on='date', 
+                how='left'
+            ).fillna({'amount': 0})
+            
+            # Sort by date and calculate cumulative amounts
+            complete_transactions = complete_transactions.sort_values('date')
+            complete_transactions['acumulated_amount'] = complete_transactions['amount'].cumsum().astype(float)
+        else:
+            # If no transactions, create DataFrame with all zeros
+            complete_transactions = complete_dates_df.copy()
+            complete_transactions['amount'] = 0
+            complete_transactions['acumulated_amount'] = 0
+            
+        transactions_chart = alt.Chart(complete_transactions).mark_line(color='blue', point= True).encode(
+            x= alt.X(
+                'date:T', 
+                title= 'Date', 
+                scale= alt.Scale(domain= [goal_info.start_date, goal_info.end_date]),
+                axis= alt.Axis(format= '%d/%m/%Y', tickCount= int(tick_interval))
+            ),
+            y= alt.Y(
+                'acumulated_amount:Q', 
+                title= 'Amount', 
+                scale= alt.Scale(domain= [0, target_amount + target_amount * 0.2]),
+                axis= alt.Axis(format= '$.2f')
+            ),
+            tooltip= [
+                alt.Tooltip('date:T', title='Day', format='%d/%m/%Y'),
+                alt.Tooltip('acumulated_amount:Q', title='Amount', format='$.2f')
+            ]
         ).properties(
             title= f'Goal Progress: {goal_info.name}',
+            height=500,
         )
         
-        target_chart = alt.Chart().mark_rule(color='red', strokeWidth= 2).encode(
-            x= alt.datum(goal_info.start_date),
-            x2= alt.datum(goal_info.end_date),
-            y= alt.datum(target_amount)
-        )
-        
-        return alt.layer(transactions_chart, target_chart)
+        return transactions_chart
     
+    @staticmethod
+    def goal_target_progress_line_chart(goal_info: GoalInfo) -> alt.Chart:
+        target_amount = float(goal_info.amount + goal_info.added_amount)
+        
+        days = (goal_info.end_date - goal_info.start_date).days
+        tick_interval = days / 2 if days < 30 else days / 3
+                
+        date_range = pd.date_range(start= goal_info.start_date, end= goal_info.end_date)
+        target_progress = np.linspace(0, target_amount, len(date_range))
+        target_progress_df = pd.DataFrame({
+            'date': date_range,
+            'amount': target_progress
+        })
+        
+        target_progress_chart = alt.Chart(target_progress_df).mark_line(
+            color='gray', 
+            strokeWidth= 2, 
+            opacity= 0.5, 
+            strokeDash= [5, 5]
+        ).encode(
+            x= alt.X(
+                'date:T',
+                scale= alt.Scale(domain= [goal_info.start_date, goal_info.end_date]),
+                axis= alt.Axis(format= '%d/%m/%Y', tickCount= int(tick_interval)),
+            ),
+            y= alt.Y(
+                'amount:Q',
+                scale= alt.Scale(domain= [0, target_amount + target_amount * 0.2]),
+                axis= alt.Axis(format= '$.2f'),
+            ),
+            tooltip= [
+                alt.Tooltip('date:T', title='Day', format='%d/%m/%Y'),
+                alt.Tooltip('amount:Q', title='Expected Amount', format='$.2f'),
+            ]
+        )
+        
+        return target_progress_chart
+        
+    @staticmethod
+    def goal_target_amount_rule_chart(goal_info: GoalInfo) -> alt.Chart:
+        target_amount = float(goal_info.amount + goal_info.added_amount)
+        
+        target_amount_df = pd.DataFrame({
+            'start_date': [goal_info.start_date],
+            'end_date': [goal_info.end_date],
+            'amount': [target_amount]
+        })
+        
+        target_amount_chart = alt.Chart(target_amount_df).mark_rule(color='red', strokeWidth= 2).encode(
+            x= 'start_date:T',
+            x2= 'end_date:T',
+            y= 'amount:Q',
+            tooltip= [alt.Tooltip('amount:Q', title='Target Amount', format='$.2f')]
+        )
+        
+        return target_amount_chart
     

@@ -1,13 +1,14 @@
 import pandas as pd
 import altair as alt
 import matplotlib.pyplot as plt
+import altair as alt
 from decimal import Decimal
 from datetime import date, datetime
 from dateutil.relativedelta import relativedelta
 from typing import List, Optional, Dict, Any
 from services import CategoryDBService, GoalsDBService, TransactionsDBService, PlottingService, FinancialAnalysisService
 from models.dates import PeriodRange
-from models.goals import Goal, GoalInfo, GoalStatus, GoalType
+from models.goals import Goal, GoalInfo, GoalStatus, GoalType, GoalProgressScore
 from .base_controller import BaseController
 
 class GoalsController(BaseController):
@@ -198,8 +199,13 @@ class GoalsController(BaseController):
     def get_donut_chart_goal_progress(self, goal_info: GoalInfo) -> plt.figure:
         return PlottingService().donut_chart_goal_progress(goal_info)
     
-    def get_goal_progress_score(self, goal_info: GoalInfo) -> float:
-        return FinancialAnalysisService.get_goal_progress_score(goal_info) if goal_info.status != GoalStatus.ACHIEVED else 1.0
+    def get_goal_progress_score(self, goal_info: GoalInfo) -> GoalProgressScore:
+        if goal_info.status == GoalStatus.ACHIEVED:
+            return GoalProgressScore(score= 1.0)
+        elif goal_info.status == GoalStatus.FAILED:
+            return GoalProgressScore(score= 0.0)
+        else:
+            return FinancialAnalysisService.get_goal_progress_score(goal_info)
     
     def get_line_chart_goal_progress(self, goal_info: GoalInfo) -> alt.Chart:
         with self.quick_read_conn() as conn:
@@ -210,6 +216,7 @@ class GoalsController(BaseController):
                 period= (goal_info.start_date, goal_info.end_date),
                 columns= ['date', 'amount'],
                 category_id= goal_info.category_id,
+                type= goal_info.type.transaction_type
             )
             
             if transactions:
@@ -219,8 +226,13 @@ class GoalsController(BaseController):
                 df.sort_values(by= 'date')
 
                 df = df.groupby('date').agg({'amount': 'sum'}).reset_index()
-                df['acumulated_amount'] = df['amount'].cumsum().astype(float)
             else:
-                df = pd.DataFrame(columns= ['date', 'amount', 'acumulated_amount'])
+                df = pd.DataFrame(columns= ['date', 'amount'])
+                
+        plotting_service = PlottingService()
             
-            return PlottingService().line_chart_goal_progress(goal_info, df)
+        trnsactions_line_chart = plotting_service.goal_transactions_line_chart(goal_info, df)
+        target_progress_line_chart = plotting_service.goal_target_progress_line_chart(goal_info)
+        target_amount_rule_chart = plotting_service.goal_target_amount_rule_chart(goal_info)
+        
+        return alt.layer(trnsactions_line_chart, target_progress_line_chart, target_amount_rule_chart)
