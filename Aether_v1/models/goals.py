@@ -154,3 +154,19 @@ class GoalInfo(BaseModel):
                 return 'Income'
             case GoalType.INVESTMENT:
                 return 'Invested'
+            
+class GoalProgressScore(BaseModel):
+    score: float
+    
+    @property
+    def label(self) -> str:
+        if self.score == 1.0:
+            return 'Excellent'
+        elif self.score >= 0.75:
+            return 'Good'
+        elif self.score >= 0.50:
+            return 'Regular'
+        elif self.score >= 0.25:
+            return 'Poor'
+        else:
+            return 'Failed'
