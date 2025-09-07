@@ -44,9 +44,11 @@ def show_cash_transactions():
                 
         with st.form(key= f'add_cash_transaction', border= False, clear_on_submit= True):
             if template:
+                default_values = template.default_values
+                
                 transaction_date = st.date_input(
                     label= 'Date',
-                    value= template.transaction_date,
+                    value= default_values.transaction_date,
                     key= 'transaction_date_template'
                 )
                 
@@ -56,14 +58,14 @@ def show_cash_transactions():
                     label= 'Type',
                     options= ['Abono', 'Cargo'],
                     selection_mode= 'single',
-                    default= template.transaction_type,
+                    default= default_values.type,
                     key= 'transaction_type_template'
                 )
                 
                 transaction_amount = right.number_input(
                     label= 'Amount',
                     min_value= 0.01,
-                    value= float(template.transaction_amount),
+                    value= float(default_values.amount) if default_values.amount else None,
                     key= 'transaction_amount_template'
                 )
                 
@@ -72,14 +74,14 @@ def show_cash_transactions():
                 category = left.selectbox(
                     label= 'Category',
                     options= categories,
-                    index= categories.index(controller.get_category_name(template.transaction_category_id)),
+                    index= categories.index(controller.get_category_name(default_values.category_id)),
                     key= 'transaction_category_template'
                 ) 
                 
                 description = right.text_input(
                     label= 'Description',
                     max_chars= 200,
-                    value= template.transaction_description,
+                    value= default_values.description,
                     key= 'transaction_description_template'
                 ) 
             else:
