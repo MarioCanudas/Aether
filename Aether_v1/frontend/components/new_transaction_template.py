@@ -1,8 +1,9 @@
 import streamlit as st
 from datetime import date
+from utils import to_decimal
 from controllers import CashTransactionController
 from models.amounts import TransactionType
-from models.templates import TransactionTemplate
+from models.templates import Template, TemplateType, TransactionDefaultValues
 
 controller = CashTransactionController()
 
@@ -58,21 +59,28 @@ def new_template_popup() -> None:
                 transaction_category_id = controller.get_category_id(transaction_category)
                 
             try:
-                template = TransactionTemplate(
+                # First verify that the transaction default values are valid
+                default_values = TransactionDefaultValues(
+                    transaction_date= transaction_date,
+                    type= TransactionType(transaction_type),
+                    amount= to_decimal(transaction_amount) if transaction_amount else None,
+                    category_id= transaction_category_id,
+                    description= transaction_description
+                )
+                
+                # Then create the template
+                template = Template(
                     user_id= controller.user_id,
                     template_name= template_name,
                     template_description= template_description,
-                    transaction_date= transaction_date,
-                    transaction_type= TransactionType(transaction_type),
-                    transaction_amount= transaction_amount,
-                    transaction_category_id= transaction_category_id,
-                    transaction_description= transaction_description
+                    template_type= TemplateType.TRANSACTION,
+                    default_values= default_values
                 )
                 
                 controller.add_template(template)
                 st.rerun()
             except ValueError as e:
-                st.warinig('Some field is invalid, try again.')
+                st.warning(f'Some field is invalid, try again')
             except Exception as e:
                 st.error(f'An error occurred: {e}')
         
