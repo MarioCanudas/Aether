@@ -5,6 +5,7 @@ from datetime import date
 from decimal import Decimal
 from typing import Optional, Dict, Any, TypedDict
 from .amounts import TransactionType
+from .dates import PeriodRange
 from .goals import GoalType
 
 class TemplateType(str, Enum):
@@ -58,26 +59,7 @@ class GoalDefaultValues(BaseModel):
     type: GoalType
     category_id: Optional[int] = Field(default= None)
     amount: Optional[Decimal] = Field(default= None)
-    start_date: Optional[date] = Field(default= None)
-    end_date: Optional[date] = Field(default= None)
-
-    @field_validator('start_date', 'end_date', mode='after')
-    @classmethod
-    def validate_dates_structure(cls, values: dict[str, Any]) -> Dict[str, Any]:
-        """
-        Validates that if either start_date or end_date is provided, both must be present,
-        and start_date must be less than end_date.
-        """
-        start_date = values.get('start_date')
-        end_date = values.get('end_date')
-
-        if (start_date and not end_date) or (not start_date and end_date):
-            raise ValueError("Both start_date and end_date must be provided together.")
-        else:
-            if start_date >= end_date:
-                raise ValueError("Start date must be less than end date.")
-
-        return values
+    period_range: Optional[PeriodRange] = Field(default= None)
     
     @classmethod
     def from_dict(cls, values: Dict[str, Any]) -> 'GoalDefaultValues':
@@ -93,22 +75,18 @@ class GoalDefaultValues(BaseModel):
             values['type'] = GoalType(values['type'])
         if 'amount' in values and values['amount'] is not None and not isinstance(values['amount'], Decimal):
             values['amount'] = Decimal(str(values['amount']))
-        if 'start_date' in values and values['start_date'] is not None and not isinstance(values['start_date'], date):
-            values['start_date'] = date.fromisoformat(values['start_date'])
-        if 'end_date' in values and values['end_date'] is not None and not isinstance(values['end_date'], date):
-            values['end_date'] = date.fromisoformat(values['end_date'])
+        if 'period_range' in values and values['period_range'] is not None and not isinstance(values['period_range'], PeriodRange):
+            values['period_range'] = PeriodRange(values['period_range'])
 
         return cls(**values)
     
     def to_json(self) -> str:
         model_dump = self.model_dump()
-        
-        if 'start_date' in model_dump and model_dump['start_date'] is not None:
-            model_dump['start_date'] = model_dump['start_date'].isoformat()
-        if 'end_date' in model_dump and model_dump['end_date'] is not None:
-            model_dump['end_date'] = model_dump['end_date'].isoformat()
+    
         if 'amount' in model_dump and model_dump['amount'] is not None:
             model_dump['amount'] = float(model_dump['amount'])
+        if 'period_range' in model_dump and model_dump['period_range'] is not None:
+            model_dump['period_range'] = model_dump['period_range'].value
             
         return json.dumps({k:v for k, v in model_dump.items() if v is not None})
     

@@ -4,14 +4,17 @@ import matplotlib.pyplot as plt
 import altair as alt
 from decimal import Decimal
 from datetime import date, datetime
-from dateutil.relativedelta import relativedelta
 from typing import List, Optional, Dict, Any
-from services import CategoryDBService, GoalsDBService, TransactionsDBService, PlottingService, FinancialAnalysisService
+from services import (CategoryDBService, GoalsDBService, TransactionsDBService, PlottingService, 
+                      FinancialAnalysisService, TemplatesDBService)
 from models.dates import PeriodRange
 from models.goals import Goal, GoalInfo, GoalStatus, GoalType, GoalProgressScore
+from models.templates import Template, TemplateType
 from .base_controller import BaseController
 
 class GoalsController(BaseController):
+    TEMPLATE_TYPE = TemplateType.GOAL
+    
     def get_categories(self) -> List[str]:
         with self.quick_read_conn() as conn:
             categories_db = CategoryDBService(conn)
@@ -41,24 +44,8 @@ class GoalsController(BaseController):
         return [period_range.value for period_range in PeriodRange]
     
     @staticmethod   
-    def get_end_date(start_date: date, period_range: str) -> Optional[date]:
-        match period_range:
-            case PeriodRange.WEEKLY.value:
-                return start_date + relativedelta(weeks= 1)
-            case PeriodRange.FORTNIGHTLY.value:
-                return start_date + relativedelta(weeks= 2)
-            case PeriodRange.MONTHLY.value:
-                return start_date + relativedelta(months= 1)
-            case PeriodRange.BIMONTHLY.value:
-                return start_date + relativedelta(months= 2)
-            case PeriodRange.QUARTERLY.value:
-                return start_date + relativedelta(months= 3)
-            case PeriodRange.SEMIANNUAL.value:
-                return start_date + relativedelta(months= 6)
-            case PeriodRange.ANNUAL.value:
-                return start_date + relativedelta(years= 1)
-            case PeriodRange.OTHER.value:
-                return None
+    def get_end_date(start_date: date, period_range: PeriodRange) -> Optional[date]:
+        return start_date + period_range.days_to_add if period_range.days_to_add else None
     
     def add_goal(self, new_goal: Goal) -> None:
         with self.session_conn() as conn:
@@ -236,3 +223,33 @@ class GoalsController(BaseController):
         target_amount_rule_chart = plotting_service.goal_target_amount_rule_chart(goal_info)
         
         return alt.layer(trnsactions_line_chart, target_progress_line_chart, target_amount_rule_chart)
+    
+    def get_goals_templates_names(self) -> Dict[str, int]:
+        with self.quick_read_conn() as conn:
+            goals_templates_db = TemplatesDBService(conn)
+            
+            return goals_templates_db.get_templates_names(self.user_id, self.TEMPLATE_TYPE)
+        
+    def get_goal_template(self, template_id: int) -> Template | None:
+        with self.quick_read_conn() as conn:
+            goals_templates_db = TemplatesDBService(conn)
+            
+            return goals_templates_db.get_template(template_id)
+        
+    def add_goal_template(self, new_template: Template) -> None:
+        with self.session_conn() as conn:
+            goals_templates_db = TemplatesDBService(conn)
+            
+            goals_templates_db.add_template(new_template)
+        
+    def update_goal_template(self, template_id: int, updated_template: Template) -> None:
+        with self.session_conn() as conn:
+            goals_templates_db = TemplatesDBService(conn)
+            
+            goals_templates_db.update_template(template_id, updated_template)
+            
+    def delete_goal_template(self, template_id: int) -> None:
+        with self.session_conn() as conn:
+            goals_templates_db = TemplatesDBService(conn)
+            
+            goals_templates_db.delete_template(template_id)
