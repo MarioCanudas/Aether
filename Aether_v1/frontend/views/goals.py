@@ -13,7 +13,7 @@ def show_goals():
     if left.button('Goal', icon= ':material/add:', type= 'primary', help= 'Add a new goal', key= 'new_goal_button', use_container_width= True):
         new_goal_popup()
         
-    if right.button('Templates', icon= ':material/edit:', type= 'secondary', key= 'goals_templates_button', help= 'Add or modify goals templates', disabled= True):
+    if right.button('Templates', icon= ':material/edit:', type= 'secondary', key= 'goals_templates_button', help= 'Add or modify goals templates'):
         config_goals_templates_popup()
         
     st.header('Info')

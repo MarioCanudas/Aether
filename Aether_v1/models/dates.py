@@ -1,6 +1,7 @@
 from enum import Enum
 from pydantic import BaseModel, field_validator
 from dataclasses import dataclass
+from dateutil.relativedelta import relativedelta
 from datetime import date
 from typing import Optional, Dict, Tuple
 
@@ -76,6 +77,26 @@ class PeriodRange(Enum):
     SEMIANNUAL = 'Semestral'
     ANNUAL = 'Anual'
     OTHER = 'Otro'
+    
+    @property
+    def days_to_add(self):
+        match self:
+            case PeriodRange.WEEKLY:
+                return relativedelta(weeks= 1)
+            case PeriodRange.MONTHLY:
+                return relativedelta(months= 1)
+            case PeriodRange.FORTNIGHTLY:
+                return relativedelta(weeks= 2)
+            case PeriodRange.BIMONTHLY:
+                return relativedelta(months= 2)
+            case PeriodRange.QUARTERLY:
+                return relativedelta(months= 3)
+            case PeriodRange.SEMIANNUAL:
+                return relativedelta(months= 6)
+            case PeriodRange.ANNUAL:
+                return relativedelta(years= 1)
+            case PeriodRange.OTHER:
+                return None
 
 @dataclass(frozen=True)
 class MonthPatterns:
