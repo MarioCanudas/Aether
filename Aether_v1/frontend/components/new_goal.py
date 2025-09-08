@@ -2,7 +2,6 @@ import streamlit as st
 from datetime import date, timedelta
 from utils import to_decimal
 from controllers import GoalsController
-from utils import to_decimal
 from models.dates import Period, PeriodRange
 from models.goals import Goal, GoalType
 
