@@ -111,12 +111,6 @@ class TransactionProcessorController(BaseController):
                 
         return filtered_records, duplicate_records
     
-    def add_transaction(self, transaction: TransactionRecord) -> None:
-        with self.session_conn() as conn:
-            transactions_db = TransactionsDBService(conn)
-            
-            transactions_db.add_records([transaction.model_dump()])
-    
     def update_transactions(self, transactions: AllTransactionsTable) -> None:
         filtered_records, duplicate_records = self.filter_transactions(transactions)
         
@@ -225,16 +219,4 @@ class TransactionProcessorController(BaseController):
         donut_config = self.plotting_service.get_savings_donut_chart_config(label)
         
         return self.plotting_service.get_plot_savings_donut_chart(donut_config)
-        
-    def get_categories(self) -> List[str]:
-        with self.quick_read_conn() as conn:
-            category_db = CategoryDBService(conn)
-            
-            return category_db.get_categories_by_user(self.user_id)
-        
-    def get_category_id(self, category: str) -> Optional[int]:
-        with self.quick_read_conn() as conn:
-            category_db = CategoryDBService(conn)
-            
-            return category_db.find_id(name= category)
         
