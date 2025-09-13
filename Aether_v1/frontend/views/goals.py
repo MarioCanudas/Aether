@@ -29,12 +29,12 @@ def show_goals():
         help= 'Select a goal to view its information'
     )
     
-    if right.button('Modify', type= 'primary', key= 'modify_goal_button', disabled= not goal_to_view):
-        add_amount_popup(goal_to_view)
+    goal_info = controller.get_goal_info(goal_to_view) if goal_to_view else None
     
-    if goal_to_view:
-        goal_info = controller.get_goal_info(goal_to_view)
-        
+    if right.button('Modify', type= 'primary', key= 'modify_goal_button', disabled= not goal_to_view):
+        add_amount_popup(goal_info.goal_id)
+    
+    if goal_info:        
         left, right = st.columns(2)
         
         left.write(
