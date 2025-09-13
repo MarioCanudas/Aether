@@ -11,8 +11,15 @@ from services import (
 
 class BaseController(ABC):
     """
-    Base controller that provides centralized access to DatabaseService
+    Base controller that provides centralized access to DatabaseService and UserSessionService
+    Base controller that provides centralized access to DatabaseService and UserSessionService
     with different scopes depending on the type of operation.
+    
+    Provides general methods for user session management and database access, commonly used in 
+    all the child controllers.
+    
+    Provides general methods for user session management and database access, commonly used in 
+    all the child controllers.
     """
     
     def __init__(self):

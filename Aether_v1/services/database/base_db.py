@@ -1,4 +1,6 @@
 from abc import ABC, abstractmethod
+from decimal import Decimal
+from datetime import date
 import logging
 import psycopg2
 import psycopg2.extras
@@ -171,9 +173,14 @@ class BaseDBService(ABC):
         finally:
             cursor.close()
     
-    def find_by_id(self, id: int) -> Optional[Dict[str, Any]]:
+    def find_by_id(self, id: int, columns: Optional[List[str]] = None) -> Optional[Dict[str, Any]]:
         """Find a record by its ID."""
-        query = f"SELECT * FROM {self.table_name} WHERE {self.id_col} = %(id)s"
+
+        if columns:
+            columns = self._validate_columns(columns)
+            query = f"SELECT {', '.join(columns)} FROM {self.table_name} WHERE {self.id_col} = %(id)s"
+        else:
+            query = f"SELECT * FROM {self.table_name} WHERE {self.id_col} = %(id)s"
         
         result = self.execute_query(query, params={'id': id}, fetch='one', dict_cursor=True)
         
@@ -188,6 +195,8 @@ class BaseDBService(ABC):
             
             query += " WHERE "
             query += " AND ".join([f"{col} = %({col})s" for col in params.keys()])
+        else:
+            params = {}
 
         result = self.execute_query(query, params= params, fetch= 'one')
         return result[0] if result else 0
@@ -205,6 +214,8 @@ class BaseDBService(ABC):
             
             query += " WHERE "
             query += " AND ".join([f"{col} = %({col})s" for col in params.keys()])
+        else:
+            params = {}
             
         result = self.execute_query(query, params= params, fetch= 'one')
         
@@ -236,8 +247,64 @@ class BaseDBService(ABC):
             
             query += " WHERE "
             query += " AND ".join([f"{col} = %({col})s" for col in params.keys()])
+        else:
+            params = {}
         
         result = self.execute_query(query, params= params, fetch= 'all')
         
         return [value[0] for value in result] if result else []
     
+    def get_sum(self, column: str, start_date: Optional[date] = None, end_date: Optional[date] = None, **conditions: Any) -> Decimal:
+        """Get the sum of a column."""
+        query = f"SELECT SUM({column}) FROM {self.table_name}"
+        params = {}
+        
+        if conditions:
+            params = self._validate_conditions(conditions)
+            
+            query += " WHERE "
+            query += " AND ".join([f"{col} = %({col})s" for col in params.keys()])
+            
+        if start_date and end_date:
+            query += f" AND date BETWEEN %(start_date)s AND %(end_date)s"
+            params['start_date'] = start_date
+            params['end_date'] = end_date
+        elif start_date:
+            query += f" AND date >= %(start_date)s"
+            params['start_date'] = start_date
+        elif end_date:
+            query += f" AND date <= %(end_date)s"
+            params['end_date'] = end_date
+            
+        result = self.execute_query(query, params= params, fetch= 'one')
+        
+        return result[0] if result[0] is not None else Decimal(0)
+    
+    def update(self, id: int, **updates: Any) -> None:
+        """Update a record by its ID."""
+        params = self._validate_conditions(updates)
+        params['id'] = id
+        
+        with self.transaction():
+            query = f"UPDATE {self.table_name} SET "
+            query += ", ".join([f"{col} = %({col})s" for col in updates])
+            query += f" WHERE {self.id_col} = %(id)s"
+            
+            self.execute_query(query, params= params)
+            
+    def add_value(self, column: str, value: float | Decimal, **conditions: Any) -> None:
+        """Add a value to a column."""
+        with self.transaction():
+            query = f"UPDATE {self.table_name} SET {column} = {column} + %(value)s"
+            
+            if conditions:
+                params = self._validate_conditions(conditions)
+                
+                query += " WHERE "
+                query += " AND ".join([f"{col} = %({col})s" for col in params.keys()])
+            else:
+                params = {}
+                
+            params['value'] = value
+                
+            self.execute_query(query, params= params)

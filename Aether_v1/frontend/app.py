@@ -1,3 +1,4 @@
+import streamlit as st
 import sys
 import os
 import logging
@@ -13,55 +14,55 @@ logging.basicConfig(
 # Add the project root directory (aether_v1) to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-import streamlit as st
-from services.user_session_service import UserSessionService
+# Import views
+from views.logs import show_login, logout
 from views.home import show_home
-from views.data import show_data
+from views.cash_transaction import show_cash_transactions
 from views.income_analysis import show_income_analysis
 from views.expenses_analysis import show_expenses_analysis
-from views.cash_transaction import adding_cash_transaction
-from views.add_user import add_user_popup
-from views.transaction_processor import show_transaction_processor  # Import the transaction processor
+from views.goals import show_goals
+from views.users_config import show_users_config
+from views.data import show_data
+from views.transaction_processor import show_transaction_processor
 
 # -- Page Configuration --
+if not 'logged_in' in st.session_state:
+    st.session_state.logged_in = False
+    
+if not 'user_id' in st.session_state:
+    st.session_state.user_id = None
+    
 st.logo("frontend/assets/eli-logo.png", size= 'large', icon_image= "frontend/assets/eli-logo.png")
-if not 'all_transactions' in st.session_state:
-    st.session_state.all_transactions = []
     
 # -- Page Navigation --
 PAGES = {
-    'Eli Alpha Version v0.0': [
-        st.Page(show_home, title= "Overview"),
-        st.Page(show_data, title= "Data Export"),
-        st.Page(show_income_analysis, title= "Income Analysis"),
-        st.Page(show_expenses_analysis, title= "Expenses Analysis"),
-        st.Page(show_transaction_processor, title= "Transaction Processor") # New view added here
-    ],
+    'User': [
+        st.Page(show_login, title= "Login", icon= ':material/login:', default= not st.session_state.logged_in),
+    ]
 }
 
-user_session_service = UserSessionService()
-users = user_session_service.get_available_users()
-
-# -- Sidebar configuration --
-with st.sidebar:
-    current_username = st.selectbox("Select User", users, index= None)
+if st.session_state.logged_in:
+    PAGES.update({
+        'Overview': [
+            st.Page(show_home, title= "Home", icon= ':material/home:', default= st.session_state.logged_in),
+            st.Page(show_cash_transactions, title= "Cash Transaction", icon= ':material/add_card:'),
+            st.Page(show_goals, title= "Goals", icon= ':material/trophy:'),
+        ],
+        'Analytics': [
+            st.Page(show_income_analysis, title= "Income Analysis", icon= ':material/trending_up:'),
+            st.Page(show_expenses_analysis, title= "Expenses Analysis", icon= ':material/trending_down:'),
+        ],
+        'Account': [
+            st.Page(logout, title= "Log out", icon= ':material/logout:'),  
+        ],
+        'Dev Tools': [
+            st.Page(show_data, title= "Data Export", icon= ':material/table:'),
+            st.Page(show_transaction_processor, title= "Transaction Processor", icon= ':material/flowsheet:'),
+            st.Page(show_users_config, title= "Users Configuration", icon= ':material/account_circle:'),
+        ],
+    })
     
-    if st.button('Add user'):
-        add_user_popup(user_session_service)
-    
-    # Disable adding cash transaction button, because it's not implemented properly yet
-    if st.button('Add cash transaction', type= 'primary'):
-        adding_cash_transaction()
-
-# -- User session management --
-if current_username is None:
-    user_session_service.clear_current_user()
-    st.toast("No user selected")
-elif current_username is not None and not user_session_service.current_user_id:
-    user_id = user_session_service.get_user_id_by_username(current_username)
-    user_session_service.set_current_user_by_id(user_id)
-    st.toast(f"Logged in as {current_username} with id {user_session_service.current_user_id}")
-
+    del PAGES['User']
         
-page = st.navigation(PAGES)
+page = st.navigation(PAGES, position= 'sidebar' if st.session_state.logged_in else 'hidden')
 page.run()

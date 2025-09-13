@@ -1,13 +1,14 @@
 import streamlit as st
+from decimal import Decimal
 from controllers import TransactionProcessorController
-import pandas as pd
+from models.bank_properties import BankName, StatementType
+from models.financial import TransactionRecord
 
 controller = TransactionProcessorController()
 
-@st.dialog('Add a cash transaction')
-def adding_cash_transaction():
-    with st.form(key= 'adding a cash transaction', border=False):
-        controller.initialize_session_state()
+def show_cash_transactions():
+    with st.form(key= 'add_cash_transaction'):
+        st.header('Add a cash transaction')
         
         date = st.date_input(
             label= 'Date',
@@ -23,26 +24,37 @@ def adding_cash_transaction():
         
         transaction_amount = right.number_input(
             label= 'Amount',
+            min_value= 0.01,
             value= None
         )
         
-        description = st.text_input(
+        category = left.selectbox(
+            label= 'Category',
+            options= controller.get_categories(),
+            index= None,
+        )
+        
+        description = right.text_input(
             label= 'Description',
             max_chars= 200
         )
         
-        user_id = controller.user_session_service.get_current_user_id()
-        
         if st.form_submit_button(label= 'Sumbit'):
-            transaction_record = {
-                'user_id': user_id,
-                'date': date,
-                'description': description,
-                'amount': transaction_amount if transaction_type == 'Abono' else -1 * transaction_amount,
-                'type': transaction_type,
-                'bank': 'cash',
-                'statement_type': 'debit',
-                'filename': None
-            }
-            
-            controller.update_transactions(pd.DataFrame([transaction_record]))
+            try:
+                transaction_record = TransactionRecord(
+                    user_id= controller.user_id,
+                    category_id= controller.get_category_id(category),
+                    date= date,
+                    description= description,
+                    amount= Decimal(transaction_amount if transaction_type == 'Abono' else -1 * transaction_amount),
+                    type= transaction_type,
+                    bank= BankName.CASH,
+                    statement_type= StatementType.DEBIT,
+                    filename= None
+                )
+                
+                controller.add_transaction(transaction_record)
+            except TypeError:
+                st.warning('Please, fill all the fields')
+            except Exception as e:
+                raise e

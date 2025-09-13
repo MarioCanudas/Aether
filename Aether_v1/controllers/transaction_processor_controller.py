@@ -1,6 +1,8 @@
 import pandas as pd
+import matplotlib.pyplot as plt
 from io import BytesIO
-from typing import List, Tuple, Dict, Any
+import asyncio
+from typing import Optional, List, Tuple, Dict, Any
 import logging
 from services import (
     StatementDataExtractionService,
@@ -9,10 +11,12 @@ from services import (
     PlottingService, 
     DataValidationService,
     MonthlyResultDBService,
-    TransactionsDBService
+    TransactionsDBService,
+    CategoryDBService
 )
+from models.financial import SummaryMetrics, FinancialSummary, TransactionRecord
 from models.tables import AllTransactionsTable, MonthlyResultsTable
-from models.records import TransactionRecord, MonthlyResultRecord
+from models.records import MonthlyResultRecord
 from .base_controller import BaseController
 
 logger = logging.getLogger(__name__)
@@ -107,6 +111,12 @@ class TransactionProcessorController(BaseController):
                 
         return filtered_records, duplicate_records
     
+    def add_transaction(self, transaction: TransactionRecord) -> None:
+        with self.session_conn() as conn:
+            transactions_db = TransactionsDBService(conn)
+            
+            transactions_db.add_records([transaction.model_dump()])
+    
     def update_transactions(self, transactions: AllTransactionsTable) -> None:
         filtered_records, duplicate_records = self.filter_transactions(transactions)
         
@@ -175,25 +185,56 @@ class TransactionProcessorController(BaseController):
             monthly_results_db = MonthlyResultDBService(conn)
             
             return monthly_results_db.get_monthly_results(user_id)
-    
-    def get_financial_analysis(self) -> dict:
-        user_id = self.user_session_service.current_user_id
         
+    async def get_summary_metrics(self) -> SummaryMetrics:
         with self.quick_read_conn() as conn:
             monthly_results_db = MonthlyResultDBService(conn)
             
-            total_savings = monthly_results_db.get_total_savings(user_id)
-            avg_income_per_month = monthly_results_db.get_avg_income_per_month(user_id)
-            avg_withdrawal_per_month = monthly_results_db.get_avg_withdrawal_per_month(user_id)
-
-        donut_score_chart, label = self.plotting_service.get_plot_savings_donut_chart(total_savings, avg_income_per_month)
+            async with asyncio.TaskGroup() as tg:
+                total_savings = tg.create_task(
+                    monthly_results_db.get_total_savings(self.user_id)
+                )
+                avg_income_per_month = tg.create_task(
+                    monthly_results_db.get_avg_income_per_month(self.user_id)
+                )
+                avg_withdrawal_per_month = tg.create_task(
+                    monthly_results_db.get_avg_withdrawal_per_month(self.user_id)
+                )
+            
+            return SummaryMetrics(
+                total_savings= total_savings.result(),
+                avg_income_per_month= avg_income_per_month.result(),
+                avg_withdrawal_per_month= avg_withdrawal_per_month.result()
+            )
+            
+    def get_financial_summary(self) -> FinancialSummary:
+        summary_metrics = asyncio.run(self.get_summary_metrics())
+        
+        label = self.financial_analysis_service.get_financial_status_label(summary_metrics)
         tips = self.financial_analysis_service.get_financial_tips(label)
 
-        return {
-            'total_savings': total_savings,
-            'avg_income_per_month': avg_income_per_month,
-            'avg_withdrawal_per_month': avg_withdrawal_per_month,
-            'donut_score_chart': donut_score_chart,
-            'label': label,
-            'tips': tips
-        }
+        return FinancialSummary(
+            summary_metrics= summary_metrics,
+            label= label.value,
+            tips= tips
+        )
+        
+    def get_donut_score_chart(self) -> plt.Figure:
+        summary_metrics = asyncio.run(self.get_summary_metrics())
+        label = self.financial_analysis_service.get_financial_status_label(summary_metrics)
+        donut_config = self.plotting_service.get_savings_donut_chart_config(label)
+        
+        return self.plotting_service.get_plot_savings_donut_chart(donut_config)
+        
+    def get_categories(self) -> List[str]:
+        with self.quick_read_conn() as conn:
+            category_db = CategoryDBService(conn)
+            
+            return category_db.get_categories_by_user(self.user_id)
+        
+    def get_category_id(self, category: str) -> Optional[int]:
+        with self.quick_read_conn() as conn:
+            category_db = CategoryDBService(conn)
+            
+            return category_db.find_id(name= category)
+        
