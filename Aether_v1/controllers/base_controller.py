@@ -5,8 +5,7 @@ from contextlib import contextmanager
 from services import (
     ConnectionManagementService, 
     UserSessionService,
-    TransactionsDBService,
-    MonthlyResultDBService
+    TransactionsDBService
 )
 
 class BaseController(ABC):
@@ -65,10 +64,4 @@ class BaseController(ABC):
             transactions_db = TransactionsDBService(conn)
             
             return transactions_db.exists(user_id= self.user_id)
-        
-    def user_have_monthly_results(self) -> bool:
-        with self.quick_read_conn() as conn:
-            monthly_results_db = MonthlyResultDBService(conn)
-            
-            return monthly_results_db.exists(user_id= self.user_id)
 
