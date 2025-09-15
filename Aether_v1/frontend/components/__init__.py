@@ -1,9 +1,14 @@
 from .confirm_upload import confirm_upload_popup
-from .new_template import new_template_popup
-from .modify_template import modify_template_popup
+from .new_transaction_template import new_template_popup
+from .modify_transaction_template import modify_template_popup
+from .new_goal import new_goal_popup, add_amount_popup
+from .config_goals_templates import config_goals_templates_popup
 
 __all__ = [
     'confirm_upload_popup',
     'new_template_popup',
-    'modify_template_popup'
+    'modify_template_popup',
+    'new_goal_popup',
+    'add_amount_popup',
+    'config_goals_templates_popup'
 ]
