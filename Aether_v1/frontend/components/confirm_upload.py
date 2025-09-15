@@ -12,6 +12,5 @@ def confirm_upload_popup(transactions: AllTransactionsTable) -> None:
     
     if st.button(label= 'Confirm', help= 'This will update the database with the new transactions. If you are not sure just close this popup'):
         controller.update_transactions(transactions)
-        controller.update_monthly_results(transactions)
         st.toast('Transactions uploaded successfully')
         st.rerun()
