@@ -1,7 +1,8 @@
 import pandas as pd
 from typing import Literal
 import logging
-from services import PlottingService, DataProcessingService, TransactionsDBService, MonthlyResultDBService
+from services import PlottingService, DataProcessingService, TransactionsDBService
+from models.tables import AllTransactionsTable, MonthlyResultsTable
 from .base_controller import BaseController
 
 logger = logging.getLogger(__name__)
@@ -36,17 +37,19 @@ class AnalysisController(BaseController):
     
     def get_bar_chart_monthly_total_by_category(self, category: Literal['Abono', 'Cargo']):        
         with self.quick_read_conn() as conn:
-            monthly_results_db = MonthlyResultDBService(conn)
+            transactions_db = TransactionsDBService(conn)
             
-            monthly_results = monthly_results_db.get_monthly_results(self.user_id)
+            transactions = transactions_db.get_transactions(self.user_id)
         
-        monthly_results = pd.DataFrame(monthly_results)
-        monthly_results['year_month'] = monthly_results['year_month'].astype(str)
+        all_transactions = AllTransactionsTable(df = pd.DataFrame(transactions))
+        monthly_results: MonthlyResultsTable = self.data_processing_service.get_monthly_results(all_transactions)
+        
+        monthly_results.year_months = monthly_results.year_months.astype(str)
 
         if category == 'Abono':
-            return self.plotting_service.bar_chart_monthly_total_income(monthly_results)
+            return self.plotting_service.bar_chart_monthly_total_income(monthly_results.df)
         elif category == 'Cargo':
-            return self.plotting_service.bar_chart_monthly_total_expenses(monthly_results)
+            return self.plotting_service.bar_chart_monthly_total_expenses(monthly_results.df)
 
     def get_bar_chart_daily_total_by_category(self, category: Literal['Abono', 'Cargo']):
         with self.quick_read_conn() as conn:

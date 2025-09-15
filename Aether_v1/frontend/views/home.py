@@ -25,7 +25,7 @@ def show_home():
         except Exception as e:
             st.error(f"An unexpected error processing files: {e}")
             
-    if controller.user_have_transactions() and controller.user_have_monthly_results():
+    if controller.user_have_transactions():
         financial_analysis = controller.get_financial_summary()
         
         # Convert Decimal to float for display in streamlit

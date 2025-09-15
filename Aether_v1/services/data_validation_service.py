@@ -7,7 +7,6 @@ from models.tables import TransactionsTable, AllTransactionsTable, MonthlyResult
 from models.records import TransactionRecord, MonthlyResultRecord
 from .connection_management_service import ConnectionManagementService
 from .database.transactions import TransactionsDBService
-from .database.monthly_results import MonthlyResultDBService
 
 logger = getLogger(__name__)
 
@@ -43,23 +42,6 @@ class DataValidationService:
             transactions_db = TransactionsDBService(conn)
             
             return transactions_db.get_existing_keys(all_params, query_values)
-
-    def get_existing_monthly_result_keys(self, monthly_results: List[MonthlyResultRecord], user_id: int) -> Set[str]:
-        """
-        Check which monthly results exist in the database in a single query
-        Returns set of existing year_month strings
-        """
-        if not monthly_results:
-            return set()
-        
-        # Extract unique year_month values
-        all_params = {f'year_month_{i}': m['year_month'] for i, m in enumerate(monthly_results, start= 1)} 
-        all_params['user_id'] = user_id
-        
-        with self.connection_manager.get_session_connection() as conn:
-            monthly_results_db = MonthlyResultDBService(conn)
-            
-            return monthly_results_db.get_existing_keys(all_params)
     
     @staticmethod
     def validate_transactions(transactions: TransactionsTable, metadata: Metadata) -> TransactionsTable:
@@ -173,8 +155,3 @@ class DataValidationService:
 
         return AllTransactionsTable(df=transactions_cleaned)
     
-    @staticmethod
-    def validate_monthly_results(monthly_results: MonthlyResultsTable) -> MonthlyResultsTable:
-        """
-        """
-        return monthly_results

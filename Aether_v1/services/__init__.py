@@ -8,7 +8,6 @@ from .user_session_service import UserSessionService
 from .database.users import UserDBService
 from .database.categories import CategoryDBService
 from .database.transactions import TransactionsDBService
-from .database.monthly_results import MonthlyResultDBService
 from .database.goals import GoalsDBService
 from .database.transactions_templates import TransactionsTemplatesDBService
 
@@ -20,7 +19,6 @@ __all__ = [
     'DataValidationService',
     'UserSessionService',
     'StatementDataExtractionService',
-    'MonthlyResultDBService',
     'TransactionsDBService',
     'UserDBService',
     'CategoryDBService',

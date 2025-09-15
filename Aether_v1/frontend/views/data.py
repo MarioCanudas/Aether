@@ -50,13 +50,3 @@ def show_data():
     else:
         st.write("No transactions available. Please upload files or input transactions manually.")
         
-    st.divider()
-    
-    st.title("Monthly Results")
-    
-    if controller.user_have_monthly_results():
-        df_monthly_results = controller.get_monthly_results()
-        
-        st.dataframe(df_monthly_results, hide_index=True)
-    else:
-        st.write("No monthly results available.")
