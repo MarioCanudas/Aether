@@ -1,15 +1,20 @@
 import streamlit as st
 from utils import give_amount_format
 from controllers import GoalsController
-from components.new_goal import new_goal_popup, add_amount_popup
+from components import new_goal_popup, add_amount_popup, config_goals_templates_popup
 
 controller = GoalsController()
 
 def show_goals():
     st.title('Goals')
     
-    if st.button('New Goal', type= 'primary', key= 'new_goal_button'):
+    left, right, _ = st.columns([1, 1, 3])
+    
+    if left.button('Goal', icon= ':material/add:', type= 'primary', help= 'Add a new goal', key= 'new_goal_button', use_container_width= True):
         new_goal_popup()
+        
+    if right.button('Templates', icon= ':material/edit:', type= 'secondary', key= 'goals_templates_button', help= 'Add or modify goals templates'):
+        config_goals_templates_popup()
         
     st.header('Info')
     
@@ -24,12 +29,12 @@ def show_goals():
         help= 'Select a goal to view its information'
     )
     
-    if right.button('Modify', type= 'primary', key= 'modify_goal_button', disabled= not goal_to_view):
-        add_amount_popup(goal_to_view)
+    goal_info = controller.get_goal_info(goal_to_view) if goal_to_view else None
     
-    if goal_to_view:
-        goal_info = controller.get_goal_info(goal_to_view)
-        
+    if right.button('Modify', type= 'primary', key= 'modify_goal_button', disabled= not goal_to_view):
+        add_amount_popup(goal_info.goal_id)
+    
+    if goal_info:        
         left, right = st.columns(2)
         
         left.write(
