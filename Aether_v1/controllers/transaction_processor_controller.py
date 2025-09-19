@@ -84,7 +84,7 @@ class TransactionProcessorController(BaseController):
                 
         return filtered_records, duplicate_records
     
-    def update_transactions(self, transactions: AllTransactionsTable) -> None:
+    def upload_transactions(self, transactions: AllTransactionsTable) -> None:
         filtered_records, duplicate_records = self.filter_transactions(transactions)
         
         if duplicate_records:   
