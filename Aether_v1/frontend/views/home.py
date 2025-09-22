@@ -5,26 +5,8 @@ from components.confirm_upload import confirm_upload_popup
 controller = TransactionProcessorController()
 
 def show_home():
-    # Set the title
-    st.title('Quick Financial Analysis')
-    # File uploader
-    uploaded_files = st.file_uploader(
-        "Please upload your Bank Statement PDF files", 
-        accept_multiple_files=True, 
-        type="pdf",
-        disabled= False if st.session_state.logged_in else True,
-        key= 'home_file_uploader'
-    )   
-
-    if uploaded_files:
-
-        st.write("Processing Files...")
-        try:
-            transactions = controller.process_uploaded_files(uploaded_files)
-            confirm_upload_popup(transactions)
-        except Exception as e:
-            st.error(f"An unexpected error processing files: {e}")
-            
+    st.title('Home')
+ 
     if controller.user_have_transactions():
         financial_analysis = controller.get_financial_summary()
         

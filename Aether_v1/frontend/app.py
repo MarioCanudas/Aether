@@ -23,7 +23,7 @@ from views.expenses_analysis import show_expenses_analysis
 from views.goals import show_goals
 from views.users_config import show_users_config
 from views.data import show_data
-from views.transaction_processor import show_transaction_processor
+from views.transaction_processor import show_upload_statements
 
 # -- Page Configuration --
 if not 'logged_in' in st.session_state:
@@ -54,13 +54,13 @@ if st.session_state.logged_in:
         ],
         'Data': [
             st.Page(show_data, title= "Transactions", icon= ':material/table:'),
+            st.Page(show_upload_statements, title= "Upload Statements", icon= ':material/arrow_upload_ready:')
         ],
         'Account': [
             st.Page(logout, title= "Log out", icon= ':material/logout:'),  
             # st.Page(show_profile_config, title= "Profile", icon= ':material/account_circle:'),
         ],
         'Dev Tools': [
-            st.Page(show_transaction_processor, title= "Transaction Processor", icon= ':material/flowsheet:'),
             st.Page(show_users_config, title= "Users Configuration", icon= ':material/account_circle:'),
         ],
     })
