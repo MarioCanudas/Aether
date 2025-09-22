@@ -135,5 +135,3 @@ class DataViewController(BaseController):
                 
             if modified_transactions['deleted']:
                 transactions_db.delete_records(modified_transactions['deleted'])
-                
-                
