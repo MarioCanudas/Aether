@@ -203,34 +203,40 @@ class TransactionsDBService(BaseDBService):
         if not modified_transactions:
             return
             
-        query = f"""
-            UPDATE {self.table_name}
-            SET 
-                {self.date} = %({self.date})s, 
-                {self.description} = %({self.description})s, 
-                {self.amount} = %({self.amount})s, 
-                {self.type} = %({self.type})s, 
-                {self.bank} = %({self.bank})s, 
-                {self.statement_type} = %({self.statement_type})s, 
-                {self.filename} = %({self.filename})s,
-                {self.category_id} = %({self.category_id})s
-            WHERE {self.id_col} = %({self.id_col})s
-        """
-        
-        self.execute_query(query, params=modified_transactions, batch=True)
+        with self.transaction():
+            query = f"""
+                UPDATE {self.table_name}
+                SET 
+                    {self.date} = %({self.date})s, 
+                    {self.description} = %({self.description})s, 
+                    {self.amount} = %({self.amount})s, 
+                    {self.type} = %({self.type})s, 
+                    {self.bank} = %({self.bank})s, 
+                    {self.statement_type} = %({self.statement_type})s, 
+                    {self.filename} = %({self.filename})s,
+                    {self.category_id} = %({self.category_id})s
+                WHERE {self.id_col} = %({self.id_col})s
+            """
+            
+            self.execute_query(query, params=modified_transactions, batch=True)
         
     def delete_records(self, deleted_transactions: List[TransactionRecord]) -> None:
         if not deleted_transactions:
             return
         
-        ids = [transaction['transaction_id'] for transaction in deleted_transactions]
+        ids = [int(transaction['transaction_id']) for transaction in deleted_transactions]
         
         params = {f'id_{i}': id for i, id in enumerate(ids)}
         
-        query = f"""
-            DELETE FROM {self.table_name}
-            WHERE {self.id_col} IN ({', '.join(list(params.keys()))})
-        """
+        # Create the correct parameter placeholders
+        param_keys = list(params.keys())
+        placeholders = ', '.join([f'%({key})s' for key in param_keys])
         
-        self.execute_query(query, params= params, batch= True)
+        with self.transaction():
+            query = f"""
+                DELETE FROM {self.table_name}
+                WHERE {self.id_col} IN ({placeholders})
+            """
+            
+            self.execute_query(query, params=params)
         

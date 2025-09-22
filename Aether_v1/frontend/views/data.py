@@ -49,7 +49,7 @@ def show_data():
             amount_types = [TransactionType(amount_type) for amount_type in amount_types]
             
         if date_range:
-            period = Period(date_range[0], date_range[1])
+            period = Period(start_date= date_range[0], end_date= date_range[1])
             
         if banks:
             banks = [BankName(bank) for bank in banks]
