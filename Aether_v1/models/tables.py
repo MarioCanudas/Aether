@@ -1,6 +1,8 @@
 import pandas as pd
 from pydantic import BaseModel,ConfigDict, field_validator, model_validator
+from decimal import Decimal
 from typing import List, Literal
+from utils import to_decimal
 from .amounts import AmountColumns
 from .records import TransactionRecord, MonthlyResultRecord
 
@@ -625,6 +627,15 @@ class MonthlyResultsTable(BaseModel):
     @property
     def records(self) -> List[MonthlyResultRecord]:
         return self.df.to_dict(orient='records') if not self.df.empty else []	
+    
+    async def get_total_savings(self) -> Decimal:
+        return to_decimal(self.savings.sum())
+    
+    async def get_avg_income_per_month(self) -> Decimal:
+        return to_decimal(self.total_incomes.mean())
+    
+    async def get_avg_withdrawal_per_month(self) -> Decimal:
+        return to_decimal(self.total_withdrawals.mean())
     
 
 class BudgetsTable(BaseModel):

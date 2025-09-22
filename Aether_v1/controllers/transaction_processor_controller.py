@@ -2,7 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from io import BytesIO
 import asyncio
-from typing import Optional, List, Tuple, Dict, Any
+from typing import List, Tuple, Dict, Any
 import logging
 from services import (
     StatementDataExtractionService,
@@ -10,13 +10,10 @@ from services import (
     FinancialAnalysisService,
     PlottingService, 
     DataValidationService,
-    MonthlyResultDBService,
-    TransactionsDBService,
-    CategoryDBService
+    TransactionsDBService
 )
-from models.financial import SummaryMetrics, FinancialSummary, TransactionRecord
+from models.financial import SummaryMetrics, FinancialSummary
 from models.tables import AllTransactionsTable, MonthlyResultsTable
-from models.records import MonthlyResultRecord
 from .base_controller import BaseController
 
 logger = logging.getLogger(__name__)
@@ -87,30 +84,6 @@ class TransactionProcessorController(BaseController):
                 
         return filtered_records, duplicate_records
     
-    def filter_monthly_results(self, monthly_results: MonthlyResultsTable) -> Tuple[List[MonthlyResultRecord], List[MonthlyResultRecord]]:
-        user_id = self.user_id
-        records = monthly_results.records
-            
-        # Batch processing optimization
-        if records:
-            # Get existing monthly results in a single query
-            existing_keys = self.data_validation_service.get_existing_monthly_result_keys(records, user_id)
-            
-            filtered_records = []
-            duplicate_records = []
-            
-            for record in records:
-                key = record['year_month']
-                if key in existing_keys:
-                    duplicate_records.append(record)
-                else:
-                    filtered_records.append(record)
-        else:
-            filtered_records = []
-            duplicate_records = []
-                
-        return filtered_records, duplicate_records
-    
     def update_transactions(self, transactions: AllTransactionsTable) -> None:
         filtered_records, duplicate_records = self.filter_transactions(transactions)
         
@@ -128,40 +101,6 @@ class TransactionProcessorController(BaseController):
             
             logger.info(f"Inserted {len(filtered_records)} records into the transactions table")
             
-    def update_monthly_results(self, transactions: AllTransactionsTable) -> None:
-        transactions_cleaned = self.data_validation_service.delete_double_transactions(transactions)
-        
-        if not transactions_cleaned:
-            logger.warning("No transactions to process")
-            return
-        
-        user_id = self.user_session_service.current_user_id
-        
-        # Get and validate monthly results
-        monthly_results = self.data_processing_service.get_monthly_results(transactions_cleaned)
-        monthly_results = self.data_validation_service.validate_monthly_results(monthly_results) # TODO: Validate monthly results
-        
-        # Add user_id and year_month in str format to the monthly results
-        monthly_results.year_months = monthly_results.year_months.astype(str)
-        monthly_results.user_id = self.user_session_service.current_user_id 
-        
-        # Filter monthly results to avoid duplicates
-        filtered_records, duplicate_records = self.filter_monthly_results(monthly_results)
-        
-        if duplicate_records:
-            logger.warning(f"{len(duplicate_records)} duplicate records found")
-            
-        if not filtered_records:
-            logger.warning("No records to insert into the monthly_results table")
-            return
-        
-        with self.batch_conn() as conn:
-            monthly_results_db = MonthlyResultDBService(conn)
-            
-            monthly_results_db.add_records(filtered_records)
-            
-            logger.info(f"Inserted {len(filtered_records)} records into the monthly_results table")
-            
     def get_transactions(self) -> pd.DataFrame:
         user_id = self.user_session_service.current_user_id
         
@@ -176,23 +115,37 @@ class TransactionProcessorController(BaseController):
         user_id = self.user_session_service.current_user_id
         
         with self.quick_read_conn() as conn:
-            monthly_results_db = MonthlyResultDBService(conn)
+            transactions_db = TransactionsDBService(conn)
             
-            return monthly_results_db.get_monthly_results(user_id)
+            transactions = transactions_db.get_transactions(user_id)
+            
+            all_transactions = AllTransactionsTable(df = pd.DataFrame(transactions))
+            monthly_results: MonthlyResultsTable = self.data_processing_service.get_monthly_results(all_transactions)
+            
+            monthly_results.year_months = monthly_results.year_months.astype(str)
+            
+            return monthly_results.df
         
     async def get_summary_metrics(self) -> SummaryMetrics:
         with self.quick_read_conn() as conn:
-            monthly_results_db = MonthlyResultDBService(conn)
+            transactions_db = TransactionsDBService(conn)
+            
+            transactions = transactions_db.get_transactions(self.user_id)
+            
+            all_transactions = AllTransactionsTable(df = pd.DataFrame(transactions))
+            monthly_results: MonthlyResultsTable = self.data_processing_service.get_monthly_results(all_transactions)
+            
+            monthly_results.year_months = monthly_results.year_months.astype(str)
             
             async with asyncio.TaskGroup() as tg:
                 total_savings = tg.create_task(
-                    monthly_results_db.get_total_savings(self.user_id)
+                    monthly_results.get_total_savings()
                 )
                 avg_income_per_month = tg.create_task(
-                    monthly_results_db.get_avg_income_per_month(self.user_id)
+                    monthly_results.get_avg_income_per_month()
                 )
                 avg_withdrawal_per_month = tg.create_task(
-                    monthly_results_db.get_avg_withdrawal_per_month(self.user_id)
+                    monthly_results.get_avg_withdrawal_per_month()
                 )
             
             return SummaryMetrics(

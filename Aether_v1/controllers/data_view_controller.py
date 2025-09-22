@@ -2,8 +2,7 @@ import pandas as pd
 from datetime import date
 from typing import Optional, Literal, List, Tuple
 import logging
-from services import TransactionsDBService, MonthlyResultDBService
-from models.dates import Period
+from services import TransactionsDBService
 from .base_controller import BaseController
 
 logger = logging.getLogger(__name__)
@@ -53,21 +52,3 @@ class DataViewController(BaseController):
             
             # Set the order of the columns
             return df[['date', 'category', 'description', 'amount', 'type', 'bank', 'statement_type', 'filename']]
-        
-    def get_monthly_results(self) -> pd.DataFrame:
-        user_id = self.user_session_service.current_user_id
-        
-        with self.quick_read_conn() as conn:
-            monthly_results_db = MonthlyResultDBService(conn)
-            
-            monthly_results = monthly_results_db.get_monthly_results(
-                user_id= user_id,
-                columns= ['year_month', 'initial_balance', 'total_income', 'total_withdrawal', 'savings'],
-            )
-            
-            df = pd.DataFrame(monthly_results)
-            
-            # Set the order of the columns
-            return df[['year_month', 'initial_balance', 'total_income', 'total_withdrawal', 'savings']]
-        
-    
