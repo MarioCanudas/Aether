@@ -1,5 +1,5 @@
 import streamlit as st
-from controllers import TransactionProcessorController
+from controllers import UploadStatementsController
 from components.confirm_upload import confirm_upload_popup
 from constants.views_icons import UPLOAD_STATEMENTS_ICON
 
@@ -10,7 +10,7 @@ def show_upload_statements():
         page_icon=UPLOAD_STATEMENTS_ICON, 
         layout='centered'
     )
-    controller = TransactionProcessorController()
+    controller = UploadStatementsController()
     
     st.title("Upload Statements")
     

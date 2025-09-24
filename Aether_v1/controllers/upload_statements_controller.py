@@ -1,29 +1,22 @@
 import pandas as pd
-import matplotlib.pyplot as plt
 from io import BytesIO
-import asyncio
 from typing import List, Tuple, Dict, Any
 import logging
 from services import (
     StatementDataExtractionService,
     DataProcessingService, 
-    FinancialAnalysisService,
-    PlottingService, 
     DataValidationService,
     TransactionsDBService
 )
-from models.financial import SummaryMetrics, FinancialSummary
-from models.tables import AllTransactionsTable, MonthlyResultsTable
+from models.tables import AllTransactionsTable
 from .base_controller import BaseController
 
 logger = logging.getLogger(__name__)
 
-class TransactionProcessorController(BaseController):
+class UploadStatementsController(BaseController):
     def __init__(self):
         super().__init__()
         self.data_processing_service = DataProcessingService()
-        self.financial_analysis_service = FinancialAnalysisService()
-        self.plotting_service = PlottingService()
         self.data_validation_service = DataValidationService()
         
     def process_uploaded_files(self, uploaded_files: list[BytesIO]) -> AllTransactionsTable:
@@ -101,75 +94,3 @@ class TransactionProcessorController(BaseController):
             
             logger.info(f"Inserted {len(filtered_records)} records into the transactions table")
             
-    def get_transactions(self) -> pd.DataFrame:
-        user_id = self.user_session_service.current_user_id
-        
-        with self.quick_read_conn() as conn:
-            transactions_db = TransactionsDBService(conn)
-            
-            transactions = transactions_db.get_transactions(user_id)
-            
-            return pd.DataFrame(transactions) if transactions else pd.DataFrame()
-        
-    def get_monthly_results(self) -> pd.DataFrame:
-        user_id = self.user_session_service.current_user_id
-        
-        with self.quick_read_conn() as conn:
-            transactions_db = TransactionsDBService(conn)
-            
-            transactions = transactions_db.get_transactions(user_id)
-            
-            all_transactions = AllTransactionsTable(df = pd.DataFrame(transactions))
-            monthly_results: MonthlyResultsTable = self.data_processing_service.get_monthly_results(all_transactions)
-            
-            monthly_results.year_months = monthly_results.year_months.astype(str)
-            
-            return monthly_results.df
-        
-    async def get_summary_metrics(self) -> SummaryMetrics:
-        with self.quick_read_conn() as conn:
-            transactions_db = TransactionsDBService(conn)
-            
-            transactions = transactions_db.get_transactions(self.user_id)
-            
-            all_transactions = AllTransactionsTable(df = pd.DataFrame(transactions))
-            monthly_results: MonthlyResultsTable = self.data_processing_service.get_monthly_results(all_transactions)
-            
-            monthly_results.year_months = monthly_results.year_months.astype(str)
-            
-            async with asyncio.TaskGroup() as tg:
-                total_savings = tg.create_task(
-                    monthly_results.get_total_savings()
-                )
-                avg_income_per_month = tg.create_task(
-                    monthly_results.get_avg_income_per_month()
-                )
-                avg_withdrawal_per_month = tg.create_task(
-                    monthly_results.get_avg_withdrawal_per_month()
-                )
-            
-            return SummaryMetrics(
-                total_savings= total_savings.result(),
-                avg_income_per_month= avg_income_per_month.result(),
-                avg_withdrawal_per_month= avg_withdrawal_per_month.result()
-            )
-            
-    def get_financial_summary(self) -> FinancialSummary:
-        summary_metrics = asyncio.run(self.get_summary_metrics())
-        
-        label = self.financial_analysis_service.get_financial_status_label(summary_metrics)
-        tips = self.financial_analysis_service.get_financial_tips(label)
-
-        return FinancialSummary(
-            summary_metrics= summary_metrics,
-            label= label.value,
-            tips= tips
-        )
-        
-    def get_donut_score_chart(self) -> plt.Figure:
-        summary_metrics = asyncio.run(self.get_summary_metrics())
-        label = self.financial_analysis_service.get_financial_status_label(summary_metrics)
-        donut_config = self.plotting_service.get_savings_donut_chart_config(label)
-        
-        return self.plotting_service.get_plot_savings_donut_chart(donut_config)
-        
