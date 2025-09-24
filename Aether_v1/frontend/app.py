@@ -24,6 +24,12 @@ from views.goals import show_goals
 from views.users_config import show_users_config
 from views.data import show_data
 from views.transaction_processor import show_upload_statements
+from constants.views_icons import (
+    LOGIN_ICON, LOGOUT_ICON, HOME_ICON, 
+    CASH_TRANSACTION_ICON, INCOME_ANALYSIS_ICON, 
+    EXPENSES_ANALYSIS_ICON, GOALS_ICON, TRANSACTIONS_ICON, 
+    UPLOAD_STATEMENTS_ICON, USERS_CONFIG_ICON
+)
 
 # -- Page Configuration --
 if not 'logged_in' in st.session_state:
@@ -37,31 +43,31 @@ st.logo("frontend/assets/eli-logo.png", size= 'large', icon_image= "frontend/ass
 # -- Page Navigation --
 PAGES = {
     'User': [
-        st.Page(show_login, title= "Login", icon= ':material/login:', default= not st.session_state.logged_in),
+        st.Page(show_login, title= "Login", icon= LOGIN_ICON, default= not st.session_state.logged_in),
     ]
 }
 
 if st.session_state.logged_in:
     PAGES.update({
         'Overview': [
-            st.Page(show_home, title= "Home", icon= ':material/home:', default= st.session_state.logged_in),
-            st.Page(show_cash_transactions, title= "Cash Transaction", icon= ':material/add_card:'),
-            st.Page(show_goals, title= "Goals", icon= ':material/trophy:'),
+            st.Page(show_home, title= "Home", icon= HOME_ICON, default= st.session_state.logged_in),
+            st.Page(show_cash_transactions, title= "Cash Transaction", icon= CASH_TRANSACTION_ICON),
+            st.Page(show_goals, title= "Goals", icon= GOALS_ICON),
         ],
         'Analytics': [
-            st.Page(show_income_analysis, title= "Income Analysis", icon= ':material/trending_up:'),
-            st.Page(show_expenses_analysis, title= "Expenses Analysis", icon= ':material/trending_down:'),
+            st.Page(show_income_analysis, title= "Income Analysis", icon= INCOME_ANALYSIS_ICON),
+            st.Page(show_expenses_analysis, title= "Expenses Analysis", icon= EXPENSES_ANALYSIS_ICON),
         ],
         'Data': [
-            st.Page(show_data, title= "Transactions", icon= ':material/table:'),
-            st.Page(show_upload_statements, title= "Upload Statements", icon= ':material/arrow_upload_ready:')
+            st.Page(show_data, title= "Transactions", icon= TRANSACTIONS_ICON),
+            st.Page(show_upload_statements, title= "Upload Statements", icon= UPLOAD_STATEMENTS_ICON)
         ],
         'Account': [
-            st.Page(logout, title= "Log out", icon= ':material/logout:'),  
+            st.Page(logout, title= "Log out", icon= LOGOUT_ICON),  
             # st.Page(show_profile_config, title= "Profile", icon= ':material/account_circle:'),
         ],
         'Dev Tools': [
-            st.Page(show_users_config, title= "Users Configuration", icon= ':material/account_circle:'),
+            st.Page(show_users_config, title= "Users Configuration", icon= USERS_CONFIG_ICON),
         ],
     })
     

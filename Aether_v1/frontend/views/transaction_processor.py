@@ -1,10 +1,17 @@
 import streamlit as st
 from controllers import TransactionProcessorController
 from components.confirm_upload import confirm_upload_popup
-
-controller = TransactionProcessorController()
+from constants.views_icons import UPLOAD_STATEMENTS_ICON
 
 def show_upload_statements():
+    # Page config
+    st.set_page_config(
+        page_title='Upload Statements', 
+        page_icon=UPLOAD_STATEMENTS_ICON, 
+        layout='centered'
+    )
+    controller = TransactionProcessorController()
+    
     st.title("Upload Statements")
     
     with st.form(key= 'upload_statements_form', clear_on_submit= True):

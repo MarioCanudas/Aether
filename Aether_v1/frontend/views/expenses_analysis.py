@@ -1,9 +1,16 @@
 import streamlit as st
 from controllers import AnalysisController
-
-controller = AnalysisController()
+from constants.views_icons import EXPENSES_ANALYSIS_ICON
 
 def show_expenses_analysis(): 
+    # Page config
+    st.set_page_config(
+        page_title='Expenses Analysis', 
+        page_icon=EXPENSES_ANALYSIS_ICON, 
+        layout='centered'
+    )
+    controller = AnalysisController()
+    
     st.title('Expenses Analysis')
 
     # Check if monthly results are available

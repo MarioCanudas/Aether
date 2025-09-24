@@ -1,9 +1,16 @@
 import streamlit as st
 from controllers.user_configuration_controller import UserConfigurationController
-
-controller = UserConfigurationController()
+from constants.views_icons import USERS_CONFIG_ICON
 
 def show_users_config():
+    # Page config
+    st.set_page_config(
+        page_title='Users Configuration', 
+        page_icon=USERS_CONFIG_ICON, 
+        layout='centered'
+    )
+    controller = UserConfigurationController()
+    
     st.title('Users Configuration')
     
     st.subheader('All users')

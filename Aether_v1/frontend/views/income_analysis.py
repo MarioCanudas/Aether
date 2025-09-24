@@ -1,9 +1,16 @@
 import streamlit as st
 from controllers import AnalysisController
-
-analysis_controller = AnalysisController()
+from constants.views_icons import INCOME_ANALYSIS_ICON
 
 def show_income_analysis():
+    # Page config
+    st.set_page_config(
+        page_title='Income Analysis', 
+        page_icon=INCOME_ANALYSIS_ICON, 
+        layout='centered'
+    )
+    analysis_controller = AnalysisController()
+    
     st.title('Income Analysis')
 
     # Check if monthly results are available

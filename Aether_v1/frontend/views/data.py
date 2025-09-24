@@ -1,12 +1,19 @@
 import streamlit as st
 from controllers import DataViewController
+from constants.views_icons import TRANSACTIONS_ICON
 from models.amounts import TransactionType
 from models.bank_properties import BankName, StatementType
 from models.dates import Period
 
-controller = DataViewController()
-
 def show_data():
+    # Page config
+    st.set_page_config(
+        page_title='Transactions', 
+        page_icon=TRANSACTIONS_ICON, 
+        layout='wide'
+    )
+    controller = DataViewController()
+    
     st.title('Transactions')
 
     # Check if data is available in session state

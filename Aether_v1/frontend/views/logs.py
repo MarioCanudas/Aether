@@ -1,9 +1,17 @@
 import streamlit as st
 from controllers.logs_controller import LogsController
+from constants.views_icons import LOGIN_ICON, LOGOUT_ICON
 
-controller = LogsController()
 
 def show_login():
+    # Page config
+    st.set_page_config(
+        page_title='Login', 
+        page_icon=LOGIN_ICON, 
+        layout='centered'
+    )
+    controller = LogsController()
+    
     _, center, _ = st.columns([1, 3, 1])
     
     with center: 
@@ -25,6 +33,14 @@ def show_login():
                     st.warning('Please select a username')
         
 def logout():
+    # Page config
+    st.set_page_config(
+        page_title='Logout', 
+        page_icon=LOGOUT_ICON, 
+        layout='centered'
+    )
+    controller = LogsController()
+    
     st.session_state.logged_in = False
     controller.clear_user_session()
     

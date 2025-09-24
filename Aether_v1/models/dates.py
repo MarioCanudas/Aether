@@ -3,7 +3,7 @@ from pydantic import BaseModel, field_validator
 from dataclasses import dataclass
 from dateutil.relativedelta import relativedelta
 from datetime import date
-from typing import Optional, Dict, Tuple
+from typing import Optional, Dict, Tuple, List
 
 class DateGroups(BaseModel):
     """
@@ -64,6 +64,32 @@ class Period(BaseModel):
             if start_date >= end_date:
                 raise ValueError("Start date cannot be greater than or equal to end date")
         return v
+    
+    @property
+    def initial_year(self) -> int:
+        return self.start_date.year
+    
+    @property
+    def final_year(self) -> int:
+        return self.end_date.year
+    
+    def get_available_years(self) -> List[int]:
+        return list(range(self.initial_year, self.final_year + 1))
+    
+    def get_available_months(self) -> Dict[int, List[int]]:
+        years = self.get_available_years()
+        months = {}
+        
+        for year in years:
+            if year == self.final_year:
+                months_list = list(range(1, self.end_date.month + 1))
+            else:
+                months_list = list(range(1, 13))
+                
+            months[year] = months_list
+            
+        return months
+                
     
     def to_tuple(self) -> Tuple[date, date]:
         return (self.start_date, self.end_date)
