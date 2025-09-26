@@ -23,7 +23,7 @@ class PlottingService:
             raise ValueError(f"Invalid label: {label}")
         
     @staticmethod
-    def get_plot_savings_donut_chart(donut_chart_config: DonutChartConfig) -> plt.Figure:
+    async def get_plot_savings_donut_chart(donut_chart_config: DonutChartConfig) -> plt.Figure:
         """
         Plots a donut chart based on the savings compared to the average income.
 
