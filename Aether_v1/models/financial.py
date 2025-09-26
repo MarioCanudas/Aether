@@ -1,6 +1,6 @@
 from pydantic import BaseModel, field_validator
 from enum import Enum
-from typing import Optional, List
+from typing import Optional
 from datetime import date
 from decimal import Decimal
 from .amounts import TransactionType
@@ -32,33 +32,28 @@ class TransactionRecord(BaseModel):
     statement_type: StatementType
     filename: Optional[str]
     
-    
-class SummaryMetrics(BaseModel):
-    total_savings: Decimal
-    avg_income_per_month: Decimal
-    avg_withdrawal_per_month: Decimal
-    
-    
-class FinancialSummary(BaseModel):
-    summary_metrics: SummaryMetrics
-    label: str
-    tips: List[str]
-    
-    @property
-    def total_savings(self) -> Decimal:
-        return self.summary_metrics.total_savings
-    
-    @property
-    def avg_income_per_month(self) -> Decimal:
-        return self.summary_metrics.avg_income_per_month
-    
-    @property
-    def avg_withdrawal_per_month(self) -> Decimal:
-        return self.summary_metrics.avg_withdrawal_per_month
-    
 
 class FinancialStatus(str, Enum):
     EXCELLENT = "Excellent!"
     GOOD = "Good"
     REGULAR = "Regular"
     POOR = "Poor"
+    
+    
+class FinancialAmountsSums(BaseModel):
+    """
+    This model is used to sum the financial amounts of the user, such as income, 
+    withdrawal and savings. 
+    
+    It allows to calculate the balance of the user. 
+    
+    It not depends on the period of the sums, so can be used for all periods and avarage sums.
+    """
+    income: Decimal
+    withdrawal: Decimal
+    savings: Optional[Decimal]
+    
+    @property
+    def balance(self) -> Decimal:
+        return self.income + self.withdrawal
+    

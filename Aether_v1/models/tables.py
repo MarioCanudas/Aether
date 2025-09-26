@@ -628,8 +628,8 @@ class MonthlyResultsTable(BaseModel):
     def records(self) -> List[MonthlyResultRecord]:
         return self.df.to_dict(orient='records') if not self.df.empty else []	
     
-    async def get_total_savings(self) -> Decimal:
-        return to_decimal(self.savings.sum())
+    async def get_avg_savings_per_month(self) -> Decimal:
+        return to_decimal(self.savings.mean())
     
     async def get_avg_income_per_month(self) -> Decimal:
         return to_decimal(self.total_incomes.mean())
