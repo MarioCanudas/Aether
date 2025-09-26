@@ -1,7 +1,10 @@
+from datetime import date
+from decimal import Decimal
 from typing import Optional, List, Dict, Set, Tuple, Any
 from models.amounts import TransactionType
 from models.bank_properties import BankName, StatementType
 from models.dates import Period
+from models.financial import FinancialAmountsSums
 from models.records import TransactionRecord
 from .base_db import BaseDBService
 
@@ -239,4 +242,125 @@ class TransactionsDBService(BaseDBService):
             """
             
             self.execute_query(query, params=params)
+            
+    async def get_all_time_sums(self, user_id: int) -> FinancialAmountsSums:
+        """
+        Get the all time income and withdrawal of the user. This allows to calculate the balance.
         
+        Args:
+            user_id (int): The user id
+            
+        Returns:
+            AllTimeSums: The all time income and withdrawal
+        """
+        
+        query = f"""
+            SELECT 
+                COALESCE(SUM(CASE WHEN {self.type} = %(income_type)s THEN {self.amount} ELSE 0 END), 0) AS all_time_income,
+                COALESCE(SUM(CASE WHEN {self.type} = %(expense_type)s THEN {self.amount} ELSE 0 END), 0) AS all_time_withdrawal
+            FROM {self.table_name}
+            WHERE {self.user_id} = %(user_id)s
+        """
+        
+        params = {
+            'income_type': TransactionType.INCOME.value,
+            'expense_type': TransactionType.EXPENSE.value,
+            'user_id': user_id,
+        }
+        
+        result = self.execute_query(query, params= params, fetch= 'one', dict_cursor= True)
+        
+        return FinancialAmountsSums(
+            income= result['all_time_income'],
+            withdrawal= result['all_time_withdrawal'],
+            savings= None
+        )
+
+    async def get_current_month_sums(self, user_id: int) -> FinancialAmountsSums:
+        today = date.today()
+        
+        query = f"""
+            SELECT 
+                COALESCE(SUM(CASE WHEN {self.type} = %(income_type)s THEN {self.amount} ELSE 0 END), 0) AS current_month_income,
+                COALESCE(SUM(CASE WHEN {self.type} = %(expense_type)s THEN {self.amount} ELSE 0 END), 0) AS current_month_withdrawal,
+                COALESCE(SUM({self.amount}), 0) AS current_month_savings
+            FROM {self.table_name}
+            WHERE {self.user_id} = %(user_id)s
+              AND EXTRACT(MONTH FROM {self.date}) = %(month)s
+              AND EXTRACT(YEAR FROM {self.date}) = %(year)s
+        """
+        
+        params = {
+            'income_type': TransactionType.INCOME.value,
+            'expense_type': TransactionType.EXPENSE.value,
+            'user_id': user_id,
+            'month': today.month,
+            'year': today.year,
+        }
+        
+        result = self.execute_query(query, params= params, fetch= 'one', dict_cursor= True)
+        
+        return FinancialAmountsSums(
+            income= result['current_month_income'],
+            withdrawal= result['current_month_withdrawal'],
+            savings= result['current_month_savings']
+        )
+        
+    async def get_last_month_sums(self, user_id: int) -> FinancialAmountsSums:
+        today = date.today()
+        last_month = today.month - 1
+        
+        query = f"""
+            SELECT 
+                COALESCE(SUM(CASE WHEN {self.type} = %(income_type)s THEN {self.amount} ELSE 0 END), 0) AS last_month_income,
+                COALESCE(SUM(CASE WHEN {self.type} = %(expense_type)s THEN {self.amount} ELSE 0 END), 0) AS last_month_withdrawal,
+                COALESCE(SUM({self.amount}), 0) AS last_month_savings
+            FROM {self.table_name}
+            WHERE {self.user_id} = %(user_id)s
+            AND EXTRACT(MONTH FROM {self.date}) = %(month)s
+            AND EXTRACT(YEAR FROM {self.date}) = %(year)s
+        """
+        
+        params = {
+            'income_type': TransactionType.INCOME.value,
+            'expense_type': TransactionType.EXPENSE.value,
+            'user_id': user_id,
+            'month': last_month,
+            'year': today.year if last_month != 12 else today.year - 1,
+        }
+        
+        result = self.execute_query(query, params= params, fetch= 'one', dict_cursor= True)
+        
+        return FinancialAmountsSums(
+            income= result['last_month_income'],
+            withdrawal= result['last_month_withdrawal'],
+            savings= result['last_month_savings']
+        )
+        
+    def get_specific_period_sums(self, user_id: int, specific_period: Period) -> FinancialAmountsSums:
+        start_date, end_date = specific_period.to_tuple()
+        
+        query = f"""
+            SELECT 
+                COALESCE(SUM(CASE WHEN {self.type} = %(income_type)s THEN {self.amount} ELSE 0 END), 0) AS specific_period_income,
+                COALESCE(SUM(CASE WHEN {self.type} = %(expense_type)s THEN {self.amount} ELSE 0 END), 0) AS specific_period_withdrawal
+            FROM {self.table_name}
+            WHERE {self.user_id} = %(user_id)s
+            AND {self.date} BETWEEN %(start_date)s AND %(end_date)s
+        """
+        
+        params = {
+            'income_type': TransactionType.INCOME.value,
+            'expense_type': TransactionType.EXPENSE.value,
+            'user_id': user_id,
+            'start_date': start_date,
+            'end_date': end_date,
+        }
+        
+        result = self.execute_query(query, params= params, fetch= 'one', dict_cursor= True)
+        
+        return FinancialAmountsSums(
+            income= result['specific_period_income'],
+            withdrawal= result['specific_period_withdrawal'],
+            savings= None
+        )
