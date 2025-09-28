@@ -1,6 +1,6 @@
-import datetime
-from typing import Optional, Literal, List, Dict, Set, Tuple, Any
-from models.bank_properties import BankName
+from typing import Optional, List, Dict, Set, Tuple, Any
+from models.amounts import TransactionType
+from models.bank_properties import BankName, StatementType
 from models.dates import Period
 from models.records import TransactionRecord
 from .base_db import BaseDBService
@@ -26,10 +26,10 @@ class TransactionsDBService(BaseDBService):
             self, 
             user_id: int, 
             columns: Optional[List[str]] = None,
-            period: Optional[Tuple[datetime.date, datetime.date]] = None,
-            banks: Optional[List[str]] = None,
-            statement_type: Optional[Literal['debit', 'credit']] = None,
-            amount_type: Optional[List[Literal['Abono', 'Cargo', 'Saldo inicial']]] = None,
+            period: Optional[Period] = None,
+            banks: Optional[List[BankName]] = None,
+            statement_type: Optional[StatementType] = None,
+            amount_types: Optional[List[TransactionType]] = None,
             show_categories_names: Optional[bool] = False,
             **conditions: Any
         ) -> List[TransactionRecord]:
@@ -55,7 +55,7 @@ class TransactionsDBService(BaseDBService):
         params = {'user_id': user_id}
         
         if period:
-            start_date, end_date = period
+            start_date, end_date = period.to_tuple()
             query += f" AND date BETWEEN %(start_date)s AND %(end_date)s"
             params.update({
                 'start_date': start_date.strftime('%Y-%m-%d') if hasattr(start_date, 'strftime') else start_date,
@@ -63,21 +63,19 @@ class TransactionsDBService(BaseDBService):
             })
             
         if banks:
-            query += f" AND bank IN ({', '.join([f'%(bank_{i})s' for i in range(len(banks))])})"
-            allowed_banks = [bank.value for bank in BankName]
+            query += f" AND bank IN ({', '.join([f'%(bank_{i})s' for i, _ in enumerate(banks)])})"
+            
             for i, bank in enumerate(banks):
-                if bank not in allowed_banks:
-                    raise ValueError(f"Invalid bank: {bank}")
-                
                 params[f'bank_{i}'] = bank
                 
         if statement_type:
             query += f" AND statement_type = %(statement_type)s"
+            params['statement_type'] = statement_type.value
             
-        if amount_type:
-            query += f" AND type IN ({', '.join([f'%(type_{i})s' for i in range(len(amount_type))])})"
-            for i, amount_type in enumerate(amount_type):
-                params[f'type_{i}'] = amount_type
+        if amount_types:
+            query += f" AND type IN ({', '.join([f'%(type_{i})s' for i, _ in enumerate(amount_types)])})"
+            for i, amount_type in enumerate(amount_types):
+                params[f'type_{i}'] = amount_type.value
                 
         if conditions:
             validated_conditions = self._validate_conditions(conditions)
@@ -200,3 +198,45 @@ class TransactionsDBService(BaseDBService):
         # Ensure partitions exist for each unique date
         for date_str in unique_dates:
             self._ensure_partition_exists(date_str)
+            
+    def update_transactions(self, modified_transactions: List[TransactionRecord]) -> None:
+        if not modified_transactions:
+            return
+            
+        with self.transaction():
+            query = f"""
+                UPDATE {self.table_name}
+                SET 
+                    {self.date} = %({self.date})s, 
+                    {self.description} = %({self.description})s, 
+                    {self.amount} = %({self.amount})s, 
+                    {self.type} = %({self.type})s, 
+                    {self.bank} = %({self.bank})s, 
+                    {self.statement_type} = %({self.statement_type})s, 
+                    {self.filename} = %({self.filename})s,
+                    {self.category_id} = %({self.category_id})s
+                WHERE {self.id_col} = %({self.id_col})s
+            """
+            
+            self.execute_query(query, params=modified_transactions, batch=True)
+        
+    def delete_records(self, deleted_transactions: List[TransactionRecord]) -> None:
+        if not deleted_transactions:
+            return
+        
+        ids = [int(transaction['transaction_id']) for transaction in deleted_transactions]
+        
+        params = {f'id_{i}': id for i, id in enumerate(ids)}
+        
+        # Create the correct parameter placeholders
+        param_keys = list(params.keys())
+        placeholders = ', '.join([f'%({key})s' for key in param_keys])
+        
+        with self.transaction():
+            query = f"""
+                DELETE FROM {self.table_name}
+                WHERE {self.id_col} IN ({placeholders})
+            """
+            
+            self.execute_query(query, params=params)
+        

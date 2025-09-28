@@ -52,11 +52,14 @@ if st.session_state.logged_in:
             st.Page(show_income_analysis, title= "Income Analysis", icon= ':material/trending_up:'),
             st.Page(show_expenses_analysis, title= "Expenses Analysis", icon= ':material/trending_down:'),
         ],
+        'Data': [
+            st.Page(show_data, title= "Transactions", icon= ':material/table:'),
+        ],
         'Account': [
             st.Page(logout, title= "Log out", icon= ':material/logout:'),  
+            # st.Page(show_profile_config, title= "Profile", icon= ':material/account_circle:'),
         ],
         'Dev Tools': [
-            st.Page(show_data, title= "Data Export", icon= ':material/table:'),
             st.Page(show_transaction_processor, title= "Transaction Processor", icon= ':material/flowsheet:'),
             st.Page(show_users_config, title= "Users Configuration", icon= ':material/account_circle:'),
         ],
