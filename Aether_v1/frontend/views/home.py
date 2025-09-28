@@ -22,6 +22,9 @@ def _financial_sums(financial_sums: FinancialAmountsSums):
 
 def _financial_summary_graphics():
     ...
+    
+def _last_transactions(view_data: HomeViewData):
+    ...
         
 def _tips(view_data: HomeViewData):
     tips = view_data.tips
@@ -93,14 +96,15 @@ def show_home():
             _financial_summary_graphics()
             
         with right: 
-            label = home_view_data.label.value
-    
-            st.markdown(f"<h2 style='text-align: center;'>Financial Health</h2>", unsafe_allow_html=True)
-
-            st.pyplot(home_view_data.donut_score_chart)
-            st.markdown(f"<h4 style='text-align: center;'>{label}</h4>", unsafe_allow_html=True)
+            _last_transactions(home_view_data)
             
-            _tips(home_view_data)
+            label = home_view_data.label
+            
+            with st.container(border= True):
+                st.write(f"<h3 style='text-align: center;'>Financial Health</h2>", unsafe_allow_html= True)
+                st.write(f"<h4 style='text-align: center;'>{label.value}: {label.score} pts</h4>", unsafe_allow_html= True)
+            
+            _tips(home_view_data) 
         
     else:
         st.info("No transactions available. Please upload files in the Upload Statements view.")
