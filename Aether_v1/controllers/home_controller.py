@@ -1,6 +1,8 @@
 import asyncio
 import pandas as pd
+from datetime import date, timedelta
 from psycopg2.extensions import connection
+from utils import months_map
 from services import TransactionsDBService, DataProcessingService, FinancialAnalysisService, PlottingService
 from models.dates import Period
 from models.financial import FinancialAmountsSums
@@ -41,31 +43,135 @@ class HomeController(BaseController):
                 withdrawal= avg_withdrawal_per_month.result(),
                 savings= avg_savings_per_month.result(),
             )
+        
+    async def _get_last_six_months_transactions(self, conn: connection) -> pd.DataFrame:
+        transactions_db = TransactionsDBService(conn)
+        
+        last_six_months = transactions_db.get_transactions(
+            self.user_id,
+            columns= ['date', 'amount', 'type'],
+            period= Period(start_date= date.today() - timedelta(days= 180), end_date= date.today()),
+            order_col= 'date',
+            order= 'desc'
+        )
+        
+        last_six_months = pd.DataFrame(last_six_months)
+        last_six_months['date'] = pd.to_datetime(last_six_months['date'])
+        last_six_months['month'] = last_six_months['date'].dt.month
+        last_six_months['month-year'] = last_six_months['date'].dt.strftime('%Y-%m')
+        last_six_months['month_label'] = last_six_months['month'].apply(lambda x: months_map(x))
+        last_six_months['amount'] = last_six_months['amount'].apply(lambda x: abs(x))
+        
+        month_order = sorted(list(last_six_months['month-year'].unique()))
+        last_six_months['order'] = last_six_months['month-year'].apply(lambda x: month_order.index(x))
+        
+        return last_six_months
+        
+    async def _get_last_six_months_balance(self, conn: connection) -> pd.DataFrame:
+        transactions_db = TransactionsDBService(conn)
+
+        # Fetch all transactions for the user
+        all_transactions = transactions_db.get_transactions(
+            self.user_id,
+            columns=['date', 'amount', 'type'],
+        )
+
+        all_transactions = pd.DataFrame(all_transactions)
+        all_transactions['date'] = pd.to_datetime(all_transactions['date'])
+
+        # Create 'month-year' column for grouping
+        all_transactions['month-year'] = all_transactions['date'].dt.strftime('%Y-%m')
+        all_transactions['month'] = all_transactions['date'].dt.month
+        all_transactions['month_label'] = all_transactions['month'].apply(lambda x: months_map(x))
+
+        # Filter for income/expense or the first initial balance
+        is_income_or_expense = all_transactions['type'].isin(['Abono', 'Cargo'])
+        initial_mask = all_transactions['type'] == 'Saldo inicial'
+        if initial_mask.any():
+            first_initial_idx = all_transactions.loc[initial_mask, 'date'].idxmin()
+            is_first_initial = all_transactions.index == first_initial_idx
+        else:
+            is_first_initial = pd.Series(False, index=all_transactions.index)
+
+        all_transactions = all_transactions.loc[is_income_or_expense | is_first_initial].copy()
+
+        # Group by month-year and aggregate monthly sum
+        all_balances = all_transactions.groupby('month-year', as_index=False).agg(
+            balance=('amount', 'sum'),
+            month_label=('month_label', 'first'),
+            month=('month', 'first'),
+        )
+
+        # Sort by month-year ascending and compute cumulative sum of balance
+        all_balances = all_balances.sort_values(by='month-year', ascending=True)
+        all_balances['balance'] = all_balances['balance'].cumsum()
+
+        # Filter to the last 6 months only
+        if len(all_balances) > 6:
+            all_balances = all_balances.iloc[-6:]
+            
+        month_order = sorted(list(all_balances['month-year'].unique()))
+        all_balances['order'] = all_balances['month-year'].apply(lambda x: month_order.index(x))
+
+        return all_balances.reset_index(drop=True)
     
     async def get_home_view_data(self) -> HomeViewData:        
         with self.quick_read_conn() as conn:
-            avg_financial_sums = await self._get_avg_financial_sums(conn)
+            transactions_db = TransactionsDBService(conn)
             
-            label = self.financial_analysis_service.get_financial_status_label(avg_financial_sums)
+            async with asyncio.TaskGroup() as tg:
+                avg_financial_sums = tg.create_task(transactions_db.get_avg_all_time_sums(self.user_id))
+                last_six_months = tg.create_task(self._get_last_six_months_transactions(conn))
+                last_six_months_balance = tg.create_task(self._get_last_six_months_balance(conn))
+            
+            label = self.financial_analysis_service.get_financial_status_label(avg_financial_sums.result())
             tips = self.financial_analysis_service.get_financial_tips(label)
             donut_config = self.plotting_service.get_savings_donut_chart_config(label)
-            
-            transactions_db = TransactionsDBService(conn)
                 
             async with asyncio.TaskGroup() as tg:
                 all_time_sums = tg.create_task(transactions_db.get_all_time_sums(self.user_id))
                 current_month_sums = tg.create_task(transactions_db.get_current_month_sums(self.user_id))
                 last_month_sums = tg.create_task(transactions_db.get_last_month_sums(self.user_id))
+                income_vs_expenses_bar_chart = tg.create_task(self.plotting_service.get_income_vs_expenses_bar_chart(last_six_months.result()))
+                balance_line_chart = tg.create_task(self.plotting_service.get_balance_line_chart(last_six_months_balance.result()))
                 donut_score_chart = tg.create_task(self.plotting_service.get_plot_savings_donut_chart(donut_config))
+                
+        last_transactions = transactions_db.get_transactions(
+            self.user_id, 
+            columns= ['date', 'description', 'amount', 'type', 'bank'],
+            limit= 5, 
+            order_col= 'date', 
+            order= 'desc',
+            show_categories_names= True
+        )
+        
+        last_transactions = pd.DataFrame(last_transactions).sort_values(
+            by= 'date', 
+            ascending= False, 
+        ).rename(
+            columns= {
+                'date': 'Date',
+                'category': 'Category',
+                'description': 'Description',
+                'amount': 'Amount',
+                'type': 'Type',
+                'bank': 'Bank',
+            }
+        )
+        
+        last_transactions['Amount'] = last_transactions['Amount'].apply(lambda x: f"${x:,.2f}")
             
         return HomeViewData(
             label= label,
             tips= tips,
+            last_transactions= last_transactions[['Date', 'Category', 'Description', 'Amount', 'Type', 'Bank']],
             donut_score_chart= donut_score_chart.result(),
+            income_vs_expenses_bar_chart= income_vs_expenses_bar_chart.result(),
+            balance_line_chart= balance_line_chart.result(),
             all_time_sums= all_time_sums.result(),
             current_month_sums= current_month_sums.result(),
             last_month_sums= last_month_sums.result(),
-            avarage_sums= avg_financial_sums
+            avarage_sums= avg_financial_sums.result()
         )
         
     def get_specific_period_sums(self, specific_period: Period) -> FinancialAmountsSums:

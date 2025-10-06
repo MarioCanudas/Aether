@@ -1,6 +1,6 @@
 from datetime import date
 from decimal import Decimal
-from typing import Optional, List, Dict, Set, Tuple, Any
+from typing import Optional, List, Dict, Set, Tuple, Any, Literal
 from models.amounts import TransactionType
 from models.bank_properties import BankName, StatementType
 from models.dates import Period
@@ -34,6 +34,9 @@ class TransactionsDBService(BaseDBService):
             statement_type: Optional[StatementType] = None,
             amount_types: Optional[List[TransactionType]] = None,
             show_categories_names: Optional[bool] = False,
+            order_col: Optional[str] = 'date',
+            order: Literal['asc', 'desc'] = 'desc',
+            limit: Optional[int] = None,
             **conditions: Any
         ) -> List[TransactionRecord]:
         
@@ -85,6 +88,16 @@ class TransactionsDBService(BaseDBService):
             query += " AND "
             query += " AND ".join([f"{col} = %({col})s" for col in validated_conditions.keys()])
             params.update(validated_conditions)
+            
+        if order_col and order:
+            order_col = self._validate_columns([order_col])[0]
+            query += f" ORDER BY {order_col} {order}"
+        elif (order_col and not order) or (not order_col and order):
+            raise ValueError("Order column and order must be provided together")
+            
+        if limit:
+            query += f" LIMIT %(limit)s"
+            params['limit'] = limit
             
         return self.execute_query(query, params= params, fetch= 'all', dict_cursor= True)
         
@@ -256,7 +269,15 @@ class TransactionsDBService(BaseDBService):
         
         query = f"""
             SELECT 
-                COALESCE(SUM(CASE WHEN {self.type} = %(income_type)s THEN {self.amount} ELSE 0 END), 0) AS all_time_income,
+                COALESCE(SUM(CASE WHEN {self.type} = %(income_type)s THEN {self.amount} ELSE 0 END), 0)
+                + COALESCE((
+                        SELECT {self.amount}
+                        FROM {self.table_name}
+                        WHERE {self.user_id} = %(user_id)s
+                        AND {self.type} = %(initial_type)s
+                        ORDER BY {self.date} ASC
+                        LIMIT 1
+                    ), 0) AS all_time_income,
                 COALESCE(SUM(CASE WHEN {self.type} = %(expense_type)s THEN {self.amount} ELSE 0 END), 0) AS all_time_withdrawal
             FROM {self.table_name}
             WHERE {self.user_id} = %(user_id)s
@@ -265,6 +286,7 @@ class TransactionsDBService(BaseDBService):
         params = {
             'income_type': TransactionType.INCOME.value,
             'expense_type': TransactionType.EXPENSE.value,
+            'initial_type': TransactionType.INITIAL_BALANCE.value,
             'user_id': user_id,
         }
         
@@ -274,6 +296,45 @@ class TransactionsDBService(BaseDBService):
             income= result['all_time_income'],
             withdrawal= result['all_time_withdrawal'],
             savings= None
+        )
+        
+    async def get_avg_all_time_sums(self, user_id: int) -> FinancialAmountsSums:
+        query = f"""
+            WITH base AS (
+                SELECT
+                    COALESCE(SUM(CASE WHEN {self.type} = %(income_type)s THEN {self.amount} ELSE 0 END), 0) AS total_income,
+                    COALESCE(SUM(CASE WHEN {self.type} = %(expense_type)s THEN {self.amount} ELSE 0 END), 0) AS total_expenses,
+                    COUNT(DISTINCT DATE_TRUNC('month', {self.date})) AS months_active
+                FROM {self.table_name}
+                WHERE {self.user_id} = %(user_id)s
+            ),
+            initial AS (
+                SELECT {self.amount} AS initial_balance
+                FROM {self.table_name}
+                WHERE {self.user_id} = %(user_id)s
+                  AND {self.type} = %(initial_type)s
+                ORDER BY {self.date} ASC
+                LIMIT 1
+            )
+            SELECT
+                (b.total_income + COALESCE(i.initial_balance, 0)) / NULLIF(b.months_active, 0) AS avg_monthly_income,
+                b.total_expenses / NULLIF(b.months_active, 0) AS avg_monthly_expenses,
+                ((b.total_income + COALESCE(i.initial_balance, 0)) - b.total_expenses) / NULLIF(b.months_active, 0) AS avg_monthly_savings
+            FROM base b
+            LEFT JOIN initial i ON TRUE
+        """
+        params = {
+            'income_type': TransactionType.INCOME.value,
+            'expense_type': TransactionType.EXPENSE.value,
+            'initial_type': TransactionType.INITIAL_BALANCE.value,
+            'user_id': user_id,
+        }
+        result = self.execute_query(query, params=params, fetch='one', dict_cursor=True)
+
+        return FinancialAmountsSums(
+            income=result['avg_monthly_income'],
+            withdrawal=result['avg_monthly_expenses'],
+            savings=result['avg_monthly_savings']
         )
 
     async def get_current_month_sums(self, user_id: int) -> FinancialAmountsSums:

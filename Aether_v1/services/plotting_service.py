@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 from datetime import date
 from pandas import DataFrame, Series
+from constants.formats import AMOUNT_FORMAT
 from models.configs import DonutChartConfig
 from models.financial import FinancialStatus
 from models.goals import GoalInfo
@@ -37,11 +38,11 @@ class PlottingService:
         points = donut_chart_config.points
 
         # Plot the donut chart
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(figsize= (4, 4))
         sizes = [completion_percentage, 100 - completion_percentage]
         colors = [color, '#E0E0E0']  # Color for the completed part and light gray for the remaining part
         ax.pie(sizes, labels=['', ''], colors=colors, startangle=90, counterclock=False,
-            wedgeprops=dict(width=0.3))
+            wedgeprops=dict(width=0.2))
 
         # Add the label in the center of the donut
         ax.text(0, 0, points, ha='center', va='center', fontsize=14, weight='bold', color ='white')
@@ -51,6 +52,61 @@ class PlottingService:
         ax.set_aspect('equal')
 
         return fig
+    
+    @staticmethod
+    async def get_income_vs_expenses_bar_chart(last_six_months: DataFrame) -> alt.Chart:
+        bar_chart = alt.Chart(last_six_months).mark_bar().encode(
+            x= alt.X(
+                'month_label:O', 
+                title='Month',
+                sort= alt.SortField(field= 'order:Q', order= 'ascending')
+            ),
+            y= alt.Y(
+                'sum(amount):Q', 
+                title='Amount',
+                axis= alt.Axis(format= AMOUNT_FORMAT)
+            ),
+            xOffset= 'type:N',
+            color= alt.Color('type:N', legend= None, scale= alt.Scale(
+                    domain= ['Abono', 'Cargo'],
+                    range= ['#63DF31', '#F52F31']
+                )
+            ),
+            tooltip= [
+                alt.Tooltip('month:O', title='Month'),
+                alt.Tooltip('sum(amount):Q', title='Amount', format= AMOUNT_FORMAT)
+            ]
+        ).properties(
+            title='Income vs Expenses (last 6 months)'
+        )
+        
+        return bar_chart
+    
+    @staticmethod
+    async def get_balance_line_chart(balance_six_months: DataFrame) -> alt.Chart:
+        line_chart = alt.Chart(balance_six_months).mark_line(
+            color='purple', 
+            point= alt.OverlayMarkDef(filled= True, color='purple', size= 50)
+        ).encode(
+            x= alt.X(
+                'month_label:O', 
+                title='Month',
+                sort= alt.SortField(field= 'order:Q', order= 'ascending')
+            ),
+            y= alt.Y(
+                'balance:Q', 
+                title='Balance', 
+                axis= alt.Axis(format= AMOUNT_FORMAT)
+            ),
+            tooltip= [
+                alt.Tooltip('month_label:O', title='Month'),
+                alt.Tooltip('balance:Q', title='Balance', format= AMOUNT_FORMAT)
+            ]
+        ).properties(
+            title='Balance (last 6 months)'
+        )
+        
+        return line_chart
     
     @staticmethod
     def bar_chart_monthly_total_expenses(monthly_results: DataFrame) -> plt.figure:
