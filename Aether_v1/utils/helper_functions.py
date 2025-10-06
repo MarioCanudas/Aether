@@ -173,3 +173,20 @@ def give_amount_format(amount: Decimal | float | int | str) -> str | None:
         else: None
     
     return f'${amount:,.2f}' if amount > 0 else f'-${abs(amount):,.2f}'
+
+def months_map(month_num: int) -> Literal['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']:
+    months_map = {
+        1: 'Jan',
+        2: 'Feb',
+        3: 'Mar',
+        4: 'Apr',
+        5: 'May',
+        6: 'Jun',
+        7: 'Jul',
+        8: 'Aug',
+        9: 'Sep',
+        10: 'Oct',
+        11: 'Nov',
+        12: 'Dec',
+    }
+    return months_map[month_num]
