@@ -5,6 +5,7 @@ import numpy as np
 from datetime import date
 from pandas import DataFrame, Series
 from constants.formats import AMOUNT_FORMAT
+from models.amounts import TransactionType
 from models.configs import DonutChartConfig
 from models.financial import FinancialStatus
 from models.goals import GoalInfo
@@ -59,23 +60,28 @@ class PlottingService:
             x= alt.X(
                 'month_label:O', 
                 title='Month',
-                sort= alt.SortField(field= 'order:Q', order= 'ascending')
+                sort= ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
             ),
             y= alt.Y(
-                'sum(amount):Q', 
+                'amount:Q', 
                 title='Amount',
                 axis= alt.Axis(format= AMOUNT_FORMAT)
             ),
-            xOffset= 'type:N',
+            xOffset= alt.XOffset(
+                'type:N', 
+                scale= alt.Scale(
+                    domain= [TransactionType.INCOME.value, TransactionType.EXPENSE.value]
+                )
+            ),
             color= alt.Color('type:N', legend= None, scale= alt.Scale(
-                    domain= ['Abono', 'Cargo'],
+                    domain= [TransactionType.INCOME.value, TransactionType.EXPENSE.value],
                     range= ['#63DF31', '#F52F31']
                 )
             ),
             tooltip= [
                 alt.Tooltip('month:O', title='Month'),
-                alt.Tooltip('sum(amount):Q', title='Amount', format= AMOUNT_FORMAT)
-            ]
+                alt.Tooltip('amount:Q', title='Amount', format= AMOUNT_FORMAT)
+            ],
         ).properties(
             title='Income vs Expenses (last 6 months)'
         )
@@ -91,7 +97,7 @@ class PlottingService:
             x= alt.X(
                 'month_label:O', 
                 title='Month',
-                sort= alt.SortField(field= 'order:Q', order= 'ascending')
+                sort= ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
             ),
             y= alt.Y(
                 'balance:Q', 
@@ -103,7 +109,8 @@ class PlottingService:
                 alt.Tooltip('balance:Q', title='Balance', format= AMOUNT_FORMAT)
             ]
         ).properties(
-            title='Balance (last 6 months)'
+            title='Balance (last 6 months)',
+            height=500
         )
         
         return line_chart

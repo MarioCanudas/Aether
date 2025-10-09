@@ -1,4 +1,19 @@
+from enum import Enum
 from models.dates import MonthPatterns
+
+class MonthLabels(str, Enum):
+    JAN = 'JAN'
+    FEB = 'FEB'
+    MAR = 'MAR'
+    APR = 'APR'
+    MAY = 'MAY'
+    JUN = 'JUN'
+    JUL = 'JUL'
+    AUG = 'AUG'
+    SEP = 'SEP'
+    OCT = 'OCT'
+    NOV = 'NOV'
+    DEC = 'DEC'
 
 MONTH_PATTERNS = MonthPatterns(
     num_to_abbr = {

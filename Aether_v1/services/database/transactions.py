@@ -1,5 +1,4 @@
 from datetime import date
-from decimal import Decimal
 from typing import Optional, List, Dict, Set, Tuple, Any, Literal
 from models.amounts import TransactionType
 from models.bank_properties import BankName, StatementType
@@ -86,7 +85,11 @@ class TransactionsDBService(BaseDBService):
         if conditions:
             validated_conditions = self._validate_conditions(conditions)
             query += " AND "
-            query += " AND ".join([f"{col} = %({col})s" for col in validated_conditions.keys()])
+            
+            for col, value in validated_conditions.items():
+                query += f"{col} IN %({col})s" if isinstance(value, tuple) else f"{col} = %({col})s"
+                params[col] = value
+                
             params.update(validated_conditions)
             
         if order_col and order:
@@ -425,3 +428,20 @@ class TransactionsDBService(BaseDBService):
             withdrawal= result['specific_period_withdrawal'],
             savings= None
         )
+        
+    def get_first_initial_balance(self, user_id: int) -> Dict[str, Any]:
+        query = f"""
+            SELECT {self.date}, {self.amount}, {self.type}
+            FROM {self.table_name}
+            WHERE {self.user_id} = %(user_id)s
+            AND {self.type} = %(initial_type)s
+            ORDER BY {self.date} ASC
+            LIMIT 1
+        """
+        
+        params = {
+            'user_id': user_id,
+            'initial_type': TransactionType.INITIAL_BALANCE.value,
+        }
+        
+        return self.execute_query(query, params= params, fetch= 'one', dict_cursor= True)

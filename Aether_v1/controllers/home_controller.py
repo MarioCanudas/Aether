@@ -1,6 +1,6 @@
 import asyncio
 import pandas as pd
-from datetime import date, timedelta
+from datetime import timedelta
 from psycopg2.extensions import connection
 from utils import months_map
 from services import TransactionsDBService, DataProcessingService, FinancialAnalysisService, PlottingService
@@ -47,10 +47,13 @@ class HomeController(BaseController):
     async def _get_last_six_months_transactions(self, conn: connection) -> pd.DataFrame:
         transactions_db = TransactionsDBService(conn)
         
+        period = transactions_db.get_transactions_period(self.user_id)
+        period.start_date = period.end_date - timedelta(days= 180)  
+        
         last_six_months = transactions_db.get_transactions(
             self.user_id,
             columns= ['date', 'amount', 'type'],
-            period= Period(start_date= date.today() - timedelta(days= 180), end_date= date.today()),
+            period= period,
             order_col= 'date',
             order= 'desc'
         )
@@ -60,15 +63,23 @@ class HomeController(BaseController):
         last_six_months['month'] = last_six_months['date'].dt.month
         last_six_months['month-year'] = last_six_months['date'].dt.strftime('%Y-%m')
         last_six_months['month_label'] = last_six_months['month'].apply(lambda x: months_map(x))
-        last_six_months['amount'] = last_six_months['amount'].apply(lambda x: abs(x))
         
-        month_order = sorted(list(last_six_months['month-year'].unique()))
-        last_six_months['order'] = last_six_months['month-year'].apply(lambda x: month_order.index(x))
+        grouped = last_six_months.groupby(['month-year', 'type'], as_index=False).agg(
+            amount= ('amount', 'sum'),  
+            month_label= ('month_label', 'first'),
+            month= ('month', 'first'),
+        )
         
-        return last_six_months
+        grouped['amount'] = grouped['amount'].apply(lambda x: abs(x))
+        grouped['amount'] = grouped['amount'].astype('float64')
+        
+        return grouped
         
     async def _get_last_six_months_balance(self, conn: connection) -> pd.DataFrame:
         transactions_db = TransactionsDBService(conn)
+        
+        period = transactions_db.get_transactions_period(self.user_id)
+        period_start_date = period.end_date - timedelta(days= 180)
 
         # Fetch all transactions for the user
         all_transactions = transactions_db.get_transactions(
@@ -97,6 +108,7 @@ class HomeController(BaseController):
 
         # Group by month-year and aggregate monthly sum
         all_balances = all_transactions.groupby('month-year', as_index=False).agg(
+            date=('date', 'first'),
             balance=('amount', 'sum'),
             month_label=('month_label', 'first'),
             month=('month', 'first'),
@@ -105,13 +117,10 @@ class HomeController(BaseController):
         # Sort by month-year ascending and compute cumulative sum of balance
         all_balances = all_balances.sort_values(by='month-year', ascending=True)
         all_balances['balance'] = all_balances['balance'].cumsum()
+        all_balances['balance'] = all_balances['balance'].astype('float64')
 
-        # Filter to the last 6 months only
-        if len(all_balances) > 6:
-            all_balances = all_balances.iloc[-6:]
-            
-        month_order = sorted(list(all_balances['month-year'].unique()))
-        all_balances['order'] = all_balances['month-year'].apply(lambda x: month_order.index(x))
+        all_balances['date'] = pd.to_datetime(all_balances['date'])
+        all_balances = all_balances[all_balances['date'] >= pd.to_datetime(period_start_date)]
 
         return all_balances.reset_index(drop=True)
     

@@ -68,19 +68,20 @@ def show_home():
         with left:
             balance = float(home_view_data.all_time_sums.balance)
             with st.container(border= True):
+                st.metric(
+                    label="Balance", 
+                    value=f"${balance:,.2f}", 
+                    border= False,
+                    help= "General balance of the user. Total of income minus total of withdrawal."
+                )
+                
+            with st.container(border= True):
                 metrics_period = st.selectbox(
                     label= "",
                     options= HomePeriodsOptions.get_values(),
                     index= 0,
                     label_visibility= "collapsed",
                     key= "period_selectbox",
-                )
-                
-                st.metric(
-                    label="Balance", 
-                    value=f"${balance:,.2f}", 
-                    border= False,
-                    help= "General balance of the user. Total of income minus total of withdrawal."
                 )
 
                 if metrics_period == HomePeriodsOptions.SPECIFIC_PERIOD:
@@ -112,7 +113,11 @@ def show_home():
                 _financial_sums(financial_sums)
             
             with st.container(border= True):
-                final_chart = alt.layer(home_view_data.income_vs_expenses_bar_chart, home_view_data.balance_line_chart)
+                final_chart = alt.layer(home_view_data.income_vs_expenses_bar_chart, home_view_data.balance_line_chart).encode(
+                    x= alt.X('month_label:O', sort= ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'])
+                ).properties(
+                    title='Income vs Expenses (last 6 months)'
+                )
                 st.altair_chart(final_chart, use_container_width= True)
             
         with right: 
