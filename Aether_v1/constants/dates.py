@@ -4,7 +4,7 @@ from models.dates import MonthPatterns
 
 class MonthLabels(str, Enum):
     JAN = 'Jan'
-    FEB = 'FEB'
+    FEB = 'Feb'
     MAR = 'Mar'
     APR = 'Apr'
     MAY = 'May'
