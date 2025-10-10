@@ -1,4 +1,5 @@
 import streamlit as st
+import asyncio
 from controllers import AnalysisController
 from constants.views_icons import EXPENSES_ANALYSIS_ICON
 
@@ -10,6 +11,7 @@ def show_expenses_analysis():
         layout='centered'
     )
     controller = AnalysisController()
+    view_data = asyncio.run(controller.get_analysis_view_data('Cargo'))
     
     st.title('Expenses Analysis')
 
@@ -19,16 +21,13 @@ def show_expenses_analysis():
 
         # Bar chart for Total Expenses
         st.subheader('Total Expenses by Month')
-        monthly_expenses_chart = controller.get_bar_chart_monthly_total_by_category('Cargo')
 
         # Display the plot
-        st.pyplot(monthly_expenses_chart)
+        st.altair_chart(view_data.monthly_chart)
 
         st.subheader('Average Expenses by Day')
-        
-        daily_expenses_chart = controller.get_bar_chart_daily_total_by_category('Cargo')
-        
+
         # Display the plot
-        st.pyplot(daily_expenses_chart)
+        st.altair_chart(view_data.daily_chart)
     else: 
         st.info("No transactions available. Please upload files in the Home view.")
