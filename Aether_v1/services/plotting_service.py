@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 from datetime import date
 from pandas import DataFrame, Series
+from constants.dates import MonthLabels
 from constants.formats import AMOUNT_FORMAT
 from models.amounts import TransactionType
 from models.configs import DonutChartConfig
@@ -14,7 +15,7 @@ class PlottingService:
     INCOME_COLOR = '#63DF31'
     EXPENSES_COLOR = '#F52F31'
     BALANCE_COLOR = 'purple'
-    MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+    MONTH_LABELS = MonthLabels.get_values()
     
     @staticmethod
     def get_savings_donut_chart_config(label: FinancialStatus) -> DonutChartConfig:

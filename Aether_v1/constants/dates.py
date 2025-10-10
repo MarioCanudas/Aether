@@ -1,19 +1,24 @@
 from enum import Enum
+from typing import List
 from models.dates import MonthPatterns
 
 class MonthLabels(str, Enum):
-    JAN = 'JAN'
+    JAN = 'Jan'
     FEB = 'FEB'
-    MAR = 'MAR'
-    APR = 'APR'
-    MAY = 'MAY'
-    JUN = 'JUN'
-    JUL = 'JUL'
-    AUG = 'AUG'
-    SEP = 'SEP'
-    OCT = 'OCT'
-    NOV = 'NOV'
-    DEC = 'DEC'
+    MAR = 'Mar'
+    APR = 'Apr'
+    MAY = 'May'
+    JUN = 'Jun'
+    JUL = 'Jul'
+    AUG = 'Aug'
+    SEP = 'Sep'
+    OCT = 'Oct'
+    NOV = 'Nov'
+    DEC = 'Dec'
+    
+    @classmethod
+    def get_values(self) -> List[str]:
+        return [option.value for option in self]
 
 MONTH_PATTERNS = MonthPatterns(
     num_to_abbr = {
