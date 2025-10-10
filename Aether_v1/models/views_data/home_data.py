@@ -4,7 +4,7 @@ from altair import Chart
 from matplotlib.figure import Figure
 from enum import Enum
 from typing import List
-from .financial import FinancialStatus, FinancialAmountsSums
+from ..financial import FinancialStatus, FinancialAmountsSums
 
 class HomeViewData(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
