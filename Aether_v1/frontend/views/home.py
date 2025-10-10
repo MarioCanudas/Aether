@@ -3,10 +3,12 @@ import altair as alt
 import asyncio
 from datetime import datetime, timedelta
 from controllers import HomeController
+from components import period_select_box
+from constants.dates import MonthLabels
 from constants.views_icons import HOME_ICON
 from models.dates import Period
 from models.financial import FinancialAmountsSums
-from models.views_data import HomeViewData, HomePeriodsOptions
+from models.views_data import HomeViewData, PeriodsOptions
 
 def _financial_sums(financial_sums: FinancialAmountsSums):
     income = float(financial_sums.income)
@@ -76,15 +78,9 @@ def show_home():
                 )
                 
             with st.container(border= True):
-                metrics_period = st.selectbox(
-                    label= "",
-                    options= HomePeriodsOptions.get_values(),
-                    index= 0,
-                    label_visibility= "collapsed",
-                    key= "period_selectbox",
-                )
+                metrics_period = period_select_box(key= "period_selectbox_home")
 
-                if metrics_period == HomePeriodsOptions.SPECIFIC_PERIOD:
+                if metrics_period == PeriodsOptions.SPECIFIC_PERIOD:
                     today = datetime.now().date()
                     
                     specific_period = st.date_input(
@@ -93,15 +89,15 @@ def show_home():
                         key= "specific_period_date_input"
                     )
                     
-                if metrics_period == HomePeriodsOptions.ALL_TIME:
+                if metrics_period == PeriodsOptions.ALL_TIME:
                     financial_sums = home_view_data.all_time_sums
-                elif metrics_period == HomePeriodsOptions.CURRENT_MONTH:
+                elif metrics_period == PeriodsOptions.CURRENT_MONTH:
                     financial_sums = home_view_data.current_month_sums
-                elif metrics_period == HomePeriodsOptions.LAST_MONTH:
+                elif metrics_period == PeriodsOptions.LAST_MONTH:
                     financial_sums = home_view_data.last_month_sums
-                elif metrics_period == HomePeriodsOptions.AVARAGE:
+                elif metrics_period == PeriodsOptions.AVARAGE:
                     financial_sums = home_view_data.avarage_sums
-                elif metrics_period == HomePeriodsOptions.SPECIFIC_PERIOD:
+                elif metrics_period == PeriodsOptions.SPECIFIC_PERIOD:
                     try:
                         period = Period(start_date= specific_period[0], end_date= specific_period[1])
                         financial_sums = controller.get_specific_period_sums(period)
@@ -114,7 +110,7 @@ def show_home():
             
             with st.container(border= True):
                 final_chart = alt.layer(home_view_data.income_vs_expenses_bar_chart, home_view_data.balance_line_chart).encode(
-                    x= alt.X('month_label:O', sort= ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'])
+                    x= alt.X('month_label:O', sort= MonthLabels.get_values())
                 ).properties(
                     title='Income vs Expenses (last 6 months)'
                 )

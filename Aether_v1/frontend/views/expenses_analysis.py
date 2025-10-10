@@ -1,6 +1,7 @@
 import streamlit as st
 import asyncio
 from controllers import AnalysisController
+from components import period_select_box
 from constants.views_icons import EXPENSES_ANALYSIS_ICON
 
 def show_expenses_analysis(): 
@@ -17,7 +18,7 @@ def show_expenses_analysis():
 
     # Check if monthly results are available
     if controller.user_have_transactions():
-        st.write("Analysis based on monthly results")
+        selected_period = period_select_box(key= "period_selectbox_expenses")
 
         # Bar chart for Total Expenses
         st.subheader('Total Expenses by Month')
