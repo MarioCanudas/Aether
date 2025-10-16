@@ -2,6 +2,10 @@ from typing import List, Literal
 import re
 import pandas as pd
 from decimal import Decimal
+from datetime import date
+from dateutil.relativedelta import relativedelta
+from models.dates import Period
+from models.views_data import PeriodsOptions
 
 def get_min_month(months: List[str]) -> str:
     """
@@ -170,9 +174,12 @@ def give_amount_format(amount: Decimal | float | int | str) -> str | None:
     if isinstance(amount, str):
         if amount.isnumeric():
             amount = float(amount)
-        else: None
+            
+            # If the amount is very close to 0, set it to 0
+            if abs(amount) < 5e-3:
+                return 'N/A'
     
-    return f'${amount:,.2f}' if amount > 0 else f'-${abs(amount):,.2f}'
+    return f'${amount:,.2f}' if amount >= 0 else f'-${abs(amount):,.2f}'
 
 def months_map(month_num: int) -> Literal['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']:
     months_map = {
@@ -190,3 +197,21 @@ def months_map(month_num: int) -> Literal['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Ju
         12: 'Dec',
     }
     return months_map[month_num]
+
+def modify_period(period: Period, period_options: PeriodsOptions) -> Period:
+    today = date.today()
+    
+    match period_options:
+        case PeriodsOptions.ALL_TIME:
+            return period
+        case PeriodsOptions.CURRENT_MONTH:
+            return Period(start_date= today.replace(day= 1), end_date= today)
+        case PeriodsOptions.LAST_MONTH:
+            return Period(
+                start_date= today.replace(day= 1) - relativedelta(months= 1), 
+                end_date= today.replace(day= 1) - relativedelta(days= 1)
+            )
+        case PeriodsOptions.AVARAGE:
+            return period
+        case PeriodsOptions.SPECIFIC_PERIOD:
+            return period
