@@ -1,10 +1,13 @@
-from datetime import date
 from typing import Optional, List, Dict, Set, Tuple, Any, Literal
+from decimal import Decimal
+from datetime import datetime, date
+from dateutil.relativedelta import relativedelta
 from models.amounts import TransactionType
 from models.bank_properties import BankName, StatementType
 from models.dates import Period
 from models.financial import FinancialAmountsSums
 from models.records import TransactionRecord
+from models.views_data import AnalysisAmountsPerPeriod
 from .base_db import BaseDBService
 
 class TransactionsDBService(BaseDBService):
@@ -161,7 +164,6 @@ class TransactionsDBService(BaseDBService):
         
         try:
             # Parse the date to get year and month
-            from datetime import datetime
             date_obj = datetime.strptime(date_value, '%Y-%m-%d')
             year = date_obj.year
             month = date_obj.month
@@ -258,48 +260,6 @@ class TransactionsDBService(BaseDBService):
             """
             
             self.execute_query(query, params=params)
-            
-    async def get_all_time_sums(self, user_id: int) -> FinancialAmountsSums:
-        """
-        Get the all time income and withdrawal of the user. This allows to calculate the balance.
-        
-        Args:
-            user_id (int): The user id
-            
-        Returns:
-            AllTimeSums: The all time income and withdrawal
-        """
-        
-        query = f"""
-            SELECT 
-                COALESCE(SUM(CASE WHEN {self.type} = %(income_type)s THEN {self.amount} ELSE 0 END), 0)
-                + COALESCE((
-                        SELECT {self.amount}
-                        FROM {self.table_name}
-                        WHERE {self.user_id} = %(user_id)s
-                        AND {self.type} = %(initial_type)s
-                        ORDER BY {self.date} ASC
-                        LIMIT 1
-                    ), 0) AS all_time_income,
-                COALESCE(SUM(CASE WHEN {self.type} = %(expense_type)s THEN {self.amount} ELSE 0 END), 0) AS all_time_withdrawal
-            FROM {self.table_name}
-            WHERE {self.user_id} = %(user_id)s
-        """
-        
-        params = {
-            'income_type': TransactionType.INCOME.value,
-            'expense_type': TransactionType.EXPENSE.value,
-            'initial_type': TransactionType.INITIAL_BALANCE.value,
-            'user_id': user_id,
-        }
-        
-        result = self.execute_query(query, params= params, fetch= 'one', dict_cursor= True)
-        
-        return FinancialAmountsSums(
-            income= result['all_time_income'],
-            withdrawal= result['all_time_withdrawal'],
-            savings= None
-        )
         
     async def get_avg_all_time_sums(self, user_id: int) -> FinancialAmountsSums:
         query = f"""
@@ -339,69 +299,8 @@ class TransactionsDBService(BaseDBService):
             withdrawal=result['avg_monthly_expenses'],
             savings=result['avg_monthly_savings']
         )
-
-    async def get_current_month_sums(self, user_id: int) -> FinancialAmountsSums:
-        today = date.today()
         
-        query = f"""
-            SELECT 
-                COALESCE(SUM(CASE WHEN {self.type} = %(income_type)s THEN {self.amount} ELSE 0 END), 0) AS current_month_income,
-                COALESCE(SUM(CASE WHEN {self.type} = %(expense_type)s THEN {self.amount} ELSE 0 END), 0) AS current_month_withdrawal,
-                COALESCE(SUM({self.amount}), 0) AS current_month_savings
-            FROM {self.table_name}
-            WHERE {self.user_id} = %(user_id)s
-              AND EXTRACT(MONTH FROM {self.date}) = %(month)s
-              AND EXTRACT(YEAR FROM {self.date}) = %(year)s
-        """
-        
-        params = {
-            'income_type': TransactionType.INCOME.value,
-            'expense_type': TransactionType.EXPENSE.value,
-            'user_id': user_id,
-            'month': today.month,
-            'year': today.year,
-        }
-        
-        result = self.execute_query(query, params= params, fetch= 'one', dict_cursor= True)
-        
-        return FinancialAmountsSums(
-            income= result['current_month_income'],
-            withdrawal= result['current_month_withdrawal'],
-            savings= result['current_month_savings']
-        )
-        
-    async def get_last_month_sums(self, user_id: int) -> FinancialAmountsSums:
-        today = date.today()
-        last_month = today.month - 1
-        
-        query = f"""
-            SELECT 
-                COALESCE(SUM(CASE WHEN {self.type} = %(income_type)s THEN {self.amount} ELSE 0 END), 0) AS last_month_income,
-                COALESCE(SUM(CASE WHEN {self.type} = %(expense_type)s THEN {self.amount} ELSE 0 END), 0) AS last_month_withdrawal,
-                COALESCE(SUM({self.amount}), 0) AS last_month_savings
-            FROM {self.table_name}
-            WHERE {self.user_id} = %(user_id)s
-            AND EXTRACT(MONTH FROM {self.date}) = %(month)s
-            AND EXTRACT(YEAR FROM {self.date}) = %(year)s
-        """
-        
-        params = {
-            'income_type': TransactionType.INCOME.value,
-            'expense_type': TransactionType.EXPENSE.value,
-            'user_id': user_id,
-            'month': last_month,
-            'year': today.year if last_month != 12 else today.year - 1,
-        }
-        
-        result = self.execute_query(query, params= params, fetch= 'one', dict_cursor= True)
-        
-        return FinancialAmountsSums(
-            income= result['last_month_income'],
-            withdrawal= result['last_month_withdrawal'],
-            savings= result['last_month_savings']
-        )
-        
-    def get_specific_period_sums(self, user_id: int, specific_period: Period) -> FinancialAmountsSums:
+    async def get_specific_period_sums(self, user_id: int, specific_period: Period) -> FinancialAmountsSums:
         start_date, end_date = specific_period.to_tuple()
         
         query = f"""
@@ -445,3 +344,185 @@ class TransactionsDBService(BaseDBService):
         }
         
         return self.execute_query(query, params= params, fetch= 'one', dict_cursor= True)
+    
+    async def get_max_amounts(self, user_id: int) -> Dict[str, AnalysisAmountsPerPeriod]:
+        query = f"""
+            SELECT
+                -- All time max/min amounts
+                MAX(CASE 
+                    WHEN {self.type} = %(income_type)s 
+                    THEN {self.amount} ELSE 0 END) AS max_income_all_time,
+                MIN(CASE 
+                    WHEN {self.type} = %(expense_type)s 
+                    THEN {self.amount} ELSE 0 END) AS max_expense_all_time,
+                -- Current month max/min amounts
+                MAX(CASE 
+                    WHEN {self.type} = %(income_type)s 
+                    AND {self.date} BETWEEN %(current_month_start_date)s AND %(current_month_end_date)s
+                    THEN {self.amount} ELSE 0 END) AS max_income_current_month,
+                MIN(CASE 
+                    WHEN {self.type} = %(expense_type)s 
+                    AND {self.date} BETWEEN %(current_month_start_date)s AND %(current_month_end_date)s
+                    THEN {self.amount} ELSE 0 END) AS max_expense_current_month,
+                -- Last month max/min amounts
+                MAX(CASE 
+                    WHEN {self.type} = %(income_type)s 
+                    AND {self.date} BETWEEN %(last_month_start_date)s AND %(last_month_end_date)s
+                    THEN {self.amount} ELSE 0 END) AS max_income_last_month,
+                MIN(CASE 
+                    WHEN {self.type} = %(expense_type)s 
+                    AND {self.date} BETWEEN %(last_month_start_date)s AND %(last_month_end_date)s
+                    THEN {self.amount} ELSE 0 END) AS max_expense_last_month
+            FROM {self.table_name}
+            WHERE {self.user_id} = %(user_id)s
+        """
+        
+        today = date.today()
+        last_month = Period(start_date= today.replace(day= 1) - relativedelta(months= 1), end_date= today.replace(day= 1) - relativedelta(days= 1))
+        
+        params = {
+            'income_type': TransactionType.INCOME.value,
+            'expense_type': TransactionType.EXPENSE.value,
+            'user_id': user_id,
+            'current_month_start_date': today.replace(day= 1),
+            'current_month_end_date': today,
+            'last_month_start_date': last_month.start_date,
+            'last_month_end_date': last_month.end_date,
+        }
+        
+        result = self.execute_query(query, params= params, fetch= 'one', dict_cursor= True)
+        
+        return {
+            'Abono' : AnalysisAmountsPerPeriod(
+                all_time= result['max_income_all_time'],
+                current_month= result['max_income_current_month'],
+                last_month= result['max_income_last_month'],
+                avarage= 0
+            ),
+            'Cargo' : AnalysisAmountsPerPeriod(
+                all_time= result['max_expense_all_time'],
+                current_month= result['max_expense_current_month'],
+                last_month= result['max_expense_last_month'],
+                avarage= 0
+            )
+        }
+        
+    async def get_max_amount_in_specific_period(self, user_id: int, specific_period: Period) -> Dict[str, Decimal]:
+        query = f"""
+            SELECT
+                MAX(CASE 
+                    WHEN {self.type} = %(income_type)s 
+                    AND {self.date} BETWEEN %(specific_period_start_date)s AND %(specific_period_end_date)s
+                    THEN {self.amount} ELSE 0 END) AS max_income_specific_period,
+                MIN(CASE 
+                    WHEN {self.type} = %(expense_type)s 
+                    AND {self.date} BETWEEN %(specific_period_start_date)s AND %(specific_period_end_date)s
+                    THEN {self.amount} ELSE 0 END) AS max_expense_specific_period
+            FROM {self.table_name}
+            WHERE {self.user_id} = %(user_id)s
+        """ 
+        
+        params = {
+            'income_type': TransactionType.INCOME.value,
+            'expense_type': TransactionType.EXPENSE.value,
+            'user_id': user_id,
+            'specific_period_start_date': specific_period.start_date,
+            'specific_period_end_date': specific_period.end_date,
+        }
+        
+        result = self.execute_query(query, params= params, fetch= 'one', dict_cursor= True)
+        
+        return {
+            'Abono' : result['max_income_specific_period'],
+            'Cargo' : result['max_expense_specific_period'],
+        }
+    
+    async def get_frecuencys(self, user_id: int) -> Dict[str, AnalysisAmountsPerPeriod]:
+        query = f"""
+            SELECT
+                -- All-time frequency
+                COUNT(CASE WHEN {self.type} = %(income_type)s THEN 1 END) AS freq_income_all_time,
+                COUNT(CASE WHEN {self.type} = %(expense_type)s THEN 1 END) AS freq_expense_all_time,
+                -- Current month frequency
+                COUNT(CASE 
+                    WHEN {self.type} = %(income_type)s 
+                    AND {self.date} BETWEEN %(current_month_start_date)s AND %(current_month_end_date)s
+                THEN 1 END) AS freq_income_current_month,
+                COUNT(CASE 
+                    WHEN {self.type} = %(expense_type)s 
+                    AND {self.date} BETWEEN %(current_month_start_date)s AND %(current_month_end_date)s
+                THEN 1 END) AS freq_expense_current_month,
+                -- Last month frequency
+                COUNT(CASE 
+                    WHEN {self.type} = %(income_type)s 
+                    AND {self.date} BETWEEN %(last_month_start_date)s AND %(last_month_end_date)s
+                THEN 1 END) AS freq_income_last_month,
+                COUNT(CASE 
+                    WHEN {self.type} = %(expense_type)s 
+                    AND {self.date} BETWEEN %(last_month_start_date)s AND %(last_month_end_date)s
+                THEN 1 END) AS freq_expense_last_month
+            FROM {self.table_name}
+            WHERE {self.user_id} = %(user_id)s
+        """
+
+        today = date.today()
+        last_month = Period(
+            start_date=today.replace(day=1) - relativedelta(months=1),
+            end_date=today.replace(day=1) - relativedelta(days=1)
+        )
+        params = {
+            'income_type': TransactionType.INCOME.value,
+            'expense_type': TransactionType.EXPENSE.value,
+            'user_id': user_id,
+            'current_month_start_date': today.replace(day=1),
+            'current_month_end_date': today,
+            'last_month_start_date': last_month.start_date,
+            'last_month_end_date': last_month.end_date,
+        }
+
+        result = self.execute_query(query, params=params, fetch='one', dict_cursor=True)
+
+        return {
+            'Abono': AnalysisAmountsPerPeriod(
+                all_time=result['freq_income_all_time'],
+                current_month=result['freq_income_current_month'],
+                last_month=result['freq_income_last_month'],
+                avarage=0
+            ),
+            'Cargo': AnalysisAmountsPerPeriod(
+                all_time=result['freq_expense_all_time'],
+                current_month=result['freq_expense_current_month'],
+                last_month=result['freq_expense_last_month'],
+                avarage=0
+            )
+        }
+        
+    async def get_frecuency_in_specific_period(self, user_id: int, specific_period: Period) -> Dict[str, int]:
+        query = f"""
+            SELECT
+                COUNT(CASE 
+                    WHEN {self.type} = %(income_type)s 
+                    AND {self.date} BETWEEN %(specific_period_start_date)s AND %(specific_period_end_date)s
+                THEN 1 END) AS freq_income_specific_period,
+                COUNT(CASE 
+                    WHEN {self.type} = %(expense_type)s 
+                    AND {self.date} BETWEEN %(specific_period_start_date)s AND %(specific_period_end_date)s
+                THEN 1 END) AS freq_expense_specific_period
+            FROM {self.table_name}
+            WHERE {self.user_id} = %(user_id)s
+        """
+
+        params = {
+            'income_type': TransactionType.INCOME.value,
+            'expense_type': TransactionType.EXPENSE.value,
+            'user_id': user_id,
+            'specific_period_start_date': specific_period.start_date,
+            'specific_period_end_date': specific_period.end_date,
+        }
+
+        result = self.execute_query(query, params=params, fetch='one', dict_cursor=True)
+
+        return {
+            'Abono': result['freq_income_specific_period'],
+            'Cargo': result['freq_expense_specific_period'],
+        }

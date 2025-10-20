@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 from datetime import date
 from pandas import DataFrame, Series
+from typing import Literal
 from constants.dates import MonthLabels
 from constants.formats import AMOUNT_FORMAT
 from models.amounts import TransactionType
@@ -119,58 +120,37 @@ class PlottingService:
         
         return line_chart
     
-    def bar_chart_monthly_total_expenses(self, monthly_results: DataFrame) -> alt.Chart:
-        bar_chart = alt.Chart(monthly_results).mark_bar(color=PlottingService.EXPENSES_COLOR).encode(
+    def monthly_bar_chart(self, monthly_results: DataFrame, category: Literal['Abono', 'Cargo']) -> alt.Chart:
+        bar_chart = alt.Chart(monthly_results).mark_bar(
+                color=PlottingService.INCOME_COLOR if category == 'Abono' else PlottingService.EXPENSES_COLOR
+            ).encode(
             x= alt.X(
                 'month_label:O', 
                 title='Month',
                 sort= self.MONTH_LABELS
             ),
             y= alt.Y(
-                'total_withdrawal:Q', 
+                'total_income:Q' if category == 'Abono' else 'total_withdrawal:Q', 
                 title='Amount', 
                 axis= alt.Axis(format= AMOUNT_FORMAT)
             ),
             tooltip= [
                 alt.Tooltip('month_label:O', title='Month'),
-                alt.Tooltip('total_withdrawal:Q', title='Amount', format= AMOUNT_FORMAT)
+                alt.Tooltip('total_income:Q' if category == 'Abono' else 'total_withdrawal:Q', title='Amount', format= AMOUNT_FORMAT)
             ]
-        ).properties(
-            title='Total Expenses by Month'
         )
         
         return bar_chart
     
-    def bar_chart_monthly_total_income(self, monthly_results: DataFrame) -> alt.Chart:
-        bar_chart = alt.Chart(monthly_results).mark_bar(color=PlottingService.INCOME_COLOR).encode(
-            x= alt.X(
-                'month_label:O', 
-                title='Month',
-                sort= self.MONTH_LABELS
-            ),
-            y= alt.Y(
-                'total_income:Q', 
-                title='Amount', 
-                axis= alt.Axis(format= AMOUNT_FORMAT)
-            ),
-            tooltip= [
-                alt.Tooltip('month_label:O', title='Month'),
-                alt.Tooltip('total_income:Q', title='Amount', format= AMOUNT_FORMAT)
-            ]
-        ).properties(
-            title='Total Income by Month'
-        )
-        
-        return bar_chart
-    
-    def bar_chart_daily_total_expenses(self, avg_expenses_per_day: Series) -> alt.Chart:
-        bar_chart = alt.Chart(avg_expenses_per_day).mark_bar(
-            color=PlottingService.EXPENSES_COLOR,
-            width= 15
+    def daily_bar_chart(self, amounts_per_day: Series, category: Literal['Abono', 'Cargo']) -> alt.Chart:
+        bar_chart = alt.Chart(amounts_per_day).mark_bar(
+            color=PlottingService.INCOME_COLOR if category == 'Abono' else PlottingService.EXPENSES_COLOR, 
+            width = 10
         ).encode(
             x= alt.X(
                 'day:Q', 
                 title='Day',
+                scale= alt.Scale(domain= [1, 31]),
                 axis= alt.Axis(
                     tickCount= 31,
                     labelAngle= 0
@@ -181,36 +161,27 @@ class PlottingService:
                 alt.Tooltip('day:Q', title='Day'),
                 alt.Tooltip('amount:Q', title='Amount', format= AMOUNT_FORMAT)
             ]
-        ).properties(
-            title='Average Expenses per Day'
         )
         
         return bar_chart
     
-    def bar_chart_daily_total_income(self, avg_income_per_day: Series) -> alt.Chart:
-        bar_chart = alt.Chart(avg_income_per_day).mark_bar(
-            color=PlottingService.INCOME_COLOR, 
-            width= 15
-        ).encode(
-            x= alt.X(
-                'day:Q', 
-                title='Day',
-                axis= alt.Axis(
-                    tickCount= 31,
-                    labelAngle= 0
-                )
-            ),
-            y= alt.Y('amount:Q', title='Amount', axis= alt.Axis(format= AMOUNT_FORMAT)),
+    def radial_chart(self, data: DataFrame, category: Literal['Abono', 'Cargo']) -> alt.Chart:
+        base = alt.Chart(data).encode(
+            theta= alt.Theta('amount:Q', title='Amount'),
+            radius= alt.Radius('amount'),
+            color= alt.Color('category:N', legend= None, scale= alt.Scale(scheme= 'greens' if category == 'Abono' else 'reds')),
             tooltip= [
-                alt.Tooltip('day:Q', title='Day'),
+                alt.Tooltip('category:N', title='Category'),
                 alt.Tooltip('amount:Q', title='Amount', format= AMOUNT_FORMAT)
             ]
-        ).properties(
-            title='Average Income per Day'
         )
         
-        return bar_chart
+        l1 = base.mark_arc(outerRadius= 20, stroke= 'fff')
         
+        l2 = base.mark_text(radiusOffset=10).encode(text="amount:Q")
+        
+        return alt.layer(l1, l2)
+    
     def donut_chart_goal_progress(self, goal_info: GoalInfo) -> plt.figure:
         completion_percentage = goal_info.progress_porcentage * 100
         porcentage_text = f'{int(completion_percentage)}%'

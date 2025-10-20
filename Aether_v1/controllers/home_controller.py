@@ -1,13 +1,14 @@
 import asyncio
 import pandas as pd
-from datetime import timedelta
+from datetime import date, timedelta
+from dateutil.relativedelta import relativedelta
 from psycopg2.extensions import connection
 from utils import months_map
 from services import TransactionsDBService, DataProcessingService, FinancialAnalysisService, PlottingService
 from models.dates import Period
 from models.financial import FinancialAmountsSums
 from models.tables import AllTransactionsTable, MonthlyResultsTable
-from models.views_data import HomeViewData
+from models.views_data import HomeViewData, PeriodsOptions
 from .base_controller import BaseController
 
 class HomeController(BaseController):
@@ -124,9 +125,30 @@ class HomeController(BaseController):
 
         return all_balances.reset_index(drop=True)
     
+    def _modify_period(self, period: Period, period_options: PeriodsOptions) -> Period:
+        today = date.today()
+        
+        match period_options:
+            case PeriodsOptions.ALL_TIME:
+                return period
+            case PeriodsOptions.CURRENT_MONTH:
+                return Period(start_date= today.replace(day= 1), end_date= today)
+            case PeriodsOptions.LAST_MONTH:
+                return Period(
+                    start_date= today.replace(day= 1) - relativedelta(months= 1), 
+                    end_date= today.replace(day= 1) - relativedelta(days= 1)
+                )
+            case PeriodsOptions.AVARAGE:
+                return period
+            case PeriodsOptions.SPECIFIC_PERIOD:
+                return period
+    
     async def get_home_view_data(self) -> HomeViewData:        
         with self.quick_read_conn() as conn:
             transactions_db = TransactionsDBService(conn)
+            
+            period = transactions_db.get_transactions_period(self.user_id)
+            first_initial_balance = transactions_db.get_first_initial_balance(self.user_id)
             
             async with asyncio.TaskGroup() as tg:
                 avg_financial_sums = tg.create_task(transactions_db.get_avg_all_time_sums(self.user_id))
@@ -138,9 +160,22 @@ class HomeController(BaseController):
             donut_config = self.plotting_service.get_savings_donut_chart_config(label)
                 
             async with asyncio.TaskGroup() as tg:
-                all_time_sums = tg.create_task(transactions_db.get_all_time_sums(self.user_id))
-                current_month_sums = tg.create_task(transactions_db.get_current_month_sums(self.user_id))
-                last_month_sums = tg.create_task(transactions_db.get_last_month_sums(self.user_id))
+                all_time_sums = tg.create_task(
+                    transactions_db.get_specific_period_sums(
+                        self.user_id, 
+                        period
+                    )
+                )
+                current_month_sums = tg.create_task(
+                    transactions_db.get_specific_period_sums(
+                        self.user_id, 
+                        self._modify_period(period, PeriodsOptions.CURRENT_MONTH))
+                )
+                last_month_sums = tg.create_task(
+                    transactions_db.get_specific_period_sums(
+                        self.user_id, 
+                        self._modify_period(period, PeriodsOptions.LAST_MONTH))
+                )
                 income_vs_expenses_bar_chart = tg.create_task(self.plotting_service.get_income_vs_expenses_bar_chart(last_six_months.result()))
                 balance_line_chart = tg.create_task(self.plotting_service.get_balance_line_chart(last_six_months_balance.result()))
                 donut_score_chart = tg.create_task(self.plotting_service.get_plot_savings_donut_chart(donut_config))
@@ -169,6 +204,9 @@ class HomeController(BaseController):
         )
         
         last_transactions['Amount'] = last_transactions['Amount'].apply(lambda x: f"${x:,.2f}")
+        
+        all_time_sums = all_time_sums.result()
+        all_time_sums.add_to_income(first_initial_balance['amount'])
             
         return HomeViewData(
             label= label,
@@ -177,7 +215,7 @@ class HomeController(BaseController):
             donut_score_chart= donut_score_chart.result(),
             income_vs_expenses_bar_chart= income_vs_expenses_bar_chart.result(),
             balance_line_chart= balance_line_chart.result(),
-            all_time_sums= all_time_sums.result(),
+            all_time_sums= all_time_sums,
             current_month_sums= current_month_sums.result(),
             last_month_sums= last_month_sums.result(),
             avarage_sums= avg_financial_sums.result()
@@ -187,5 +225,5 @@ class HomeController(BaseController):
         with self.quick_read_conn() as conn:
             transactions_db = TransactionsDBService(conn)
             
-            return transactions_db.get_specific_period_sums(self.user_id, specific_period)
+            return asyncio.run(transactions_db.get_specific_period_sums(self.user_id, specific_period))
         

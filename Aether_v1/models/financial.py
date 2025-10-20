@@ -90,3 +90,6 @@ class FinancialAmountsSums(BaseModel):
     def balance(self) -> Decimal:
         return self.income + self.withdrawal
     
+    def add_to_income(self, amount: Decimal) -> None:
+        self.income += amount
+    

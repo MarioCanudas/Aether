@@ -7,5 +7,6 @@ def period_select_box(key: str) -> str:
         options= PeriodsOptions.get_values(),
         index= 0,
         placeholder= "Select period to analyze",
-        key= key
+        key= key,
+        help= "The avarage period is calculated per month"
     )
