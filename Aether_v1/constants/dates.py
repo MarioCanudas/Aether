@@ -1,6 +1,8 @@
 from enum import Enum
+from datetime import date
+from dateutil.relativedelta import relativedelta
 from typing import List
-from models.dates import MonthPatterns
+from models.dates import MonthPatterns, Period
 
 class MonthLabels(str, Enum):
     JAN = 'Jan'
@@ -17,8 +19,17 @@ class MonthLabels(str, Enum):
     DEC = 'Dec'
     
     @classmethod
-    def get_values(self) -> List[str]:
-        return [option.value for option in self]
+    def get_values(cls) -> List[str]:
+        return [option.value for option in cls]
+    
+    def month_num(self) -> int:
+        return self.get_values().index(self.value) + 1
+    
+    def get_period(self, year: int) -> Period:
+        return Period(
+            start_date= date(year, self.month_num(), 1),
+            end_date= (date(year, self.month_num(), 1) + relativedelta(months= 1)) - relativedelta(days= 1)
+        )
 
 MONTH_PATTERNS = MonthPatterns(
     num_to_abbr = {
