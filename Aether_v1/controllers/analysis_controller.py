@@ -31,20 +31,31 @@ class AnalysisController(BaseController):
     async def get_category_amount_bar_chart(self, transactions_db: TransactionsDBService, category: Literal['Abono', 'Cargo']) -> alt.Chart:
         transactions = transactions_db.get_transactions(
             self.user_id,
-            columns= ['amount'],
-            show_categories_names= True,
-            type= category,
+            columns=['amount'],
+            show_categories_names=True,
+            type=category,
         )
         transactions = pd.DataFrame(transactions)
-        
+
         transactions['category'] = transactions['category'].fillna('Sin categoría')
         transactions['amount'] = transactions['amount'].abs()
-        
+
         amount_per_category = transactions.groupby('category').agg({'amount': 'sum'}).reset_index()
         amount_per_category['amount'] = amount_per_category['amount'].astype('float64')
-        
-        amount_per_category = amount_per_category.sort_values(by='amount', ascending= False)
-        
+
+        if len(amount_per_category) > 5:
+            # Sort by amount descending and take top 5
+            top_five = amount_per_category.sort_values('amount', ascending=False).head(5)
+            # Collect "other" as sum of rest
+            others = amount_per_category.sort_values('amount', ascending=False).iloc[5:]
+            otras_sum = others['amount'].sum()
+            # Only include "Otras" if there's anything left
+            if otras_sum > 0:
+                otras_row = pd.DataFrame({'category': ['Otras'], 'amount': [otras_sum]})
+                amount_per_category = pd.concat([top_five, otras_row], ignore_index=True)
+            else:
+                amount_per_category = top_five.reset_index(drop=True)
+
         return self.plotting_service.category_amount_bar_chart(amount_per_category, category)
     
     async def get_monthly_bar_chart_avg_amount(self, transactions_db: TransactionsDBService, category: Literal['Abono', 'Cargo']) -> alt.Chart:        
