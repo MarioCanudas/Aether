@@ -57,8 +57,8 @@ class AnalysisController(BaseController):
         
         df['month_label'] = df['year_month'].dt.strftime('%b')
         df['year_month'] = df['year_month'].astype(str)
-        df['total_withdrawal'] = df['total_withdrawal'].astype('float64')
-        df['total_income'] = df['total_income'].astype('float64')
+        df['total_withdrawal'] = df['total_withdrawal'].astype('float64').apply(lambda x: abs(x))
+        df['total_income'] = df['total_income'].astype('float64').apply(lambda x: abs(x))
         
         return self.plotting_service.monthly_bar_chart(df, category).properties(title='Per Month')
 
@@ -72,7 +72,7 @@ class AnalysisController(BaseController):
         avg_per_day = avg_per_day.reset_index(drop= True).reset_index()
         avg_per_day.columns = ['day', 'amount']
         
-        avg_per_day['amount'] = avg_per_day['amount'].astype('float64')
+        avg_per_day['amount'] = avg_per_day['amount'].astype('float64').apply(lambda x: abs(x))
         avg_per_day['day'] = avg_per_day['day'].astype('int64').apply(lambda x: x + 1)
         
         return self.plotting_service.daily_bar_chart(avg_per_day, category).properties(title='Per Day')
@@ -122,8 +122,8 @@ class AnalysisController(BaseController):
         
             df['month_label'] = df['year_month'].dt.strftime('%b')
             df['year_month'] = df['year_month'].astype(str)
-            df['total_withdrawal'] = df['total_withdrawal'].astype('float64')
-            df['total_income'] = df['total_income'].astype('float64')
+            df['total_withdrawal'] = df['total_withdrawal'].astype('float64').apply(lambda x: abs(x))
+            df['total_income'] = df['total_income'].astype('float64').apply(lambda x: abs(x))
             
             return self.plotting_service.monthly_bar_chart(df, category)
         
