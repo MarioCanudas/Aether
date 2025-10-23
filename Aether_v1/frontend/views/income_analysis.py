@@ -108,12 +108,12 @@ def show_income_analysis():
                 st.altair_chart(view_data.amount_per_category_chart)
                 
         with st.container(border= True):
+            st.subheader('Average Income')
+            
             left_4, right_4 = st.columns(2)
             with left_4:
-                st.subheader('Average Income per Month')
                 st.altair_chart(view_data.avg_monthly_bar_chart)
             with right_4:
-                st.subheader('Average Income per Day')
                 st.altair_chart(view_data.avg_daily_bar_chart)
                   
     else: 

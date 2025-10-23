@@ -58,7 +58,7 @@ class AnalysisController(BaseController):
         df['total_withdrawal'] = df['total_withdrawal'].astype('float64')
         df['total_income'] = df['total_income'].astype('float64')
         
-        return self.plotting_service.monthly_bar_chart(df, category)
+        return self.plotting_service.monthly_bar_chart(df, category).properties(title='Per Month')
 
     async def get_daily_bar_chart_avg_amount(self, transactions_db: TransactionsDBService, category: Literal['Abono', 'Cargo']) -> alt.Chart:
         transactions = transactions_db.get_transactions(self.user_id)
@@ -73,7 +73,7 @@ class AnalysisController(BaseController):
         avg_per_day['amount'] = avg_per_day['amount'].astype('float64')
         avg_per_day['day'] = avg_per_day['day'].astype('int64').apply(lambda x: x + 1)
         
-        return self.plotting_service.daily_bar_chart(avg_per_day, category)
+        return self.plotting_service.daily_bar_chart(avg_per_day, category).properties(title='Per Day')
         
     def get_daily_bar_chart(self, category: Literal['Abono', 'Cargo'], month: MonthLabels, year: int) -> alt.Chart:
         with self.quick_read_conn() as conn:
