@@ -27,12 +27,12 @@ class AnalysisController(BaseController):
             period = transactions_db.get_transactions_period(self.user_id)
             
             return sorted(period.get_available_years(), reverse= True)
-        
-    async def get_radial_chart(self, transactions_db: TransactionsDBService, category: Literal['Abono', 'Cargo']) -> alt.Chart:
+    
+    async def get_category_amount_bar_chart(self, transactions_db: TransactionsDBService, category: Literal['Abono', 'Cargo']) -> alt.Chart:
         transactions = transactions_db.get_transactions(
-            self.user_id, 
+            self.user_id,
             columns= ['amount'],
-            show_categories_names= True, 
+            show_categories_names= True,
             type= category,
         )
         transactions = pd.DataFrame(transactions)
@@ -43,7 +43,9 @@ class AnalysisController(BaseController):
         amount_per_category = transactions.groupby('category').agg({'amount': 'sum'}).reset_index()
         amount_per_category['amount'] = amount_per_category['amount'].astype('float64')
         
-        return self.plotting_service.radial_chart(amount_per_category, category)
+        amount_per_category = amount_per_category.sort_values(by='amount', ascending= False)
+        
+        return self.plotting_service.category_amount_bar_chart(amount_per_category, category)
     
     async def get_monthly_bar_chart_avg_amount(self, transactions_db: TransactionsDBService, category: Literal['Abono', 'Cargo']) -> alt.Chart:        
         transactions = transactions_db.get_transactions(self.user_id)
@@ -198,7 +200,7 @@ class AnalysisController(BaseController):
             period = transactions_db.get_transactions_period(self.user_id)
             
             async with asyncio.TaskGroup() as tg:
-                amount_per_category_chart = tg.create_task(self.get_radial_chart(transactions_db, category))
+                amount_per_category_chart = tg.create_task(self.get_category_amount_bar_chart(transactions_db, category))
                 avg_monthly_bar_chart = tg.create_task(self.get_monthly_bar_chart_avg_amount(transactions_db, category))
                 avg_daily_bar_chart = tg.create_task(self.get_daily_bar_chart_avg_amount(transactions_db, category))
                 acumulated_amounts = tg.create_task(self._get_acumulated_amounts(category, transactions_db, period))

@@ -165,22 +165,23 @@ class PlottingService:
         
         return bar_chart
     
-    def radial_chart(self, data: DataFrame, category: Literal['Abono', 'Cargo']) -> alt.Chart:
+    def category_amount_bar_chart(self, data: DataFrame, category: Literal['Abono', 'Cargo']) -> alt.Chart:
         base = alt.Chart(data).encode(
-            theta= alt.Theta('amount:Q', title='Amount'),
-            radius= alt.Radius('amount'),
+            x= alt.X(
+                'amount:Q', 
+                title='Amount', 
+                axis= alt.Axis(format= AMOUNT_FORMAT), 
+            ),
+            y= alt.Y(
+                'category:N', 
+                title='Category',
+                sort= alt.SortField(field='amount', order='descending')
+            ),
+            text= alt.Text('amount:Q', format= AMOUNT_FORMAT),
             color= alt.Color('category:N', legend= None, scale= alt.Scale(scheme= 'greens' if category == 'Abono' else 'reds')),
-            tooltip= [
-                alt.Tooltip('category:N', title='Category'),
-                alt.Tooltip('amount:Q', title='Amount', format= AMOUNT_FORMAT)
-            ]
         )
         
-        l1 = base.mark_arc(outerRadius= 20, stroke= 'fff')
-        
-        l2 = base.mark_text(radiusOffset=10).encode(text="amount:Q")
-        
-        return alt.layer(l1, l2)
+        return base.mark_bar() + base.mark_text(align= 'left', dx= 2)
     
     def donut_chart_goal_progress(self, goal_info: GoalInfo) -> plt.figure:
         completion_percentage = goal_info.progress_porcentage * 100

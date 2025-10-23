@@ -35,7 +35,7 @@ def show_income_analysis():
                     key= "specific_period_date_input"
                 )
                 period = Period(start_date= specific_period[0], end_date= specific_period[1])
-                
+                            
             left_1, center_1, right_1 = st.columns(3)
             
             if selected_period == PeriodsOptions.SPECIFIC_PERIOD:
@@ -60,52 +60,48 @@ def show_income_analysis():
                 value= analysis_amounts.frecuency,
                 help= 'Income frecuency by the selected period.'
             )
-        
-        left, right = st.columns([3, 1.5])
-        
-        with left:
-            with st.container(border= True):
-                left_2, right_2 = st.columns(2)
-                income_chart_type = left_2.segmented_control(
-                    label= 'Chart type',
-                    options= ['Daily', 'Monthly'],
-                    key= 'income_chart_type',
-                    default= 'Daily',
-                    help= 'Select the chart type to display.'
-                )
                 
-                if income_chart_type == 'Daily':
-                    with right_2:
-                        left_3, right_3 = st.columns(2)
-                        
-                        year = left_3.selectbox(
-                            label= 'Select year',
-                            options= controller.get_years(),
-                            key= 'income_year_selectbox',
-                            index= 0,
-                        )
-                        month = right_3.selectbox(
-                            label= 'Select month',
-                            options= MonthLabels.get_values(),
-                            key= 'income_month_selectbox',
-                        )
+        with st.container(border= True):
+            left_2, right_2 = st.columns(2)
+            income_chart_type = left_2.segmented_control(
+                label= 'Chart type',
+                options= ['Daily', 'Monthly'],
+                key= 'income_chart_type',
+                default= 'Daily',
+                help= 'Select the chart type to display.'
+            )
+            
+            if income_chart_type == 'Daily':
+                with right_2:
+                    left_3, right_3 = st.columns(2)
                     
-                    st.subheader('Income per Day')
-                    st.altair_chart(controller.get_daily_bar_chart('Abono', MonthLabels(month), year))
-                else:
-                    year = right_2.selectbox(
+                    year = left_3.selectbox(
                         label= 'Select year',
                         options= controller.get_years(),
-                        key= 'income_month_selectbox',
+                        key= 'income_year_selectbox',
                         index= 0,
                     )
-                    st.subheader('Total Income per Month')
-                    st.altair_chart(controller.get_monthly_bar_chart('Abono', year))
-        
-        with right:
-            with st.container(border= True):
-                st.subheader('Sources of Income')
-                st.altair_chart(view_data.amount_per_category_chart)
+                    month = right_3.selectbox(
+                        label= 'Select month',
+                        options= MonthLabels.get_values(),
+                        key= 'income_month_selectbox',
+                    )
+                
+                st.subheader('Income per Day')
+                st.altair_chart(controller.get_daily_bar_chart('Abono', MonthLabels(month), year))
+            else:
+                year = right_2.selectbox(
+                    label= 'Select year',
+                    options= controller.get_years(),
+                    key= 'income_month_selectbox',
+                    index= 0,
+                )
+                st.subheader('Total Income per Month')
+                st.altair_chart(controller.get_monthly_bar_chart('Abono', year))
+                
+        with st.container(border= True):
+            st.subheader('Sources of Income')
+            st.altair_chart(view_data.amount_per_category_chart)
                 
         with st.container(border= True):
             st.subheader('Average Income')
