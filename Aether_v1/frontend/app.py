@@ -23,7 +23,7 @@ from views.expenses_analysis import show_expenses_analysis
 from views.goals import show_goals
 from views.users_config import show_users_config
 from views.data import show_data
-from views.transaction_processor import show_upload_statements
+from views.upload_files import show_upload_statements
 from constants.views_icons import (
     LOGIN_ICON, LOGOUT_ICON, HOME_ICON, 
     CASH_TRANSACTION_ICON, INCOME_ANALYSIS_ICON, 
