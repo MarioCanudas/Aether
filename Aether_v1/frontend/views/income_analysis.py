@@ -28,13 +28,18 @@ def show_income_analysis():
     
             if selected_period == PeriodsOptions.SPECIFIC_PERIOD:
                 today = date.today()
+                default_period = Period(start_date= today - timedelta(days= 30), end_date= today)
                 
                 specific_period = st.date_input(
                     label= "Specific Period",
-                    value= (today - timedelta(days= 30), today),
+                    value= default_period.to_tuple(),
                     key= "specific_period_date_input"
                 )
-                period = Period(start_date= specific_period[0], end_date= specific_period[1])
+                
+                if len(specific_period) == 2:
+                    period = Period(start_date= specific_period[0], end_date= specific_period[1])
+                else:
+                    period = default_period
                             
             left_1, center_1, right_1 = st.columns(3)
             
