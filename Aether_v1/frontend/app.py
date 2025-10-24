@@ -30,6 +30,7 @@ from constants.views_icons import (
     EXPENSES_ANALYSIS_ICON, GOALS_ICON, TRANSACTIONS_ICON, 
     UPLOAD_STATEMENTS_ICON, USERS_CONFIG_ICON
 )
+from components import new_category_popup
 
 # -- Page Configuration --
 if not 'logged_in' in st.session_state:
@@ -72,6 +73,10 @@ if st.session_state.logged_in:
     })
     
     del PAGES['User']
+    
+    with st.sidebar:
+        if st.button('Add Category', type= 'primary', help= 'Add a new category', key= 'add_category_button'):
+            new_category_popup()
         
 page = st.navigation(PAGES, position= 'sidebar' if st.session_state.logged_in else 'hidden')
 page.run()

@@ -1,4 +1,5 @@
 from typing import List, Dict
+from models.categories import NewCategory
 from .base_db import BaseDBService
 
 class CategoryDBService(BaseDBService):
@@ -34,3 +35,29 @@ class CategoryDBService(BaseDBService):
             categories[r['name']] = r['category_id']
             
         return categories
+    
+    def _validate_new_category(self, user_id: int, new_category: NewCategory) -> False:
+        query = f'''
+            SELECT COUNT(*) FROM {self.table_name} WHERE {self.user_id} = %(user_id)s AND {self.name} = %(name)s AND "group" = %(group)s
+        '''
+        
+        result = self.execute_query(query, params= {'user_id': user_id, 'name': new_category.name, 'group': new_category.group.value}, fetch= 'one')
+        
+        if result[0] > 0:
+            return False
+        else:
+            return True
+    
+    def add_category(self, user_id: int, new_category: NewCategory) -> None:
+        if not self._validate_new_category(user_id, new_category):
+            raise ValueError('Category already exists')
+        else:
+            with self.transaction():
+                query = f'''
+                    INSERT INTO {self.table_name} ({self.user_id}, "group", {self.name}, {self.description})
+                    VALUES (%(user_id)s, %(group)s, %(name)s, %(description)s)
+                '''
+                
+                params = new_category.model_dump() | {'user_id': user_id}
+                
+                self.execute_query(query, params= params)

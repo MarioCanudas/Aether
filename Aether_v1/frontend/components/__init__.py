@@ -4,6 +4,7 @@ from .modify_transaction_template import modify_template_popup
 from .new_goal import new_goal_popup, add_amount_popup
 from .config_goals_templates import config_goals_templates_popup
 from .period_select_box import period_select_box
+from .new_category import new_category_popup
 
 __all__ = [
     'confirm_upload_popup',
@@ -12,5 +13,6 @@ __all__ = [
     'new_goal_popup',
     'add_amount_popup',
     'config_goals_templates_popup',
-    'period_select_box'
+    'period_select_box',
+    'new_category_popup',
 ]
