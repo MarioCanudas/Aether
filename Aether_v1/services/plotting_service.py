@@ -4,11 +4,20 @@ import pandas as pd
 import numpy as np
 from datetime import date
 from pandas import DataFrame, Series
+from typing import Literal
+from constants.dates import MonthLabels
+from constants.formats import AMOUNT_FORMAT
+from models.amounts import TransactionType
 from models.configs import DonutChartConfig
 from models.financial import FinancialStatus
 from models.goals import GoalInfo
 
 class PlottingService:
+    INCOME_COLOR = '#63DF31'
+    EXPENSES_COLOR = '#F52F31'
+    BALANCE_COLOR = 'purple'
+    MONTH_LABELS = MonthLabels.get_values()
+    
     @staticmethod
     def get_savings_donut_chart_config(label: FinancialStatus) -> DonutChartConfig:
         if label == FinancialStatus.EXCELLENT:
@@ -23,7 +32,7 @@ class PlottingService:
             raise ValueError(f"Invalid label: {label}")
         
     @staticmethod
-    def get_plot_savings_donut_chart(donut_chart_config: DonutChartConfig) -> plt.Figure:
+    async def get_plot_savings_donut_chart(donut_chart_config: DonutChartConfig) -> plt.Figure:
         """
         Plots a donut chart based on the savings compared to the average income.
 
@@ -37,11 +46,11 @@ class PlottingService:
         points = donut_chart_config.points
 
         # Plot the donut chart
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(figsize= (4, 4))
         sizes = [completion_percentage, 100 - completion_percentage]
         colors = [color, '#E0E0E0']  # Color for the completed part and light gray for the remaining part
         ax.pie(sizes, labels=['', ''], colors=colors, startangle=90, counterclock=False,
-            wedgeprops=dict(width=0.3))
+            wedgeprops=dict(width=0.2))
 
         # Add the label in the center of the donut
         ax.text(0, 0, points, ha='center', va='center', fontsize=14, weight='bold', color ='white')
@@ -52,68 +61,128 @@ class PlottingService:
 
         return fig
     
-    @staticmethod
-    def bar_chart_monthly_total_expenses(monthly_results: DataFrame) -> plt.figure:
-        expenses_bar_chart, ax_expenses = plt.subplots()
-
-        # Plot the data
-        ax_expenses.bar(monthly_results['year_month'], monthly_results['total_withdrawal'], color='orange')
-
-        # Transparent background, Y-axis grid only, and white labels
-        expenses_bar_chart.patch.set_alpha(0)  # Transparent background
-        ax_expenses.set_facecolor('none')  # Transparent axes background
-        ax_expenses.grid(True, color='gray', linestyle='-', linewidth=0.5, axis='y')
-        ax_expenses.set_xticklabels(monthly_results['year_month'], rotation=90, color='white')
-        ax_expenses.set_yticklabels(ax_expenses.get_yticks(), color='white')
+    async def get_income_vs_expenses_bar_chart(self, last_six_months: DataFrame) -> alt.Chart:
+        bar_chart = alt.Chart(last_six_months).mark_bar().encode(
+            x= alt.X(
+                'month_label:O', 
+                title='Month',
+                sort= self.MONTH_LABELS
+            ),
+            y= alt.Y(
+                'amount:Q', 
+                title='Amount',
+                axis= alt.Axis(format= AMOUNT_FORMAT)
+            ),
+            xOffset= alt.XOffset(
+                'type:N', 
+                scale= alt.Scale(
+                    domain= [TransactionType.INCOME.value, TransactionType.EXPENSE.value]
+                )
+            ),
+            color= alt.Color('type:N', legend= None, scale= alt.Scale(
+                    domain= [TransactionType.INCOME.value, TransactionType.EXPENSE.value],
+                    range= [PlottingService.INCOME_COLOR, PlottingService.EXPENSES_COLOR]
+                )
+            ),
+            tooltip= [
+                alt.Tooltip('month:O', title='Month'),
+                alt.Tooltip('amount:Q', title='Amount', format= AMOUNT_FORMAT)
+            ],
+        ).properties(
+            title='Income vs Expenses (last 6 months)'
+        )
         
-        return expenses_bar_chart
+        return bar_chart
     
-    @staticmethod
-    def bar_chart_monthly_total_income(monthly_results: DataFrame) -> plt.figure:
-        income_bar_chart, ax_income = plt.subplots()
-
-        # Plot the data
-        ax_income.bar(monthly_results['year_month'], monthly_results['total_income'], color='blue')
-
-        # Transparent background, white grid on Y-axis only, and white labels
-        income_bar_chart.patch.set_alpha(0)
-        ax_income.set_facecolor('none')
-        ax_income.grid(True, color='gray', linestyle='-', linewidth=0.5, axis='y')
-        ax_income.set_xticklabels(monthly_results['year_month'], rotation=90, color='white')
-        ax_income.set_yticklabels(ax_income.get_yticks(), color='white')
-
-        return income_bar_chart
-    
-    @staticmethod
-    def bar_chart_daily_total_expenses(avg_expenses_per_day: Series) -> plt.figure:
-        expenses_bar_chart, ax_avg_expenses_per_day = plt.subplots()
-        ax_avg_expenses_per_day.bar(avg_expenses_per_day.index, avg_expenses_per_day, color='red')
-
-        # Transparent background, Y-axis grid only, and white labels
-        expenses_bar_chart.patch.set_alpha(0)
-        ax_avg_expenses_per_day.set_facecolor('none')
-        ax_avg_expenses_per_day.grid(True, color='gray', linestyle='-', linewidth=0.5, axis='y')
-        ax_avg_expenses_per_day.set_xticks(range(1, 32))
-        ax_avg_expenses_per_day.set_xticklabels(range(1, 32), rotation=90, color='white')
-        ax_avg_expenses_per_day.set_yticklabels(ax_avg_expenses_per_day.get_yticks(), color='white')
-
-        return expenses_bar_chart
-    
-    @staticmethod
-    def bar_chart_daily_total_income(avg_income_per_day: Series) -> plt.figure:
-        income_bar_chart, ax_avg_income_per_day = plt.subplots()
-        ax_avg_income_per_day.bar(avg_income_per_day.index, avg_income_per_day, color='green')
-
-        # Transparent background, Y-axis grid only, and white labels
-        income_bar_chart.patch.set_alpha(0)
-        ax_avg_income_per_day.set_facecolor('none')
-        ax_avg_income_per_day.grid(True, color='gray', linestyle='-', linewidth=0.5, axis='y')
-        ax_avg_income_per_day.set_xticks(range(1, 32))
-        ax_avg_income_per_day.set_xticklabels(range(1, 32), rotation=90, color='white')
-        ax_avg_income_per_day.set_yticklabels(ax_avg_income_per_day.get_yticks(), color='white')
+    async def get_balance_line_chart(self, balance_six_months: DataFrame) -> alt.Chart:
+        line_chart = alt.Chart(balance_six_months).mark_line(
+            color=PlottingService.BALANCE_COLOR, 
+            point= alt.OverlayMarkDef(filled= True, color='purple', size= 50)
+        ).encode(
+            x= alt.X(
+                'month_label:O', 
+                title='Month',
+                sort= self.MONTH_LABELS
+            ),
+            y= alt.Y(
+                'balance:Q', 
+                title='Balance', 
+                axis= alt.Axis(format= AMOUNT_FORMAT)
+            ),
+            tooltip= [
+                alt.Tooltip('month_label:O', title='Month'),
+                alt.Tooltip('balance:Q', title='Balance', format= AMOUNT_FORMAT)
+            ]
+        ).properties(
+            title='Balance (last 6 months)',
+            height=500
+        )
         
-        return income_bar_chart
+        return line_chart
+    
+    def monthly_bar_chart(self, monthly_results: DataFrame, category: Literal['Abono', 'Cargo']) -> alt.Chart:
+        bar_chart = alt.Chart(monthly_results).mark_bar(
+                color=PlottingService.INCOME_COLOR if category == 'Abono' else PlottingService.EXPENSES_COLOR
+            ).encode(
+            x= alt.X(
+                'month_label:O', 
+                title='Month',
+                sort= self.MONTH_LABELS
+            ),
+            y= alt.Y(
+                'total_income:Q' if category == 'Abono' else 'total_withdrawal:Q', 
+                title='Amount', 
+                axis= alt.Axis(format= AMOUNT_FORMAT)
+            ),
+            tooltip= [
+                alt.Tooltip('month_label:O', title='Month'),
+                alt.Tooltip('total_income:Q' if category == 'Abono' else 'total_withdrawal:Q', title='Amount', format= AMOUNT_FORMAT)
+            ]
+        )
         
+        return bar_chart
+    
+    def daily_bar_chart(self, amounts_per_day: Series, category: Literal['Abono', 'Cargo']) -> alt.Chart:
+        bar_chart = alt.Chart(amounts_per_day).mark_bar(
+            color=PlottingService.INCOME_COLOR if category == 'Abono' else PlottingService.EXPENSES_COLOR, 
+            width = 10
+        ).encode(
+            x= alt.X(
+                'day:Q', 
+                title='Day',
+                scale= alt.Scale(domain= [1, 31]),
+                axis= alt.Axis(
+                    tickCount= 31,
+                    labelAngle= 0
+                )
+            ),
+            y= alt.Y('amount:Q', title='Amount', axis= alt.Axis(format= AMOUNT_FORMAT)),
+            tooltip= [
+                alt.Tooltip('day:Q', title='Day'),
+                alt.Tooltip('amount:Q', title='Amount', format= AMOUNT_FORMAT)
+            ]
+        )
+        
+        return bar_chart
+    
+    def category_amount_bar_chart(self, data: DataFrame, category: Literal['Abono', 'Cargo']) -> alt.Chart:
+        base = alt.Chart(data).encode(
+            x= alt.X(
+                'amount:Q', 
+                title='Amount', 
+                axis= alt.Axis(format= AMOUNT_FORMAT), 
+            ),
+            y= alt.Y(
+                'category:N', 
+                title='Category',
+                sort= alt.SortField(field='amount', order='descending')
+            ),
+            text= alt.Text('amount:Q', format= AMOUNT_FORMAT),
+            color= alt.Color('category:N', legend= None, scale= alt.Scale(scheme= 'greens' if category == 'Abono' else 'reds')),
+        )
+        
+        return base.mark_bar() + base.mark_text(align= 'left', dx= 2)
+    
     def donut_chart_goal_progress(self, goal_info: GoalInfo) -> plt.figure:
         completion_percentage = goal_info.progress_porcentage * 100
         porcentage_text = f'{int(completion_percentage)}%'

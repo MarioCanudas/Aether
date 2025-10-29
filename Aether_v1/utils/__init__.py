@@ -7,7 +7,9 @@ from .helper_functions import (
     clean_amount,
     identify_date_separator,
     to_decimal,
-    give_amount_format
+    give_amount_format,
+    months_map,
+    modify_period
 )
 
 __all__ = [
@@ -19,5 +21,7 @@ __all__ = [
     'clean_amount',
     'identify_date_separator',
     'to_decimal',
-    'give_amount_format'
+    'give_amount_format',
+    'months_map',
+    'modify_period'
 ]

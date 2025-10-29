@@ -2,17 +2,17 @@ from decimal import Decimal
 from datetime import date
 from typing import List
 from models.amounts import TransactionType
-from models.financial import SummaryMetrics, FinancialStatus
+from models.financial import FinancialStatus, FinancialAmountsSums
 from models.goals import GoalInfo, GoalProgressScore
 
 class FinancialAnalysisService:   
     @staticmethod
-    def get_financial_status_label(summary_metrics: SummaryMetrics) -> FinancialStatus:
-        if summary_metrics.total_savings >= Decimal(0.10) * summary_metrics.avg_income_per_month:
+    def get_financial_status_label(avg_financial_sums: FinancialAmountsSums) -> FinancialStatus:
+        if avg_financial_sums.savings >= Decimal(0.10) * avg_financial_sums.income:
             return FinancialStatus.EXCELLENT
-        elif 0 <= summary_metrics.total_savings < Decimal(0.10) * summary_metrics.avg_income_per_month:
+        elif 0 <= avg_financial_sums.savings < Decimal(0.10) * avg_financial_sums.income:
             return FinancialStatus.GOOD
-        elif Decimal(-0.10) * summary_metrics.avg_income_per_month <= summary_metrics.total_savings < 0:
+        elif Decimal(-0.10) * avg_financial_sums.income <= avg_financial_sums.savings < 0:
             return FinancialStatus.REGULAR
         else:
             return FinancialStatus.POOR

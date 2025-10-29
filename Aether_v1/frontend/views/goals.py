@@ -2,10 +2,17 @@ import streamlit as st
 from utils import give_amount_format
 from controllers import GoalsController
 from components import new_goal_popup, add_amount_popup, config_goals_templates_popup
-
-controller = GoalsController()
+from constants.views_icons import GOALS_ICON
 
 def show_goals():
+    # Page config
+    st.set_page_config(
+        page_title='Goals', 
+        page_icon=GOALS_ICON, 
+        layout='centered'
+    )
+    controller = GoalsController()
+    
     st.title('Goals')
     
     left, right, _ = st.columns([1, 1, 3])

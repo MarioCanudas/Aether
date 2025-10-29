@@ -1,9 +1,9 @@
 import streamlit as st
 import pandas as pd
-from controllers import TransactionProcessorController
+from controllers import UploadStatementsController
 from models.tables import AllTransactionsTable
 
-controller = TransactionProcessorController()
+controller = UploadStatementsController()
 
 @st.dialog('Confirm Upload')
 def confirm_upload_popup(transactions: AllTransactionsTable) -> None:

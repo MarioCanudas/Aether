@@ -1,4 +1,4 @@
-from typing import Optional, TypedDict
+from typing import Optional, TypedDict, List
 from decimal import Decimal
 from datetime import date
 
@@ -10,21 +10,38 @@ class TransactionRecord(TypedDict):
     >>> date: str
     >>> description: Optional[str]
     >>> category_id: Optional[int]
+    >>> category: Optional[str]
     >>> amount: float
     >>> type: str
     >>> bank: str
     >>> statement_type: str
     >>> filename: Optional[str]
     """
-    user_id: Optional[int]
+    user_id: Optional[int] = None
     date: str
-    description: Optional[str]
-    category_id: Optional[int]
-    amount: float
+    description: Optional[str] = None
+    category_id: Optional[int] = None
+    category: Optional[str] = None
+    amount: Decimal | float
     type: str
     bank: str
     statement_type: str
-    filename: Optional[str]
+    filename: Optional[str] = None
+    
+    @classmethod
+    def default_values(cls) -> List[str]:
+        return [
+            'user_id',
+            'date',
+            'description',
+            'category_id',
+            'category',
+            'amount',
+            'type',
+            'bank',
+            'statement_type',
+            'filename'
+        ]
     
 class MonthlyResultRecord(TypedDict):
     """

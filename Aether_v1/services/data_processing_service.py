@@ -74,7 +74,7 @@ class DataProcessingService:
         return MonthlyResultsTable(df=pd.DataFrame(results))
     
     @staticmethod
-    def process_daily_data_by_category(data: pd.DataFrame, category: Literal['Abono', 'Cargo']) -> pd.Series:
+    def process_avg_daily_data_by_category(data: pd.DataFrame, category: Literal['Abono', 'Cargo']) -> pd.Series:
         """
         Process daily data by calculating the average income and expenses per day.
 

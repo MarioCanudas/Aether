@@ -2,14 +2,21 @@ import streamlit as st
 from datetime import date
 from utils import to_decimal
 from controllers import CashTransactionController
+from constants.views_icons import CASH_TRANSACTION_ICON
 from components import new_template_popup, modify_template_popup
 from models.amounts import TransactionType
 from models.bank_properties import BankName, StatementType
 from models.financial import TransactionRecord
 
-controller = CashTransactionController()
-
 def show_cash_transactions():
+    # Page config
+    st.set_page_config(
+        page_title='Cash Transaction', 
+        page_icon=CASH_TRANSACTION_ICON, 
+        layout='centered'
+    )
+    controller = CashTransactionController()
+    
     with st.container(key= f'add_cash_transaction_container', border= True):
         st.header('Add a cash transaction')
         

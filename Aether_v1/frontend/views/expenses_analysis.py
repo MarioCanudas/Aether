@@ -1,27 +1,121 @@
 import streamlit as st
+import asyncio
+from datetime import date, timedelta
+from utils import give_amount_format
 from controllers import AnalysisController
+from components import period_select_box
+from constants.dates import MonthLabels
+from constants.views_icons import EXPENSES_ANALYSIS_ICON
+from models.dates import Period
+from models.views_data import PeriodsOptions
 
-controller = AnalysisController()
-
-def show_expenses_analysis(): 
+def show_expenses_analysis():
+    # Page config
+    st.set_page_config(
+        page_title='Expenses Analysis', 
+        page_icon=EXPENSES_ANALYSIS_ICON, 
+        layout='wide'
+    )
+    controller = AnalysisController()
+    view_data = asyncio.run(controller.get_analysis_view_data('Cargo'))
+    
     st.title('Expenses Analysis')
 
     # Check if monthly results are available
     if controller.user_have_transactions():
-        st.write("Analysis based on monthly results")
-
-        # Bar chart for Total Expenses
-        st.subheader('Total Expenses by Month')
-        monthly_expenses_chart = controller.get_bar_chart_monthly_total_by_category('Cargo')
-
-        # Display the plot
-        st.pyplot(monthly_expenses_chart)
-
-        st.subheader('Average Expenses by Day')
-        
-        daily_expenses_chart = controller.get_bar_chart_daily_total_by_category('Cargo')
-        
-        # Display the plot
-        st.pyplot(daily_expenses_chart)
+        with st.container(border= True):
+            selected_period = period_select_box(key= "period_selectbox_expenses")
+    
+            if selected_period == PeriodsOptions.SPECIFIC_PERIOD:
+                today = date.today()
+                default_period = Period(start_date= today - timedelta(days= 30), end_date= today)
+                
+                specific_period = st.date_input(
+                    label= "Specific Period",
+                    value= default_period.to_tuple(),
+                    key= "specific_period_date_input"
+                )
+                
+                if len(specific_period) == 2:
+                    period = Period(start_date= specific_period[0], end_date= specific_period[1])
+                else:
+                    period = default_period
+                            
+            left_1, center_1, right_1 = st.columns(3)
+            
+            if selected_period == PeriodsOptions.SPECIFIC_PERIOD:
+                analysis_amounts = asyncio.run(controller.get_amounts_in_specific_period('Cargo', period))
+            else:
+                analysis_amounts = view_data.analysis_amounts[PeriodsOptions(selected_period)]
+            
+            left_1.metric(
+                'Accumulated Expenses', 
+                value= give_amount_format(analysis_amounts.accumulated_amount),
+                help= 'Accumulated expenses by the selected period.',
+            )
+            
+            center_1.metric(
+                'Max Expenses',
+                value= give_amount_format(analysis_amounts.max_amount),
+                help= 'Max expenses by the selected period.'
+            )
+            
+            right_1.metric(
+                'Expenses frecuency',
+                value= analysis_amounts.frecuency,
+                help= 'Expenses frecuency by the selected period.'
+            )
+                
+        with st.container(border= True):
+            left_2, right_2 = st.columns(2)
+            expenses_chart_type = left_2.segmented_control(
+                label= 'Chart type',
+                options= ['Daily', 'Monthly'],
+                key= 'expenses_chart_type',
+                default= 'Daily',
+                help= 'Select the chart type to display.'
+            )
+            
+            if expenses_chart_type == 'Daily':
+                with right_2:
+                    left_3, right_3 = st.columns(2)
+                    
+                    year = left_3.selectbox(
+                        label= 'Select year',
+                        options= controller.get_years(),
+                        key= 'expenses_year_selectbox',
+                        index= 0,
+                    )
+                    month = right_3.selectbox(
+                        label= 'Select month',
+                        options= MonthLabels.get_values(),
+                        key= 'expenses_month_selectbox',
+                    )
+                
+                st.subheader('Expenses per Day')
+                st.altair_chart(controller.get_daily_bar_chart('Cargo', MonthLabels(month), year))
+            else:
+                year = right_2.selectbox(
+                    label= 'Select year',
+                    options= controller.get_years(),
+                    key= 'expenses_month_selectbox',
+                    index= 0,
+                )
+                st.subheader('Total Expenses per Month')
+                st.altair_chart(controller.get_monthly_bar_chart('Cargo', year))
+                
+        with st.container(border= True):
+            st.subheader('Sources of Expenses')
+            st.altair_chart(view_data.amount_per_category_chart)
+                
+        with st.container(border= True):
+            st.subheader('Average Expenses')
+            
+            left_4, right_4 = st.columns(2)
+            with left_4:
+                st.altair_chart(view_data.avg_monthly_bar_chart)
+            with right_4:
+                st.altair_chart(view_data.avg_daily_bar_chart)
+                  
     else: 
         st.info("No transactions available. Please upload files in the Home view.")

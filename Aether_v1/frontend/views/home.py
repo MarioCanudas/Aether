@@ -1,58 +1,135 @@
 import streamlit as st
-from controllers import TransactionProcessorController
-from components.confirm_upload import confirm_upload_popup
+import altair as alt
+import asyncio
+from datetime import datetime, timedelta
+from controllers import HomeController
+from components import period_select_box
+from constants.dates import MonthLabels
+from constants.views_icons import HOME_ICON
+from models.dates import Period
+from models.financial import FinancialAmountsSums
+from models.views_data import HomeViewData, PeriodsOptions
 
-controller = TransactionProcessorController()
+def _financial_sums(financial_sums: FinancialAmountsSums):
+    income = float(financial_sums.income)
+    withdrawal = float(financial_sums.withdrawal)
+    savings = float(financial_sums.savings if financial_sums.savings else financial_sums.balance)
+
+    left, center, right = st.columns(3)
+    with left:
+        st.metric(
+            label="Income", 
+            value=f"${income:,.2f}", 
+            border= False,
+            help= "Income by the selected period."
+        )
+    with center:
+        st.metric(
+            label="Withdrawal", 
+            value=f"${withdrawal:,.2f}", 
+            border= False,
+            help= "Withdrawal by the selected period."
+        )
+    with right:
+        st.metric(
+            label="Savings", 
+            value=f"${savings:,.2f}", 
+            border= False,
+            help= "Savings by the selected period."
+        )
+    
+def _last_transactions(view_data: HomeViewData):
+    last_transactions = view_data.last_transactions
+    
+    st.subheader("Last Transactions")
+    
+    st.dataframe(last_transactions, hide_index= True)
+        
+def _tips(view_data: HomeViewData):
+    tips = view_data.tips
+    
+    st.write("<h2 style='text-align: center;'>Tips</h2>", unsafe_allow_html= True)
+    for tip in tips:
+        st.write(f"- {tip}")
 
 def show_home():
-    # Set the title
-    st.title('Quick Financial Analysis')
-    # File uploader
-    uploaded_files = st.file_uploader(
-        "Please upload your Bank Statement PDF files", 
-        accept_multiple_files=True, 
-        type="pdf",
-        disabled= False if st.session_state.logged_in else True,
-        key= 'home_file_uploader'
-    )   
-
-    if uploaded_files:
-
-        st.write("Processing Files...")
-        try:
-            transactions = controller.process_uploaded_files(uploaded_files)
-            confirm_upload_popup(transactions)
-        except Exception as e:
-            st.error(f"An unexpected error processing files: {e}")
-            
+    # Page config
+    st.set_page_config(
+        page_title='Home', 
+        page_icon=HOME_ICON, 
+        layout='wide'
+    )
+    controller = HomeController()
+    
+    st.title('Home')
+ 
     if controller.user_have_transactions():
-        financial_analysis = controller.get_financial_summary()
+        home_view_data = asyncio.run(controller.get_home_view_data())
+        left, right = st.columns([3, 1.5])
         
-        # Convert Decimal to float for display in streamlit
-        total_savings = float(financial_analysis.total_savings)
-        avg_income_per_month = float(financial_analysis.avg_income_per_month)
-        avg_withdrawal_per_month = float(financial_analysis.avg_withdrawal_per_month)
+        with left:
+            balance = float(home_view_data.all_time_sums.balance)
+            with st.container(border= True):
+                st.metric(
+                    label="Balance", 
+                    value=f"${balance:,.2f}", 
+                    border= False,
+                    help= "General balance of the user. Total of income minus total of withdrawal."
+                )
+                
+            with st.container(border= True):
+                metrics_period = period_select_box(key= "period_selectbox_home")
 
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.metric(label="Savings", value=f"${total_savings:,.2f}")
-        with col2:
-            st.metric(label="AVG Income/Month", value=f"${avg_income_per_month:,.2f}")
-        with col3:
-            st.metric(label="AVG Withdrawal/Month", value=f"${avg_withdrawal_per_month:,.2f}")
-
-        donut_score_chart = controller.get_donut_score_chart()
-        label = financial_analysis.label
+                if metrics_period == PeriodsOptions.SPECIFIC_PERIOD:
+                    today = datetime.now().date()
+                    
+                    specific_period = st.date_input(
+                        label= "Specific Period",
+                        value= (today - timedelta(days= 30), today),
+                        key= "specific_period_date_input"
+                    )
+                    
+                if metrics_period == PeriodsOptions.ALL_TIME:
+                    financial_sums = home_view_data.all_time_sums
+                elif metrics_period == PeriodsOptions.CURRENT_MONTH:
+                    financial_sums = home_view_data.current_month_sums
+                elif metrics_period == PeriodsOptions.LAST_MONTH:
+                    financial_sums = home_view_data.last_month_sums
+                elif metrics_period == PeriodsOptions.AVARAGE:
+                    financial_sums = home_view_data.avarage_sums
+                elif metrics_period == PeriodsOptions.SPECIFIC_PERIOD:
+                    try:
+                        period = Period(start_date= specific_period[0], end_date= specific_period[1])
+                        financial_sums = controller.get_specific_period_sums(period)
+                    except:
+                        today = datetime.now().date()
+                        financial_sums = controller.get_specific_period_sums(Period(start_date= today - timedelta(days= 30), end_date= today))
+                    
+                
+                _financial_sums(financial_sums)
+            
+            with st.container(border= True):
+                final_chart = alt.layer(home_view_data.income_vs_expenses_bar_chart, home_view_data.balance_line_chart).encode(
+                    x= alt.X('month_label:O', sort= MonthLabels.get_values())
+                ).properties(
+                    title='Income vs Expenses (last 6 months)'
+                )
+                st.altair_chart(final_chart, use_container_width= True)
+            
+        with right: 
+            label = home_view_data.label
+            
+            with st.container(border= True):
+                st.write(f"<h2 style='text-align: center;'>Financial Health</h2>", unsafe_allow_html= True)
+                st.pyplot(home_view_data.donut_score_chart)
+                st.write(f"<h4 style='text-align: center;'>{label.value}</h4>", unsafe_allow_html= True)
+            
+                st.divider()
+                
+                _tips(home_view_data) 
         
-        st.pyplot(donut_score_chart)
-        st.markdown(f"<h2 style='text-align: center;'>Financial Health: {label}</h2>", unsafe_allow_html=True)
-
-        tips = financial_analysis.tips
-        st.subheader("Tips")
-        for tip in tips:
-            st.write(f"- {tip}")
+        with st.container(border= True):
+            _last_transactions(home_view_data)
         
-        # TODO: Uncomment and remove disabled= True when the clear all transactions function is implemented
-        if st.button('Clear all transactions', disabled= True):
-            # controller.clear_all_transactions()
-            st.rerun()
+    else:
+        st.info("No transactions available. Please upload files in the Upload Statements view.")
