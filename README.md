@@ -224,7 +224,8 @@ The application features a sophisticated PDF processing pipeline:
 
 # Disclaimers
 
-## Must have a .env file with the host, port, name, user and password for the database, could be local or hosted in some Platform. Check the init_db.sql file to initialize the database with the required Structure
+>[!WARNING]
+>Must have a .env file with the host, port, name, user and password for the database, could be local or hosted in some Platform. Check the init_db.sql file to initialize the database with the required Structure
 
 The application requires a `.env` file in the project root with the following database configuration:
 
@@ -248,7 +249,8 @@ Use the `init_db.sql` file to initialize the database with the required schema, 
 - Financial goals tracking
 - Template system for reusable configurations
 
-## The user can use the manual transaction input or the statement extraction transaction input, but right now the app cannot delete the duplicates from these types of transaction inputs
+>[!WARNING]
+>The user can use the manual transaction input or the statement extraction transaction input, but right now the app cannot delete the duplicates from these types of transaction inputs
 
 **Important Limitation**: The application currently supports two transaction input methods:
 
