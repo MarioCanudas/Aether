@@ -1,8 +1,34 @@
 from typing import List
+from functools import cached_property
+from passlib.context import CryptContext
 from services import UserDBService
 from .base_controller import BaseController
 
 class LogsController(BaseController):
+    @cached_property
+    def password_context(self) -> CryptContext:
+        return CryptContext(schemes= ['argon2'], deprecated= 'auto')
+    
+    def _hash_password(self, password: str) -> str:
+        return self.password_context.hash(password)
+    
+    def _verify_password(self, password: str, hashed_password: str) -> bool:
+        return self.password_context.verify(password, hashed_password)
+    
+    def verify_login(self, username: str, password: str) -> bool:
+        with self.quick_read_conn() as conn:
+            users_db = UserDBService(conn)
+            
+            user = users_db.get_user(username= username)
+            
+            if user is None:
+                return False
+            
+            if user.password_hash is None:
+                raise ValueError('Password hash is not set for user')
+            
+            return self._verify_password(password, user.password_hash)
+    
     def update_user_id(self, user_id: int) -> None:
         self.user_session_service.set_current_user_by_id(user_id)
     
