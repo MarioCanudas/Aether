@@ -40,5 +40,5 @@ test = [
 ]
 
 [tool.poe.tasks]
-run-tests = "pytest -v --tb=short Aether_v1/tests/test_models/document_processing/ Aether_v1/tests/test_models/table_processing/ Aether_v1/tests/test_models/data_processing/ Aether_v1/tests/test_services/ Aether_v1/tests/test_controllers/"
+# run-tests = "pytest -v --tb=short Aether_v1/tests"
 run-app = { cmd = "streamlit run frontend/app.py", cwd = "Aether_v1" }
