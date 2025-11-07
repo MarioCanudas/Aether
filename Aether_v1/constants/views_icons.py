@@ -1,7 +1,7 @@
 HOME_ICON = ':material/home:'
 LOGIN_ICON = ':material/login:'
 LOGOUT_ICON = ':material/logout:'
-USERS_CONFIG_ICON = ':material/account_circle:'
+PROFILE_ICON = ':material/account_circle:'
 TRANSACTIONS_ICON = ':material/table:'
 UPLOAD_STATEMENTS_ICON = ':material/arrow_upload_ready:'
 INCOME_ANALYSIS_ICON = ':material/trending_up:'
