@@ -21,7 +21,7 @@ from views.cash_transaction import show_cash_transactions
 from views.income_analysis import show_income_analysis
 from views.expenses_analysis import show_expenses_analysis
 from views.goals import show_goals
-from views.users_config import show_users_config
+from views.profile_config import show_profile
 from views.data import show_data
 from views.upload_files import show_upload_statements
 from constants.views_icons import (
@@ -34,7 +34,7 @@ from constants.views_icons import (
     GOALS_ICON,
     TRANSACTIONS_ICON,
     UPLOAD_STATEMENTS_ICON,
-    USERS_CONFIG_ICON,
+    PROFILE_ICON,
 )
 from components import new_category_popup
 
@@ -101,15 +101,8 @@ if st.session_state.logged_in:
                 ),
             ],
             "Account": [
+                st.Page(show_profile, title="Profile", icon=PROFILE_ICON),
                 st.Page(logout, title="Log out", icon=LOGOUT_ICON),
-                # st.Page(show_profile_config, title= "Profile", icon= ':material/account_circle:'),
-            ],
-            "Dev Tools": [
-                st.Page(
-                    show_users_config,
-                    title="Users Configuration",
-                    icon=USERS_CONFIG_ICON,
-                ),
             ],
         }
     )

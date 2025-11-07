@@ -1,5 +1,5 @@
 from typing import Optional, Any, Dict, List
-from models.users import UserInfo, NewUser
+from models.users import UserProfile, NewUser
 from .base_db import BaseDBService
 
 class UserDBService(BaseDBService):
@@ -15,7 +15,7 @@ class UserDBService(BaseDBService):
     last_login = 'last_login'
     updated_at = 'updated_at'
     
-    def get_user(self, **conditions: Any) -> UserInfo | None:
+    def get_user(self, **conditions: Any) -> UserProfile | None:
         query = f"SELECT * FROM {self.table_name}"
         
         if conditions:
@@ -28,7 +28,7 @@ class UserDBService(BaseDBService):
             
         result = self.execute_query(query, params= params, fetch='one', dict_cursor=True)
         
-        return UserInfo.from_dict(result) if result else None
+        return UserProfile.from_dict(result) if result else None
     
     def get_users(self, columns: Optional[List[str]] = None) -> List[Dict[str, Any]]:
         if columns:
@@ -47,7 +47,7 @@ class UserDBService(BaseDBService):
 
             self.execute_query(query, params= user.model_dump())
             
-    def update_user(self, user: UserInfo) -> None:
+    def update_user(self, user: UserProfile) -> None:
         with self.transaction():
             query = f"""
                 UPDATE {self.table_name}
