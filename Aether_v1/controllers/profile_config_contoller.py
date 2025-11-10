@@ -123,9 +123,3 @@ class ProfileConfigController(BaseController):
                     updated_at= datetime.now()
                 )
             )
-                
-    def delete_user(self, user_id: int) -> None:
-        with self.session_conn() as conn:
-            users_db = UserDBService(conn)
-            
-            users_db.delete_user(user_id)
