@@ -15,7 +15,10 @@ class ProfileConfigController(BaseController):
     def _hash_password(self, password: str) -> str:
         return self.password_context.hash(password)
     
-    def _verify_password(self, password: str, hashed_password: str) -> bool:
+    def _verify_password(self, password: str, hashed_password: str | None) -> bool:
+        if hashed_password is None:
+            return False
+        
         return self.password_context.verify(password, hashed_password)
     
     def get_profile(self) -> UserProfile:
@@ -100,6 +103,12 @@ class ProfileConfigController(BaseController):
             new_username: Optional[str] = None, 
             new_password: Optional[str] = None
         ) -> None:
+        if new_username == '':
+            new_username = None
+            
+        if new_password == '':
+            new_password = None
+            
         profile = self.get_profile()
         
         if profile.username == new_username:
