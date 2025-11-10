@@ -47,43 +47,17 @@ class UserDBService(BaseDBService):
 
             self.execute_query(query, params= new_user.model_dump())
             
-    def update_user(self, user: UserUpdate) -> None:
-        if user.username is None and user.password_hash is None:
-            raise ValueError('Username and password hash cannot be None')
+    def update_user(self, user_id: int, **updates: Any) -> None:
+        params = self._validate_conditions(updates)
+        params['user_id'] = user_id
         
-        elif user.username is None and user.password_hash is not None:
-            query = f"""
-                UPDATE {self.table_name}
-                SET {self.password_hash} = %(password_hash)s, {self.updated_at} = %(updated_at)s
-                WHERE {self.id_col} = %(id)s
-            """
-            params = {
-                'password_hash': user.password_hash,
-                'updated_at': user.updated_at,
-                'id': user.user_id
-            }
-        elif user.username is not None and user.password_hash is None:
-            query = f"""
-                UPDATE {self.table_name}
-                SET {self.username} = %(username)s, {self.updated_at} = %(updated_at)s
-                WHERE {self.id_col} = %(id)s
-            """
-            params = {
-                'username': user.username,
-                'updated_at': user.updated_at,
-                'id': user.user_id
-            }
-        elif user.username is not None and user.password_hash is not None:
-            query = f"""
-                UPDATE {self.table_name}
-                SET {self.username} = %(username)s, {self.password_hash} = %(password_hash)s, {self.updated_at} = %(updated_at)s
-                WHERE {self.id_col} = %(id)s
-            """
-            params = {**user.model_dump(), 'id': user.user_id}
-        else:
-            raise ValueError('Invalid username and password hash')
-                
         with self.transaction():
+            query = f"""
+                UPDATE {self.table_name}
+                SET {', '.join([f"{col} = %({col})s" for col in updates])}
+                WHERE {self.id_col} = %(user_id)s
+            """
+            
             self.execute_query(query, params= params)
             
     def delete_user(self, user_id: int) -> None:

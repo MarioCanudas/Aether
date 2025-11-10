@@ -1,6 +1,7 @@
 from typing import List
 from functools import cached_property
 from passlib.context import CryptContext
+from datetime import datetime
 from services import UserDBService
 from models.users import NewUser
 from .base_controller import BaseController
@@ -29,6 +30,12 @@ class LogsController(BaseController):
                 raise ValueError('Password hash is not set for user')
             
             return self._verify_password(password, user.password_hash)
+        
+    def update_last_login(self, user_id: int) -> None:
+        with self.session_conn() as conn:
+            users_db = UserDBService(conn)
+            
+            users_db.update_user(user_id, last_login= datetime.now())
     
     def update_user_id(self, user_id: int) -> None:
         self.user_session_service.set_current_user_by_id(user_id)

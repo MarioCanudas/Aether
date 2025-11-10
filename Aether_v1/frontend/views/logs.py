@@ -25,6 +25,7 @@ def show_login():
                     if controller.verify_login(username, password):
                         user_id = controller.get_user_id(username)
                         controller.update_user_id(user_id)
+                        controller.update_last_login(user_id)
                         st.session_state.user_id = user_id
                         
                         st.session_state.logged_in = True

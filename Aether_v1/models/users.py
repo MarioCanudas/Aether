@@ -11,7 +11,7 @@ class UserUpdate(BaseModel):
     username: Optional[str] = None
     password_hash: Optional[str] = None
     updated_at: datetime
-
+    last_login: Optional[datetime] = None
 
 class UserProfile(BaseModel):
     user_id: int

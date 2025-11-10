@@ -115,11 +115,12 @@ class ProfileConfigController(BaseController):
             
             user_id = users_db.find_id(username= profile.username)
             
-            users_db.update_user(
-                UserUpdate(
-                    user_id= user_id, 
-                    username= new_username, 
-                    password_hash= new_password_hash,
-                    updated_at= datetime.now()
-                )
-            )
+            match new_username, new_password:
+                case (None, None):
+                    raise ValueError('At least one of the fields must be provided')
+                case (None, _):
+                    users_db.update_user(user_id, password_hash= new_password_hash)
+                case (_, None):
+                    users_db.update_user(user_id, username= new_username)
+                case (_, _):
+                    users_db.update_user(user_id, username= new_username, password_hash= new_password_hash)
