@@ -8,7 +8,7 @@ class NewUser(BaseModel):
     
 class UserUpdate(BaseModel):
     user_id: int
-    username: str
+    username: Optional[str] = None
     password_hash: Optional[str] = None
     updated_at: datetime
 

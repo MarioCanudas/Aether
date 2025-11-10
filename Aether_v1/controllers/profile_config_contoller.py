@@ -17,14 +17,6 @@ class ProfileConfigController(BaseController):
     
     def _verify_password(self, password: str, hashed_password: str) -> bool:
         return self.password_context.verify(password, hashed_password)
-        
-    def _can_modify_profile(self, users_db: UserDBService, current_password: str) -> bool:
-        user = users_db.get_user(user_id= self.user_id)
-        
-        if user is None:
-            return False
-        
-        return self._verify_password(current_password, user.password_hash)
     
     def get_profile(self) -> UserProfile:
         with self.quick_read_conn() as conn:
@@ -102,22 +94,26 @@ class ProfileConfigController(BaseController):
                 days_since_last_transaction=days_since_last_transaction
             )
         
-    def modify_user(self, current_username: str, current_password: str, new_username: str, new_password: Optional[str] = None) -> None:
-        if current_username == new_username:
+    def modify_user(
+            self, 
+            current_password: str,
+            new_username: Optional[str] = None, 
+            new_password: Optional[str] = None
+        ) -> None:
+        profile = self.get_profile()
+        
+        if profile.username == new_username:
             raise ValueError('New username cannot be the same as the current username')
         
         with self.session_conn() as conn:
             users_db = UserDBService(conn)
             
-            if not self._can_modify_profile(users_db, current_password):
+            if not self._verify_password(current_password, profile.password_hash):
                 raise ValueError('Invalid current password')
             
-            if not isinstance(new_password, str) or new_password == '':
-                raise ValueError('New password cannot be empty')
-            else:
-                new_password_hash = self._hash_password(new_password)
+            new_password_hash = self._hash_password(new_password) if new_password else None
             
-            user_id = users_db.find_id(username= current_username)
+            user_id = users_db.find_id(username= profile.username)
             
             users_db.update_user(
                 UserUpdate(

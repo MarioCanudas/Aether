@@ -1,5 +1,5 @@
 from typing import Optional, Any, Dict, List
-from models.users import UserProfile, NewUser
+from models.users import UserProfile, NewUser, UserUpdate
 from .base_db import BaseDBService
 
 class UserDBService(BaseDBService):
@@ -47,15 +47,44 @@ class UserDBService(BaseDBService):
 
             self.execute_query(query, params= user.model_dump())
             
-    def update_user(self, user: UserProfile) -> None:
-        with self.transaction():
+    def update_user(self, user: UserUpdate) -> None:
+        if user.username is None and user.password_hash is None:
+            raise ValueError('Username and password hash cannot be None')
+        
+        elif user.username is None and user.password_hash is not None:
             query = f"""
                 UPDATE {self.table_name}
-                SET {self.username} = %(username)s, {self.password_hash} = %(password_hash)s
+                SET {self.password_hash} = %(password_hash)s, {self.updated_at} = %(updated_at)s
                 WHERE {self.id_col} = %(id)s
             """
-            
-            self.execute_query(query, params= user.model_dump())
+            params = {
+                'password_hash': user.password_hash,
+                'updated_at': user.updated_at,
+                'id': user.user_id
+            }
+        elif user.username is not None and user.password_hash is None:
+            query = f"""
+                UPDATE {self.table_name}
+                SET {self.username} = %(username)s, {self.updated_at} = %(updated_at)s
+                WHERE {self.id_col} = %(id)s
+            """
+            params = {
+                'username': user.username,
+                'updated_at': user.updated_at,
+                'id': user.user_id
+            }
+        elif user.username is not None and user.password_hash is not None:
+            query = f"""
+                UPDATE {self.table_name}
+                SET {self.username} = %(username)s, {self.password_hash} = %(password_hash)s, {self.updated_at} = %(updated_at)s
+                WHERE {self.id_col} = %(id)s
+            """
+            params = {**user.model_dump(), 'id': user.user_id}
+        else:
+            raise ValueError('Invalid username and password hash')
+                
+        with self.transaction():
+            self.execute_query(query, params= params)
             
     def delete_user(self, user_id: int) -> None:
         with self.transaction():

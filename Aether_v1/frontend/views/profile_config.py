@@ -1,6 +1,7 @@
 import streamlit as st
 import asyncio
 from constants.views_icons import PROFILE_ICON
+from components import modify_profile_popup
 from controllers import ProfileConfigController
 
 def show_profile() -> None:
@@ -10,25 +11,28 @@ def show_profile() -> None:
     """
     # Page config
     st.set_page_config(
-        page_title='Profile', 
-        page_icon=PROFILE_ICON, 
+        page_title='Profile',
+        page_icon=PROFILE_ICON,
         layout='centered'
     )
-    
+
     controller = ProfileConfigController()
     view_data = asyncio.run(controller.get_profile_view_data())
-    
+
     # Header section
     st.title('👤 Profile')
-    
+
     # User info card
     with st.container(border=True):
-        col1, col2 = st.columns([2, 1])
-        
+        col1, col2 = st.columns(2)
+
         with col1:
-            st.subheader(view_data.profile.username)
-            st.caption(f"User ID: {view_data.profile.user_id}")
-        
+            st.metric(
+                label="Username",
+                value=view_data.profile.username,
+                help="Username of the user"
+            )
+
         with col2:
             # Account age metric
             st.metric(
@@ -36,28 +40,28 @@ def show_profile() -> None:
                 value=view_data.account_age_formatted,
                 help="Time since account creation"
             )
-            
-            
+
+
     # Account statistics section
     st.header('📊 Account Statistics')
-    
+
     with st.container(border=True):
         col1, col2, col3 = st.columns(3)
-        
+
         with col1:
             st.metric(
                 label="Total Transactions",
                 value=f"{view_data.transaction_count:,}",
                 help="Total number of transactions recorded"
             )
-        
+
         with col2:
             st.metric(
                 label="Active Goals",
                 value=f"{view_data.goal_count:,}",
                 help="Total number of goals created"
             )
-        
+
         with col3:
             # Activity indicator based on days since last transaction
             if view_data.days_since_last_transaction is None:
@@ -80,18 +84,18 @@ def show_profile() -> None:
                 activity_status = f"{view_data.days_since_last_transaction} days ago"
                 delta_color = "normal"
                 delta_value = f"{view_data.days_since_last_transaction} days"
-                help_text = f"Days since last transaction upload"
+                help_text = "Days since last transaction upload"
             elif view_data.days_since_last_transaction < 30:
                 activity_status = f"{view_data.days_since_last_transaction} days ago"
                 delta_color = "off"
                 delta_value = f"{view_data.days_since_last_transaction} days"
-                help_text = f"Days since last transaction upload"
+                help_text = "Days since last transaction upload"
             else:
                 activity_status = f"{view_data.days_since_last_transaction} days ago"
                 delta_color = "inverse"
                 delta_value = f"{view_data.days_since_last_transaction} days"
-                help_text = f"Days since last transaction upload"
-            
+                help_text = "Days since last transaction upload"
+
             st.metric(
                 label="Last Activity",
                 value=activity_status,
@@ -99,20 +103,20 @@ def show_profile() -> None:
                 delta_color=delta_color,
                 help=help_text
             )
-                
+
     # Account details section
     st.header('📅 Account Details')
-    
+
     with st.container(border=True):
         col1, col2 = st.columns(2)
-        
+
         with col1:
             st.markdown("**Account Created**")
             st.write(f"📆 {view_data.profile.created_at_formatted}")
-            
+
             st.markdown("**Last Login**")
             st.write(f"🔐 {view_data.profile.last_login_formatted}")
-        
+
         with col2:
             st.markdown("**Profile Updated**")
             if view_data.profile.updated_at:
@@ -120,4 +124,6 @@ def show_profile() -> None:
             else:
                 st.write("✏️ Not updated yet")
                 st.caption("Profile has not been modified since creation")
-        
+
+    if st.button('Modify Profile', icon= ':material/edit:', type= 'primary', key= 'modify_profile_button'):
+        modify_profile_popup(view_data.profile)
