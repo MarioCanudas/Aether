@@ -1,5 +1,5 @@
 from typing import Optional, Any, Dict, List
-from models.users import UserProfile, NewUser, UserUpdate
+from models.users import UserProfile, NewUser
 from .base_db import BaseDBService
 
 class UserDBService(BaseDBService):

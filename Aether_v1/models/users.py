@@ -5,13 +5,6 @@ from typing import Optional, Dict, Any
 class NewUser(BaseModel):
     username: str
     password_hash: Optional[str] = None # Optional because it's not required when adding a user for now
-    
-class UserUpdate(BaseModel):
-    user_id: int
-    username: Optional[str] = None
-    password_hash: Optional[str] = None
-    updated_at: datetime
-    last_login: Optional[datetime] = None
 
 class UserProfile(BaseModel):
     user_id: int

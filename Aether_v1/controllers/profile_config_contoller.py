@@ -1,9 +1,9 @@
-from datetime import datetime, date
+from datetime import date
 from functools import cached_property
 from passlib.context import CryptContext
 from typing import Optional
 from services import UserDBService, TransactionsDBService, GoalsDBService
-from models.users import UserUpdate, UserProfile
+from models.users import UserProfile
 from models.views_data import ProfileConfigViewData
 from .base_controller import BaseController
 
