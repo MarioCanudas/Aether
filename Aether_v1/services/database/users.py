@@ -38,14 +38,14 @@ class UserDBService(BaseDBService):
         
         return self.execute_query(query, fetch='all', dict_cursor=True)
     
-    def add_user(self, user: NewUser) -> None:
+    def add_user(self, new_user: NewUser) -> None:
         with self.transaction():
             query = f"""
                 INSERT INTO {self.table_name} ({self.username}, {self.password_hash}) 
                 VALUES (%(username)s, %(password_hash)s)
             """
 
-            self.execute_query(query, params= user.model_dump())
+            self.execute_query(query, params= new_user.model_dump())
             
     def update_user(self, user: UserUpdate) -> None:
         if user.username is None and user.password_hash is None:

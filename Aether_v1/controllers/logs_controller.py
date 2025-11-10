@@ -2,6 +2,7 @@ from typing import List
 from functools import cached_property
 from passlib.context import CryptContext
 from services import UserDBService
+from models.users import NewUser
 from .base_controller import BaseController
 
 class LogsController(BaseController):
@@ -47,3 +48,9 @@ class LogsController(BaseController):
             
             return users_db.find_id(username= username)
         
+    def add_user(self, new_user: NewUser) -> None:
+        with self.session_conn() as conn:
+            users_db = UserDBService(conn)
+            
+            users_db.add_user(new_user)
+            
