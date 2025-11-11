@@ -1,4 +1,5 @@
 import streamlit as st
+from components import add_user_popup
 from controllers.logs_controller import LogsController
 from constants.views_icons import LOGIN_ICON, LOGOUT_ICON
 
@@ -24,6 +25,7 @@ def show_login():
                     if controller.verify_login(username, password):
                         user_id = controller.get_user_id(username)
                         controller.update_user_id(user_id)
+                        controller.update_last_login(user_id)
                         st.session_state.user_id = user_id
                         
                         st.session_state.logged_in = True
@@ -33,6 +35,9 @@ def show_login():
                         st.error('Invalid username or password')
                 except ValueError as e:
                     st.error(f'Error verifying login: {e}')
+                    
+        if st.button('Add User', icon= ':material/add:', type= 'primary', key= 'add_user_button', help= 'Add a new user'):
+            add_user_popup(controller)
         
 def logout():
     # Page config

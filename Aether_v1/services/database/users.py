@@ -1,5 +1,5 @@
 from typing import Optional, Any, Dict, List
-from models.users import UserInfo, NewUser
+from models.users import UserProfile, NewUser
 from .base_db import BaseDBService
 
 class UserDBService(BaseDBService):
@@ -15,7 +15,7 @@ class UserDBService(BaseDBService):
     last_login = 'last_login'
     updated_at = 'updated_at'
     
-    def get_user(self, **conditions: Any) -> UserInfo | None:
+    def get_user(self, **conditions: Any) -> UserProfile | None:
         query = f"SELECT * FROM {self.table_name}"
         
         if conditions:
@@ -28,7 +28,7 @@ class UserDBService(BaseDBService):
             
         result = self.execute_query(query, params= params, fetch='one', dict_cursor=True)
         
-        return UserInfo.from_dict(result) if result else None
+        return UserProfile.from_dict(result) if result else None
     
     def get_users(self, columns: Optional[List[str]] = None) -> List[Dict[str, Any]]:
         if columns:
@@ -38,24 +38,27 @@ class UserDBService(BaseDBService):
         
         return self.execute_query(query, fetch='all', dict_cursor=True)
     
-    def add_user(self, user: NewUser) -> None:
+    def add_user(self, new_user: NewUser) -> None:
         with self.transaction():
             query = f"""
                 INSERT INTO {self.table_name} ({self.username}, {self.password_hash}) 
                 VALUES (%(username)s, %(password_hash)s)
             """
 
-            self.execute_query(query, params= user.model_dump())
+            self.execute_query(query, params= new_user.model_dump())
             
-    def update_user(self, user: UserInfo) -> None:
+    def update_user(self, user_id: int, **updates: Any) -> None:
+        params = self._validate_conditions(updates)
+        params['user_id'] = user_id
+        
         with self.transaction():
             query = f"""
                 UPDATE {self.table_name}
-                SET {self.username} = %(username)s, {self.password_hash} = %(password_hash)s
-                WHERE {self.id_col} = %(id)s
+                SET {', '.join([f"{col} = %({col})s" for col in updates])}
+                WHERE {self.id_col} = %(user_id)s
             """
             
-            self.execute_query(query, params= user.model_dump())
+            self.execute_query(query, params= params)
             
     def delete_user(self, user_id: int) -> None:
         with self.transaction():

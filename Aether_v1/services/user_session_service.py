@@ -1,7 +1,7 @@
 import logging
 import threading 
 from typing import Optional, List
-from models.users import NewUser, UserInfo
+from models.users import NewUser, UserProfile
 from .database.users import UserDBService
 from .connection_management_service import ConnectionManagementService
 
@@ -67,7 +67,7 @@ class UserSessionService:
 
         with self.connection_manager.get_quick_read_connection() as conn:
             users_table = UserDBService(conn)
-            user: Optional[UserInfo] = users_table.get_user(user_id=user_id)
+            user: Optional[UserProfile] = users_table.get_user(user_id=user_id)
 
             if user is None:
                 raise ValueError(f"User with ID {user_id} not found")
@@ -95,7 +95,7 @@ class UserSessionService:
                 raise ValueError(f"User with username {username} not found")
             return user_id
         
-    def get_current_user(self) -> Optional[UserInfo]:
+    def get_current_user(self) -> Optional[UserProfile]:
         """Return the current user model for this session if set."""
         return getattr(self._local, 'current_user', None)
     
