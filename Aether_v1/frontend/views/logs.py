@@ -15,22 +15,24 @@ def show_login():
     _, center, _ = st.columns([1, 3, 1])
     
     with center: 
-        with st.form(key= 'access_form'):
-            username = st.selectbox('User', controller.get_users(), index= None)
-            password = st.text_input('Password', type= 'password', disabled= True)
+        with st.form(key= 'access_form', clear_on_submit= True):
+            username = st.text_input('Username', max_chars= 20, value= None, key= 'username_input')
+            password = st.text_input('Password', type= 'password', value= '', placeholder= 'Enter your password', key= 'password_input')
             
-            if st.form_submit_button('Login'):
-                if username is not None:
-                    st.session_state.logged_in = True
-                    
-                    user_id = controller.get_user_id(username)
-                    controller.update_user_id(user_id)
-                    st.session_state.user_id = user_id
-                    
-                    st.toast(f'Logged in as {username} with id: {user_id}')
-                    st.rerun()
-                else:
-                    st.warning('Please select a username')
+            if st.form_submit_button('Login', key= 'login_button'):
+                try:
+                    if controller.verify_login(username, password):
+                        user_id = controller.get_user_id(username)
+                        controller.update_user_id(user_id)
+                        st.session_state.user_id = user_id
+                        
+                        st.session_state.logged_in = True
+                        st.toast(f'Logged in as {username} with id: {user_id}')
+                        st.rerun()
+                    else:
+                        st.error('Invalid username or password')
+                except ValueError as e:
+                    st.error(f'Error verifying login: {e}')
         
 def logout():
     # Page config
