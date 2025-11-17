@@ -5,11 +5,12 @@ from .base_db import BaseDBService
 class TemplatesDBService(BaseDBService):
     # Table information
     table_name = 'templates'
-    allowed_columns = {'template_id', 'user_id', 'template_name', 'template_description', 'template_type', 'default_values'}
+    allowed_columns = {'template_id', 'user_id', 'card_id', 'template_name', 'template_description', 'template_type', 'default_values'}
     
     # Column names
     id_col = 'template_id'
     user_id = 'user_id'
+    card_id = 'card_id'
     template_name = 'template_name'
     template_description = 'template_description'
     template_type = 'template_type'

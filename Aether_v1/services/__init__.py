@@ -10,6 +10,7 @@ from .database.categories import CategoryDBService
 from .database.transactions import TransactionsDBService
 from .database.goals import GoalsDBService
 from .database.templates import TemplatesDBService
+from .database.cards import CardsDBService
 
 __all__ = [
     'DataProcessingService',
@@ -24,4 +25,5 @@ __all__ = [
     'CategoryDBService',
     'GoalsDBService',
     'TemplatesDBService',
+    'CardsDBService',
 ]

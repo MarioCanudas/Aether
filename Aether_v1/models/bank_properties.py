@@ -15,10 +15,18 @@ class BankName(str, Enum):
     NU = 'nu'
     SANTANDER = 'santander'
     
+    @classmethod
+    def get_values(cls) -> List[str]:
+        return [bank.value for bank in cls]
+    
     
 class StatementType(str, Enum):
     CREDIT = 'credit'
     DEBIT = 'debit'
+    
+    @classmethod
+    def get_values(cls) -> List[str]:
+        return [statement_type.value for statement_type in cls]
     
     
 class Metadata(BaseModel):
