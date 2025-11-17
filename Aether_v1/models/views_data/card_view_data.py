@@ -22,6 +22,6 @@ class CardViewData(BaseModel):
     
     def get_last_transactions(self, in_df: bool = False) -> List[TransactionRecord] | pd.DataFrame:
         if in_df:
-            return pd.DataFrame(self.transactions)
+            return pd.DataFrame(self.transactions[:5])
         else:
             return self.transactions[:5]

@@ -84,7 +84,13 @@ class CardsViewController(BaseController):
             
             metrics = CardMetrics(total_income= income, total_expenses= expenses, total_balance= balance)
             
-            transactions = transactions_db.get_transactions(user_id= self.user_id, show_categories_names= True, card_id= card_id)
+            transactions = transactions_db.get_transactions(
+                user_id= self.user_id, 
+                show_categories_names= True, 
+                card_id= card_id, 
+                order_col='date', 
+                order='desc'
+            )
             
             return CardViewData(
                 metrics= metrics, 
