@@ -13,12 +13,13 @@ from .base_db import BaseDBService
 class TransactionsDBService(BaseDBService):
     # Table information
     table_name = 'transactions'
-    allowed_columns = {'transaction_id', 'user_id', 'category_id', 'date', 'description', 'amount', 'type', 'bank', 'statement_type', 'filename'}
+    allowed_columns = {'transaction_id', 'user_id', 'category_id', 'card_id', 'date', 'description', 'amount', 'type', 'bank', 'statement_type', 'filename'}
     
     # Column names
     id_col = 'transaction_id'
     user_id = 'user_id'
     category_id = 'category_id'
+    card_id = 'card_id'
     date = 'date'
     description = 'description'
     amount = 'amount'
