@@ -24,6 +24,7 @@ from views.goals import show_goals
 from views.profile_config import show_profile
 from views.data import show_data
 from views.upload_files import show_upload_statements
+from views.cards import show_cards
 from constants.views_icons import (
     LOGIN_ICON,
     LOGOUT_ICON,
@@ -35,6 +36,7 @@ from constants.views_icons import (
     TRANSACTIONS_ICON,
     UPLOAD_STATEMENTS_ICON,
     PROFILE_ICON,
+    CARDS_ICON,
 )
 from components import new_category_popup
 
@@ -72,6 +74,11 @@ if st.session_state.logged_in:
                     title="Home",
                     icon=HOME_ICON,
                     default=st.session_state.logged_in,
+                ),
+                st.Page(
+                    show_cards, 
+                    title="Cards", 
+                    icon=CARDS_ICON,
                 ),
                 st.Page(
                     show_cash_transactions,
