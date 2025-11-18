@@ -1,13 +1,15 @@
 import pandas as pd
 from io import BytesIO
-from typing import List, Tuple, Dict, Any
+from typing import List, Tuple, Dict, Any, Optional
 import logging
 from services import (
     StatementDataExtractionService,
     DataProcessingService, 
     DataValidationService,
-    TransactionsDBService
+    TransactionsDBService,
+    CardsDBService
 )
+from models.cards import Card
 from models.tables import AllTransactionsTable
 from .base_controller import BaseController
 
@@ -19,7 +21,7 @@ class UploadStatementsController(BaseController):
         self.data_processing_service = DataProcessingService()
         self.data_validation_service = DataValidationService()
         
-    def process_uploaded_files(self, uploaded_files: list[BytesIO]) -> AllTransactionsTable:
+    def process_uploaded_files(self, uploaded_files: list[BytesIO], card: Optional[Card] = None) -> AllTransactionsTable:
         all_transactions = []
         
         for uploaded_file in uploaded_files:
@@ -40,6 +42,10 @@ class UploadStatementsController(BaseController):
         all_transactions_df = pd.concat(all_transactions, ignore_index=True)
         all_transactions_df['user_id'] = self.user_session_service.current_user_id
         all_transactions_df['category_id'] = None
+        if card:
+            all_transactions_df['card_id'] = card.card_id
+        else:
+            all_transactions_df['card_id'] = None
          
         return AllTransactionsTable(df=all_transactions_df)
     
@@ -94,3 +100,18 @@ class UploadStatementsController(BaseController):
             
             logger.info(f"Inserted {len(filtered_records)} records into the transactions table")
             
+    def get_cards(self) -> List[str]:
+        with self.quick_read_conn() as conn:
+            cards_db = CardsDBService(conn)
+            
+            cards = cards_db.get_cards(self.user_id)
+            
+            return [card.card_name for card in cards]
+        
+    def get_card_by_name(self, card_name: str) -> Card:
+        with self.quick_read_conn() as conn:
+            cards_db = CardsDBService(conn)
+            
+            card_id = cards_db.find_id(card_name= card_name, user_id= self.user_id)
+            
+            return cards_db.get_card_by_id(self.user_id, card_id)
