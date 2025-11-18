@@ -8,7 +8,7 @@ from .records import TransactionRecord
 class Card(BaseModel):
     card_id: Optional[int] = None
     user_id: int
-    name: str
+    card_name: str
     bank: BankName
     statement_type: StatementType
     expiration_date: Optional[date] = None
