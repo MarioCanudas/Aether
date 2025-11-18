@@ -9,7 +9,7 @@ class Card(BaseModel):
     card_id: Optional[int] = None
     user_id: int
     card_name: str
-    bank: BankName
+    card_bank: BankName
     statement_type: StatementType
     expiration_date: Optional[date] = None
     
