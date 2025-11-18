@@ -5,20 +5,20 @@ from .base_db import BaseDBService
 class CardsDBService(BaseDBService):
     # Table information
     table_name = 'cards'
-    allowed_columns = {'card_id', 'user_id', 'card_name', 'bank', 'statement_type'}
+    allowed_columns = {'card_id', 'user_id', 'card_name', 'card_bank', 'statement_type'}
     
     # Column names
     id_col = 'card_id'
     user_id = 'user_id'
     card_name = 'card_name'
-    bank = 'bank'
+    card_bank = 'card_bank'
     statement_type = 'statement_type'
     
     def add_card(self, card: Card) -> None:
         with self.transaction():
             query = """
-                INSERT INTO cards ({self.user_id}, {self.card_name}, {self.bank}, {self.statement_type})
-                VALUES (%(user_id)s, %(card_name)s, %(bank)s, %(statement_type)s)
+                INSERT INTO cards ({self.user_id}, {self.card_name}, {self.card_bank}, {self.statement_type})
+                VALUES (%(user_id)s, %(card_name)s, %(card_bank)s, %(statement_type)s)
             """
             
             self.execute_query(query, params= card.model_dump())

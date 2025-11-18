@@ -14,8 +14,8 @@ from models.views_data import CardViewData
 from .base_controller import BaseController
 
 class CardsViewController(BaseController):
-    def add_card(self, name: str, bank: BankName, statement_type: StatementType, expiration_date: date) -> None:
-        card = Card(user_id= self.user_id, name= name, bank= bank, statement_type= statement_type, expiration_date= expiration_date)
+    def add_card(self, card_name: str, card_bank: BankName, statement_type: StatementType, expiration_date: date) -> None:
+        card = Card(user_id= self.user_id, card_name= card_name, card_bank= card_bank, statement_type= statement_type, expiration_date= expiration_date)
         
         with self.session_conn() as conn:
             cards_db = CardsDBService(conn)
@@ -29,15 +29,15 @@ class CardsViewController(BaseController):
             cards = cards_db.get_cards(self.user_id)
         
         if only_name:
-            return [card.name for card in cards]
+            return [card.card_name for card in cards]
         else:
             return cards
         
-    def get_card_by_name(self, name: str) -> Card:
+    def get_card_by_name(self, card_name: str) -> Card:
         with self.quick_read_conn() as conn:
             cards_db = CardsDBService(conn)
             
-            card_id = cards_db.find_id(name= name, user_id= self.user_id)
+            card_id = cards_db.find_id(card_name= card_name, user_id= self.user_id)
             
             return cards_db.get_card_by_id(self.user_id, card_id)
         
