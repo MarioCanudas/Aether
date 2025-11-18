@@ -37,6 +37,7 @@ class TransactionsDBService(BaseDBService):
             statement_type: Optional[StatementType] = None,
             amount_types: Optional[List[TransactionType]] = None,
             show_categories_names: Optional[bool] = False,
+            show_cards_names: Optional[bool] = False,
             order_col: Optional[str] = 'date',
             order: Literal['asc', 'desc'] = 'desc',
             limit: Optional[int] = None,
@@ -47,6 +48,7 @@ class TransactionsDBService(BaseDBService):
             columns = self._validate_columns(columns)
             columns = [f't.{col}' for col in columns]
             columns.append('name AS category') if show_categories_names else None
+            columns.append('card_name AS card_name') if show_cards_names else None
             
             query = f"""
                 SELECT {', '.join(columns)} FROM {self.table_name} AS t
@@ -58,6 +60,9 @@ class TransactionsDBService(BaseDBService):
             
         if show_categories_names:
             query += f" LEFT JOIN categories ON t.{self.category_id} = categories.{self.category_id}"
+        
+        if show_cards_names:
+            query += f" LEFT JOIN cards ON t.{self.card_id} = cards.{self.card_id}"
         
         query += f" WHERE t.{self.user_id} = %(user_id)s"
         

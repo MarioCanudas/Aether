@@ -68,6 +68,7 @@ def show_data():
                 transactions_period, banks, statement_type, amount_types
             )
         finally:
+            print(filtered_transactions.info())
             edited_transactions = st.data_editor(
                 data=filtered_transactions.copy(),
                 column_config={
@@ -94,11 +95,14 @@ def show_data():
                         options=[bn.value for bn in BankName],
                         required=True,
                     ),
+                    "card_name": st.column_config.SelectboxColumn(
+                        label="Card",
+                        options= controller.get_cards(),
+                        required= False,
+                    ),
                     "statement_type": st.column_config.SelectboxColumn(
                         label="Statement Type",
-                        options=[
-                            statement_type.value for statement_type in StatementType
-                        ],
+                        options=[statement_type.value for statement_type in StatementType],
                         required=True,
                     ),
                     "filename": st.column_config.TextColumn(
@@ -113,6 +117,7 @@ def show_data():
                     "amount",
                     "type",
                     "bank",
+                    "card_name",
                     "statement_type",
                     "filename",
                 ],
