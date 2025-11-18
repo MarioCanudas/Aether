@@ -178,5 +178,6 @@ Aether_project/
 # Experimental files
 test/
 
-# vscode
+# Code editors
 .vscode/
+.zed/
