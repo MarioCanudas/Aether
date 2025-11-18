@@ -15,6 +15,9 @@ def show_upload_statements():
     st.title("Upload Statements")
     
     with st.form(key= 'upload_statements_form', clear_on_submit= True):
+        card_name = st.selectbox('Card', options= controller.get_cards(), index= None, key= 'card_name', help= 'Select the card to upload the statements to')
+        card = controller.get_card_by_name(card_name) if card_name else None
+        
         uploaded_files = st.file_uploader(
             "Please upload your Bank Statement PDF files", 
             accept_multiple_files=True, 
@@ -27,7 +30,7 @@ def show_upload_statements():
             if uploaded_files:
                 st.write("Processing Files...")
                 try:
-                    transactions = controller.process_uploaded_files(uploaded_files)
+                    transactions = controller.process_uploaded_files(uploaded_files, card)
                     confirm_upload_popup(transactions)
                 except Exception as e:
                     st.error(f"An unexpected error processing files: {e}")
