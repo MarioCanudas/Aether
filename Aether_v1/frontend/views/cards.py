@@ -10,7 +10,7 @@ def show_cards():
     st.set_page_config(
         page_title='Cards',
         page_icon=CARDS_ICON,
-        layout='centered'
+        layout='wide'
     )
     controller = CardsViewController()
     
