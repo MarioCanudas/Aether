@@ -17,7 +17,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 # Import viewr
 from views.logs import show_login, logout
 from views.home import show_home
-from views.cash_transaction import show_cash_transactions
+from views.add_transaction import show_add_transaction
 from views.income_analysis import show_income_analysis
 from views.expenses_analysis import show_expenses_analysis
 from views.goals import show_goals
@@ -29,7 +29,7 @@ from constants.views_icons import (
     LOGIN_ICON,
     LOGOUT_ICON,
     HOME_ICON,
-    CASH_TRANSACTION_ICON,
+    ADD_TRANSACTION_ICON,
     INCOME_ANALYSIS_ICON,
     EXPENSES_ANALYSIS_ICON,
     GOALS_ICON,
@@ -81,11 +81,15 @@ if st.session_state.logged_in:
                     icon=CARDS_ICON,
                 ),
                 st.Page(
-                    show_cash_transactions,
-                    title="Cash Transaction",
-                    icon=CASH_TRANSACTION_ICON,
+                    show_goals, 
+                    title="Goals", 
+                    icon=GOALS_ICON
                 ),
-                st.Page(show_goals, title="Goals", icon=GOALS_ICON),
+                st.Page(
+                    show_add_transaction,
+                    title="Add Transaction",
+                    icon=ADD_TRANSACTION_ICON,
+                ),
             ],
             "Analytics": [
                 st.Page(

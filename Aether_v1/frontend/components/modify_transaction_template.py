@@ -1,10 +1,10 @@
 import streamlit as st
 from utils import to_decimal
-from controllers import CashTransactionController
+from controllers import AddTransactionController
 from models.amounts import TransactionType
 from models.templates import Template, TemplateType, TransactionDefaultValues
 
-controller = CashTransactionController()
+controller = AddTransactionController()
 
 @st.dialog('Modify Template')
 def modify_template_popup(template_id: int) -> None:

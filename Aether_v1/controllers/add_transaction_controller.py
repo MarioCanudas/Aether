@@ -4,7 +4,7 @@ from models.financial import TransactionRecord
 from models.templates import Template, TemplateType
 from .base_controller import BaseController
 
-class CashTransactionController(BaseController):
+class AddTransactionController(BaseController):
     TEMPLATE_TYPE = TemplateType.TRANSACTION
     
     def get_categories(self) -> List[str]:

@@ -1,24 +1,24 @@
 import streamlit as st
 from datetime import date
 from utils import to_decimal
-from controllers import CashTransactionController
-from constants.views_icons import CASH_TRANSACTION_ICON
+from controllers import AddTransactionController
+from constants.views_icons import ADD_TRANSACTION_ICON
 from components import new_template_popup, modify_template_popup
 from models.amounts import TransactionType
 from models.bank_properties import BankName, StatementType
 from models.financial import TransactionRecord
 
-def show_cash_transactions():
+def show_add_transaction():
     # Page config
     st.set_page_config(
-        page_title='Cash Transaction', 
-        page_icon=CASH_TRANSACTION_ICON, 
+        page_title='Add Transaction', 
+        page_icon=ADD_TRANSACTION_ICON, 
         layout='centered'
     )
-    controller = CashTransactionController()
+    controller = AddTransactionController()
     
-    with st.container(key= f'add_cash_transaction_container', border= True):
-        st.header('Add a cash transaction')
+    with st.container(key= 'add_transaction_container', border= True):
+        st.header('Add transaction')
         
         templates_names = controller.get_templates_names()
         
@@ -49,7 +49,7 @@ def show_cash_transactions():
                 template_id = templates_names[template_name]
                 modify_template_popup(template_id)
                 
-        with st.form(key= f'add_cash_transaction', border= False, clear_on_submit= True):
+        with st.form(key= 'add_transaction_form', border= False, clear_on_submit= True):
             if template:
                 default_values = template.default_values
                 

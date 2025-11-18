@@ -1,11 +1,11 @@
 import streamlit as st
 from datetime import date
 from utils import to_decimal
-from controllers import CashTransactionController
+from controllers import AddTransactionController
 from models.amounts import TransactionType
 from models.templates import Template, TemplateType, TransactionDefaultValues
 
-controller = CashTransactionController()
+controller = AddTransactionController()
 
 @st.dialog('New Template')
 def new_template_popup() -> None:
