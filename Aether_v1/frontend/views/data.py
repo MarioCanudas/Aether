@@ -68,7 +68,6 @@ def show_data():
                 transactions_period, banks, statement_type, amount_types
             )
         finally:
-            print(filtered_transactions.info())
             edited_transactions = st.data_editor(
                 data=filtered_transactions.copy(),
                 column_config={
