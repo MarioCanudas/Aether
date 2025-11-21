@@ -98,7 +98,39 @@ def show_add_transaction():
                     key= 'transaction_date'
                 )
                 
+                transaction_statement_type = st.pills(
+                    label= 'Statement Type',
+                    options= StatementType.get_values(),
+                    selection_mode= 'single',
+                    default= StatementType.DEBIT.value,
+                    key= 'transaction_statement_type'
+                )
+                
+                transaction_statement_type = StatementType(transaction_statement_type) if transaction_statement_type else None
+                
                 left, right = st.columns([4,7])
+                
+                transaction_bank = left.selectbox(
+                    label= 'Bank',
+                    options= [bank.value for bank in BankName],
+                    index= None,
+                    placeholder= 'Select bank (optional)',
+                    help= 'Chose the bank where the transacntion has been made',
+                    key= 'transaction_bank',
+                )
+                
+                transaction_bank = BankName(transaction_bank) if transaction_bank else None
+                
+                transaction_card = right.selectbox(
+                    label= 'Card',
+                    options= controller.get_cards(bank= transaction_bank),
+                    index= None,
+                    placeholder= 'Select card (optional)',
+                    help= 'Chose the card where the transaction has been made',
+                    key= 'transaction_card',
+                )
+                
+                transaction_card = controller.get_card_by_name(transaction_card) if transaction_card else None
                 
                 transaction_type = left.pills(
                     label= 'Type',
@@ -140,9 +172,10 @@ def show_add_transaction():
                         description= description if description else '',
                         amount= to_decimal(transaction_amount if transaction_type == 'Abono' else -1 * transaction_amount),
                         type= TransactionType(transaction_type),
-                        bank= BankName.CASH,
-                        statement_type= StatementType.DEBIT,
-                        filename= None
+                        bank= transaction_bank,
+                        card_id= transaction_card.card_id if transaction_card else None,
+                        statement_type= transaction_statement_type,
+                        filename= None,
                     )
                     
                     controller.add_transaction(transaction_record)

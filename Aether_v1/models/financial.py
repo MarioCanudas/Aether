@@ -29,6 +29,7 @@ class TransactionRecord(BaseModel):
     amount: Decimal
     type: TransactionType
     bank: BankName
+    card_id: Optional[int]
     statement_type: StatementType
     filename: Optional[str]
     
