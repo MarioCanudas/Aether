@@ -7,6 +7,7 @@ from .cash_transaction_controller import CashTransactionController
 from .home_controller import HomeController
 from .categories_config_controller import CategoriesConfigController
 from .profile_config_contoller import ProfileConfigController
+from .cards_view_controller import CardsViewController
 
 __all__ = [
     "LogsController",
@@ -18,4 +19,5 @@ __all__ = [
     "HomeController",
     "CategoriesConfigController",
     "ProfileConfigController",
+    "CardsViewController",
 ]

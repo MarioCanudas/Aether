@@ -84,6 +84,14 @@ create table if not exists "templates" (
     "default_values" json not null
 );
 
+create table if not exists "cards" (
+	"card_id" bigserial primary key,
+    "user_id" bigint,
+    "name" varchar(50) NOT NULL,
+    "bank" bank_name NOT NULL,
+    "statement_type" statement_type_enum NOT NULL
+);
+
 ---
 -- Foreign Keys
 ---
@@ -91,6 +99,7 @@ create table if not exists "templates" (
 -- transactions
 alter table "transactions" add constraint "fk_transactions_user_id" foreign key("user_id") REFERENCES "users"("user_id") ON DELETE cascade;
 alter table "transactions" add constraint "fk_transactions_category_id" FOREIGN KEY("category_id") REFERENCES "categories"("category_id");
+alter table "transactions" add constraint "fk_cards_card_id_transactions_card_id" FOREIGN KEY("card_id") REFERENCES "cards"("card_id");
 
 -- budgets
 ALTER TABLE "goals" ADD CONSTRAINT "fk_goals_user_id" FOREIGN KEY("user_id") REFERENCES "users"("user_id") on delete cascade;
@@ -98,7 +107,10 @@ ALTER TABLE "goals" ADD CONSTRAINT "fk_goals_category_id" FOREIGN KEY("category_
 
 -- categories
 ALTER TABLE "categories" ADD CONSTRAINT "fk_categories_user_id" FOREIGN KEY("user_id") REFERENCES "users"("user_id");
+alter table "templates" add constraint "fk_cards_card_id_templates_card_id" foreign key("card_id") references "cards"("card_id");
 
 -- templates
 alter table "templates" add constraint "fk_templates_user_id_users_id" FOREIGN KEY("user_id") REFERENCES "users"("user_id");
 
+-- cards
+ALTER TABLE "cards" ADD CONSTRAINT "fk_cards_user_id_users_id" FOREIGN KEY("user_id") REFERENCES "users"("user_id");

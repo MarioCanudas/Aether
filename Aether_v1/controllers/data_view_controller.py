@@ -1,7 +1,7 @@
 import pandas as pd
-from typing import Optional, Literal, List, Dict
+from typing import Optional, List, Dict
 import logging
-from services import TransactionsDBService, CategoryDBService
+from services import TransactionsDBService, CategoryDBService, CardsDBService
 from models.amounts import TransactionType
 from models.bank_properties import StatementType, BankName
 from models.dates import Period
@@ -29,6 +29,16 @@ class DataViewController(BaseController):
             
             return transactions_db.get_unique_values(column= 'bank', user_id= user_id)
         
+    def get_cards(self) -> List[str]:
+        user_id = self.user_session_service.current_user_id
+        
+        with self.quick_read_conn() as conn:
+            cards_db = CardsDBService(conn)
+            
+            cards = cards_db.get_cards(user_id)
+            
+            return [card.card_name for card in cards]
+        
     def get_filtered_transactions(
             self, 
             period: Period, 
@@ -48,7 +58,8 @@ class DataViewController(BaseController):
                 banks= banks,
                 statement_type= statement_type,
                 amount_types= amount_types,
-                show_categories_names= True
+                show_categories_names= True,
+                show_cards_names= True
             )
             
             return pd.DataFrame(transactions).sort_values(by= 'date', ascending= False)
