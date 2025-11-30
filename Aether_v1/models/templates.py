@@ -7,6 +7,7 @@ from typing import Optional, Dict, Any, TypedDict
 from .amounts import TransactionType
 from .dates import PeriodRange
 from .goals import GoalType
+from .bank_properties import BankName, StatementType
 
 class TemplateType(str, Enum):
     TRANSACTION = 'transaction'
@@ -18,6 +19,9 @@ class TransactionDefaultValues(BaseModel):
     type: TransactionType
     amount: Optional[Decimal] = Field(default= None)
     category_id: Optional[int] = Field(default= None)
+    card_id: Optional[int] = Field(default= None)
+    statement_type: Optional[StatementType] = Field(default= None)
+    bank_name: Optional[BankName] = Field(default= None)
     description: Optional[str] = Field(default= None, max_length= 200)
     
     @classmethod
