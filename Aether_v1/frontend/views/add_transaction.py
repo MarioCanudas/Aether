@@ -3,7 +3,7 @@ from datetime import date
 from utils import to_decimal
 from controllers import AddTransactionController
 from constants.views_icons import ADD_TRANSACTION_ICON
-from components import new_template_popup, modify_template_popup
+from components import new_transaction_template_popup, modify_template_popup
 from models.amounts import TransactionType
 from models.bank_properties import BankName, StatementType
 from models.financial import TransactionRecord
@@ -43,7 +43,7 @@ def show_add_transaction():
             _left, _right = st.columns(2)
             
             if _left.button('', type= 'primary', icon= ':material/add:', help= 'Add a new template', key= 'add_template_button'):
-                new_template_popup()
+                new_transaction_template_popup()
             
             if _right.button('', type= 'secondary', icon= ':material/edit:', help= 'Modify a template', key= 'modify_template_button', disabled= not template_name):
                 template_id = templates_names[template_name]
@@ -59,14 +59,56 @@ def show_add_transaction():
                     key= 'transaction_date_template'
                 )
                 
+                default_statement_type = default_values.statement_type.value if default_values.statement_type else None
+                
+                transaction_statement_type = st.pills(
+                    label= 'Statement Type',
+                    options= StatementType.get_values(),
+                    selection_mode= 'single',
+                    default= default_statement_type,
+                    key= 'transaction_statement_type_template',
+                    width= 'stretch'
+                )
+                
+                transaction_statement_type = StatementType(transaction_statement_type) if transaction_statement_type else None
+                
                 left, right = st.columns([4,7])
+                
+                default_bank_name = default_values.bank_name.value if default_values.bank_name else None
+                all_banks = BankName.get_values()
+                
+                transaction_bank = left.selectbox(
+                    label= 'Bank',
+                    options= all_banks,
+                    index= all_banks.index(default_bank_name) if default_bank_name and all_banks else None,
+                    placeholder= 'Select bank (optional)',
+                    help= 'Chose the bank where the transacntion has been made',
+                    key= 'transaction_bank_template',
+                )
+                
+                transaction_bank = BankName(transaction_bank) if transaction_bank else None
+                
+                default_card_name = controller.get_card_by_id(default_values.card_id).card_name if default_values.card_id else None
+                all_cards = controller.get_cards()
+                
+                transaction_card = right.selectbox(
+                    label= 'Card',
+                    options= all_cards,
+                    index= all_cards.index(default_card_name) if default_card_name else None,
+                    placeholder= 'Select card (optional)',
+                    help= 'Chose the card where the transaction has been made',
+                    key= 'transaction_card_template',
+                )
+                
+                transaction_card = controller.get_card_by_name(transaction_card) if transaction_card else None
                 
                 transaction_type = left.pills(
                     label= 'Type',
                     options= ['Abono', 'Cargo'],
                     selection_mode= 'single',
                     default= default_values.type,
-                    key= 'transaction_type_template'
+                    key= 'transaction_type_template',
+                    width= 'stretch'
                 )
                 
                 transaction_amount = right.number_input(
@@ -103,7 +145,8 @@ def show_add_transaction():
                     options= StatementType.get_values(),
                     selection_mode= 'single',
                     default= StatementType.DEBIT.value,
-                    key= 'transaction_statement_type'
+                    key= 'transaction_statement_type',
+                    width= 'stretch'
                 )
                 
                 transaction_statement_type = StatementType(transaction_statement_type) if transaction_statement_type else None
@@ -137,7 +180,8 @@ def show_add_transaction():
                     options= ['Abono', 'Cargo'],
                     selection_mode= 'single',
                     default= None,
-                    key= 'transaction_type'
+                    key= 'transaction_type',
+                    width= 'stretch'
                 )
                 
                 transaction_amount = right.number_input(

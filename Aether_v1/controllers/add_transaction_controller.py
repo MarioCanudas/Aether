@@ -19,6 +19,12 @@ class AddTransactionController(BaseController):
                 return [card.card_name for card in cards if card.card_bank == bank]
             else:
                 return [card.card_name for card in cards]
+            
+    def get_card_by_id(self, card_id: int) -> Optional[Card]:
+        with self.quick_read_conn() as conn:
+            cards_db = CardsDBService(conn)
+            
+            return cards_db.get_card_by_id(self.user_id, card_id)
                 
     def get_card_by_name(self, card_name: str) -> Optional[Card]:
         with self.quick_read_conn() as conn:
@@ -56,6 +62,12 @@ class AddTransactionController(BaseController):
             transactions_db = TransactionsDBService(conn)
             
             transactions_db.add_records([transaction.model_dump()])
+            
+    def add_template(self, template: Template) -> None:
+        with self.session_conn() as conn:
+            transactions_templates_db = TemplatesDBService(conn)
+            
+            transactions_templates_db.add_template(template)
             
     def get_templates_names(self) -> Dict[str, int]:
         with self.quick_read_conn() as conn:
