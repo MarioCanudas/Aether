@@ -54,15 +54,15 @@ class Period(BaseModel):
     
     @field_validator('end_date')
     @classmethod
-    def validate_dates_not_equal_or_greater(cls, v, info):
+    def validate_dates_not_greater(cls, v, info):
         """
-        Validate that the start date is less than the end date.
+        Validate that the start date is not greater than the end date.
         """
         start_date = info.data.get('start_date')
         end_date = v
         if start_date is not None and end_date is not None:
-            if start_date >= end_date:
-                raise ValueError("Start date cannot be greater than or equal to end date")
+            if start_date > end_date:
+                raise ValueError("Start date cannot be greater than end date")
         return v
     
     @property
