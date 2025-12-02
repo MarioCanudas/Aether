@@ -1,38 +1,7 @@
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel
 from enum import Enum
 from typing import Optional
-from datetime import date
-from decimal import Decimal
-from .amounts import TransactionType
-from .bank_properties import BankName, StatementType
-
-# TODO: Implement transaction model
-class Transaction(BaseModel):
-    date: date
-    category: str
-    description: Optional[str]
-    amount: Decimal
-    type: TransactionType
-    bank: BankName
-    
-    @field_validator('amount')
-    @classmethod
-    def round_amount(cls, amount: Decimal) -> Decimal:
-        return amount.quantize(Decimal('0.01'))
-    
-    
-class TransactionRecord(BaseModel):
-    user_id: int
-    category_id: Optional[int]
-    date: date
-    description: Optional[str]
-    amount: Decimal
-    type: TransactionType
-    bank: BankName
-    card_id: Optional[int]
-    statement_type: StatementType
-    filename: Optional[str]
-    
+from decimal import Decimal     
 
 class FinancialStatus(str, Enum):
     EXCELLENT = "Excellent!"
