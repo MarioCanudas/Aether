@@ -2,7 +2,7 @@ from typing import List, Optional, Dict
 from services import CategoryDBService, TransactionsDBService, TemplatesDBService, CardsDBService
 from models.bank_properties import BankName
 from models.cards import Card
-from models.financial import TransactionRecord
+from models.transactions import Transaction
 from models.templates import Template, TemplateType
 from .base_controller import BaseController
 
@@ -57,7 +57,7 @@ class AddTransactionController(BaseController):
             
             return result['name']
         
-    def add_transaction(self, transaction: TransactionRecord) -> None:
+    def add_transaction(self, transaction: Transaction) -> None:
         with self.session_conn() as conn:
             transactions_db = TransactionsDBService(conn)
             

@@ -6,7 +6,7 @@ from constants.views_icons import ADD_TRANSACTION_ICON
 from components import new_transaction_template_popup, modify_template_popup
 from models.amounts import TransactionType
 from models.bank_properties import BankName, StatementType
-from models.financial import TransactionRecord
+from models.transactions import Transaction
 
 def show_add_transaction():
     # Page config
@@ -209,7 +209,7 @@ def show_add_transaction():
                 
             if st.form_submit_button(label= 'Sumbit', type= 'primary'):
                 try:
-                    transaction_record = TransactionRecord(
+                    transaction_record = Transaction(
                         user_id= controller.user_id,
                         category_id= controller.get_category_id(category) if category else None,
                         date= transaction_date,
