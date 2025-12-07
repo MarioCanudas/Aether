@@ -6,7 +6,7 @@ from models.amounts import TransactionType
 from models.bank_properties import BankName, StatementType
 from models.dates import Period
 from models.financial import FinancialAmountsSums
-from models.records import TransactionRecord
+from models.transactions import Transaction
 from models.views_data import AnalysisAmountsPerPeriod
 from .base_db import BaseDBService
 
@@ -28,6 +28,72 @@ class TransactionsDBService(BaseDBService):
     statement_type = 'statement_type'
     filename = 'filename'
     
+    def _ensure_partition_exists(self, date_value: str) -> None:
+        """
+        Ensure that a partition exists for the given date in the transactions table.
+        Creates the partition if it doesn't exist.
+        
+        Args:
+            date_value (str): Date in 'YYYY-MM-DD' format
+        """
+        cursor = self._get_cursor()
+        
+        try:
+            # Parse the date to get year and month
+            date_obj = datetime.strptime(date_value, '%Y-%m-%d')
+            year = date_obj.year
+            month = date_obj.month
+            
+            # Create partition name
+            partition_name = f"transactions_{year}_{month:02d}"
+            
+            # Check if partition exists
+            check_query = """
+                SELECT EXISTS (
+                    SELECT 1 FROM pg_class 
+                    WHERE relname = %s AND relispartition = true
+                )
+            """
+            cursor.execute(check_query, (partition_name,))
+            partition_exists = cursor.fetchone()[0]
+            
+            if not partition_exists:
+                # Create the partition
+                start_date = f"{year}-{month:02d}-01"
+                if month == 12:
+                    end_date = f"{year + 1}-01-01"
+                else:
+                    end_date = f"{year}-{month + 1:02d}-01"
+                
+                create_partition_query = f"""
+                    CREATE TABLE {partition_name} PARTITION OF transactions
+                    FOR VALUES FROM ('{start_date}') TO ('{end_date}')
+                """
+                
+                cursor.execute(create_partition_query)
+                
+        except Exception as e:
+            raise e
+
+    def _ensure_partitions_for_transactions(self, transactions: List[Transaction]) -> None:
+        """
+        Ensure that partitions exist for all dates in the records.
+        Only applies to transactions table.
+        
+        Args:
+            records (List[Transaction]): List of transactions to insert
+        """
+        # Get unique dates from records
+        unique_dates = set()
+        
+        for transaction in transactions:
+                date_str = transaction.date.strftime('%Y-%m-%d')
+                unique_dates.add(date_str)
+        
+        # Ensure partitions exist for each unique date
+        for date_str in unique_dates:
+            self._ensure_partition_exists(date_str)
+    
     def get_transactions(
             self, 
             user_id: int, 
@@ -41,8 +107,9 @@ class TransactionsDBService(BaseDBService):
             order_col: Optional[str] = 'date',
             order: Literal['asc', 'desc'] = 'desc',
             limit: Optional[int] = None,
+            transaction_model: Optional[bool] = True,
             **conditions: Any
-        ) -> List[TransactionRecord]:
+        ) -> List[Transaction] | List[Dict[str, Any]]:
         
         if columns:
             columns = self._validate_columns(columns)
@@ -111,28 +178,13 @@ class TransactionsDBService(BaseDBService):
             query += f" LIMIT %(limit)s"
             params['limit'] = limit
             
-        return self.execute_query(query, params= params, fetch= 'all', dict_cursor= True)
+        result = self.execute_query(query, params= params, fetch= 'all', dict_cursor= True)
         
+        if transaction_model:
+            return [Transaction(**r) for r in result]
+        else:
+            return result
     
-    def add_records(self, records: List[Dict[str, Any]]) -> None:
-        if not records:
-            return
-        
-        self._ensure_partitions_for_records(records)
-        
-        for record in records:
-            record[self.date] = record[self.date].strftime('%Y-%m-%d') if hasattr(record[self.date], 'strftime') else record[self.date]
-        
-        with self.transaction():
-            record_columns = list(records[0].keys())
-            
-            query = f"""
-                INSERT INTO {self.table_name} ({', '.join(record_columns)})
-                VALUES ({', '.join(f'%({col})s' for col in record_columns)})
-            """
-            
-            self.execute_query(query, params= records, batch= True)
-        
     def get_transactions_period(self, user_id: int) -> Period:
         query = f"""
             SELECT MIN({self.date}) as start_date, MAX({self.date}) as end_date
@@ -158,77 +210,29 @@ class TransactionsDBService(BaseDBService):
         
         return set(result)
     
-    def _ensure_partition_exists(self, date_value: str) -> None:
-        """
-        Ensure that a partition exists for the given date in the transactions table.
-        Creates the partition if it doesn't exist.
+    def add_records(self, transactions: List[Transaction]) -> None:
+        if not transactions:
+            return
         
-        Args:
-            date_value (str): Date in 'YYYY-MM-DD' format
-        """
-        cursor = self._get_cursor()
+        self._ensure_partitions_for_transactions(transactions)
         
-        try:
-            # Parse the date to get year and month
-            date_obj = datetime.strptime(date_value, '%Y-%m-%d')
-            year = date_obj.year
-            month = date_obj.month
+        records = [t.dump_to_add() for t in transactions]
+        
+        with self.transaction():
+            record_columns = list(records[0].keys())
             
-            # Create partition name
-            partition_name = f"transactions_{year}_{month:02d}"
-            
-            # Check if partition exists
-            check_query = """
-                SELECT EXISTS (
-                    SELECT 1 FROM pg_class 
-                    WHERE relname = %s AND relispartition = true
-                )
+            query = f"""
+                INSERT INTO {self.table_name} ({', '.join(record_columns)})
+                VALUES ({', '.join(f'%({col})s' for col in record_columns)})
             """
-            cursor.execute(check_query, (partition_name,))
-            partition_exists = cursor.fetchone()[0]
             
-            if not partition_exists:
-                # Create the partition
-                start_date = f"{year}-{month:02d}-01"
-                if month == 12:
-                    end_date = f"{year + 1}-01-01"
-                else:
-                    end_date = f"{year}-{month + 1:02d}-01"
-                
-                create_partition_query = f"""
-                    CREATE TABLE {partition_name} PARTITION OF transactions
-                    FOR VALUES FROM ('{start_date}') TO ('{end_date}')
-                """
-                
-                cursor.execute(create_partition_query)
-                
-        except Exception as e:
-            raise e
-
-    def _ensure_partitions_for_records(self, records: List[dict]) -> None:
-        """
-        Ensure that partitions exist for all dates in the records.
-        Only applies to transactions table.
-        
-        Args:
-            records (List[dict]): List of records to insert
-        """
-        # Get unique dates from records
-        unique_dates = set()
-        for record in records:
-            if 'date' in record:
-                date_str = record['date']
-                if hasattr(date_str, 'strftime'):
-                    date_str = date_str.strftime('%Y-%m-%d')
-                unique_dates.add(date_str)
-        
-        # Ensure partitions exist for each unique date
-        for date_str in unique_dates:
-            self._ensure_partition_exists(date_str)
+            self.execute_query(query, params= records, batch= True)
             
-    def update_transactions(self, modified_transactions: List[TransactionRecord]) -> None:
+    def update_transactions(self, modified_transactions: List[Transaction]) -> None:
         if not modified_transactions:
             return
+        
+        params = [t.model_dump() for t in modified_transactions]
             
         with self.transaction():
             query = f"""
@@ -245,15 +249,13 @@ class TransactionsDBService(BaseDBService):
                 WHERE {self.id_col} = %({self.id_col})s
             """
             
-            self.execute_query(query, params=modified_transactions, batch=True)
+            self.execute_query(query, params= params, batch=True)
         
-    def delete_records(self, deleted_transactions: List[TransactionRecord]) -> None:
+    def delete_transactions(self, deleted_transactions: List[Transaction]) -> None:
         if not deleted_transactions:
             return
         
-        ids = [int(transaction['transaction_id']) for transaction in deleted_transactions]
-        
-        params = {f'id_{i}': id for i, id in enumerate(ids)}
+        params = {f'id_{i}': t.transaction_id for i, t in enumerate(deleted_transactions)}
         
         # Create the correct parameter placeholders
         param_keys = list(params.keys())

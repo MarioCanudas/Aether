@@ -7,10 +7,11 @@ from .table_processing import DefaultColumnSegmenter, DefaultRowSegmenter, Table
 from .data_processing import DefaultMetadataExtractor, DefaultTableNormalizer, DateNormalizer, AmountNormalizer
 
 class StatementDataExtractionService:
-    def __init__(self, file: str | BytesIO):
+    def __init__(self, user_id: int, file: str | BytesIO):
         if not isinstance(file, (str, BytesIO)):
             raise ValueError("File must be a string or a BytesIO object")
         
+        self.user_id = user_id
         self.file = file
         self.reader = PDFReader(self.file)
         self.analyzer = DefaultDocumentAnalyzer(self.reader)
@@ -78,14 +79,14 @@ class StatementDataExtractionService:
     def get_transactions(self) -> TransactionsTable:
         normalized_table = self.get_normalized_table()
         
-        initial_balance_row = self.metadata_extractor.get_initial_balance_row(self.filename)
-        generated_amount_row = self.metadata_extractor.get_generated_amount_row(self.filename)
+        initial_balance_row = self.metadata_extractor.get_initial_balance_row(self.user_id, self.filename)
+        generated_amount_row = self.metadata_extractor.get_generated_amount_row(self.user_id, self.filename)
         
         if initial_balance_row is not None:
-            normalized_table.add_row(initial_balance_row)
+            normalized_table.add_transaction(initial_balance_row)
             
         if generated_amount_row is not None:
-            normalized_table.add_row(generated_amount_row)
+            normalized_table.add_transaction(generated_amount_row)
         
         return normalized_table
     

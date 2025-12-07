@@ -34,6 +34,7 @@ class AnalysisController(BaseController):
             columns=['amount'],
             show_categories_names=True,
             type=category,
+            transaction_model= False,
         )
         transactions = pd.DataFrame(transactions)
 
@@ -61,7 +62,7 @@ class AnalysisController(BaseController):
     async def get_monthly_bar_chart_avg_amount(self, transactions_db: TransactionsDBService, category: Literal['Abono', 'Cargo']) -> alt.Chart:        
         transactions = transactions_db.get_transactions(self.user_id)
         
-        all_transactions = AllTransactionsTable(df = pd.DataFrame(transactions))
+        all_transactions = AllTransactionsTable(df = pd.DataFrame([t.model_dump() for t in transactions]))
         monthly_results: MonthlyResultsTable = self.data_processing_service.get_monthly_results(all_transactions)
         
         df = monthly_results.df.copy()
@@ -76,7 +77,7 @@ class AnalysisController(BaseController):
     async def get_daily_bar_chart_avg_amount(self, transactions_db: TransactionsDBService, category: Literal['Abono', 'Cargo']) -> alt.Chart:
         transactions = transactions_db.get_transactions(self.user_id)
             
-        transactions = pd.DataFrame(transactions)
+        transactions = pd.DataFrame([t.model_dump() for t in transactions])
         transactions['date'] = pd.to_datetime(transactions['date'])
         
         avg_per_day = self.data_processing_service.process_avg_daily_data_by_category(transactions, category)
@@ -97,7 +98,7 @@ class AnalysisController(BaseController):
                 period= month.get_period(year),
                 type= category
             )
-            transactions = pd.DataFrame(transactions)
+            transactions = pd.DataFrame([t.model_dump() for t in transactions])
             transactions['date'] = pd.to_datetime(transactions['date'])
             
             month_transactions = pd.DataFrame(columns= ['day', 'amount'])
@@ -124,7 +125,7 @@ class AnalysisController(BaseController):
                 self.user_id,
                 period= self._get_year_period(year),
             )
-            transactions = pd.DataFrame(transactions)
+            transactions = pd.DataFrame([t.model_dump() for t in transactions])
             transactions['date'] = pd.to_datetime(transactions['date'])
                         
             monthly_results = self.data_processing_service.get_monthly_results(AllTransactionsTable(df= transactions))

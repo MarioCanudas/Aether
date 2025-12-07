@@ -1,34 +1,6 @@
-from typing import Optional, TypedDict, List, Tuple, Any
+from typing import Optional, TypedDict
 from decimal import Decimal
 from datetime import date
-
-# TODO: Remove this typed dict and use the Transaction model
-class TransactionRecord(TypedDict):
-    """
-    Represents a transaction record in the database.
-    
-    >>> user_id: Optional[int]
-    >>> date: str
-    >>> description: Optional[str]
-    >>> category_id: Optional[int]
-    >>> category: Optional[str]
-    >>> amount: float
-    >>> type: str
-    >>> bank: str
-    >>> statement_type: str
-    >>> filename: Optional[str]
-    """
-    user_id: Optional[int] = None
-    date: str
-    description: Optional[str] = None
-    category_id: Optional[int] = None
-    category: Optional[str] = None
-    amount: Decimal | float
-    type: str
-    bank: str
-    card_id: Optional[int] = None
-    statement_type: str
-    filename: Optional[str] = None
     
 class MonthlyResultRecord(TypedDict):
     """

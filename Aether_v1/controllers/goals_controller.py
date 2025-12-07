@@ -207,7 +207,7 @@ class GoalsController(BaseController):
             )
             
             if transactions:
-                df = pd.DataFrame(transactions)
+                df = pd.DataFrame([t.model_dump() for t in transactions])
                 df['amount'] = df['amount'].abs()
                 df['date'] = pd.to_datetime(df['date'])
                 df.sort_values(by= 'date')

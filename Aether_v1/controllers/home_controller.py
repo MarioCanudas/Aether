@@ -23,7 +23,7 @@ class HomeController(BaseController):
         
         transactions = transactions_db.get_transactions(self.user_id)
         
-        all_transactions = AllTransactionsTable(df = pd.DataFrame(transactions))
+        all_transactions = AllTransactionsTable(df = pd.DataFrame([t.model_dump() for t in transactions]))
         monthly_results: MonthlyResultsTable = self.data_processing_service.get_monthly_results(all_transactions)
         
         monthly_results.year_months = monthly_results.year_months.astype(str)
@@ -56,7 +56,8 @@ class HomeController(BaseController):
             columns= ['date', 'amount', 'type'],
             period= period,
             order_col= 'date',
-            order= 'desc'
+            order= 'desc',
+            transaction_model= False,
         )
         
         last_six_months = pd.DataFrame(last_six_months)
@@ -86,6 +87,7 @@ class HomeController(BaseController):
         all_transactions = transactions_db.get_transactions(
             self.user_id,
             columns=['date', 'amount', 'type'],
+            transaction_model= False,
         )
 
         all_transactions = pd.DataFrame(all_transactions)
@@ -186,7 +188,8 @@ class HomeController(BaseController):
             limit= 5, 
             order_col= 'date', 
             order= 'desc',
-            show_categories_names= True
+            show_categories_names= True,
+            transaction_model= False,
         )
         
         last_transactions = pd.DataFrame(last_transactions).sort_values(

@@ -1,10 +1,10 @@
 import pandas as pd
 import numpy as np
 from logging import getLogger
-from typing import List, Set, Tuple, Any
+from typing import List, Set, Tuple, Any, Dict
 from models.bank_properties import Metadata, StatementType
-from models.tables import TransactionsTable, AllTransactionsTable, MonthlyResultsTable
-from models.records import TransactionRecord, MonthlyResultRecord
+from models.tables import TransactionsTable, AllTransactionsTable
+from models.transactions import Transaction
 from .connection_management_service import ConnectionManagementService
 from .database.transactions import TransactionsDBService
 
@@ -17,7 +17,7 @@ class DataValidationService:
     def __init__(self):
         self.connection_manager = ConnectionManagementService()
         
-    def get_existing_transaction_keys(self, transactions: List[TransactionRecord], user_id: int) -> Set[Tuple[Any, ...]]:
+    def get_existing_transaction_keys(self, transactions: List[Dict[str, Any]], user_id: int) -> Set[Tuple[Any, ...]]:
         """
         Check which transactions exist in the database in a single query
         Returns set of unique keys (date, amount, description, bank, statement_type)
@@ -66,6 +66,8 @@ class DataValidationService:
             ValueError: If the final balance does not match the expected value based on the initial balance, incomes, and expenses.
         """
         transactions_df = transactions.df.copy()
+        
+        transactions_df['date'] = pd.to_datetime(transactions_df['date'])
 
         initial_date= pd.to_datetime(metadata.period.start_date)
         final_date = pd.to_datetime(metadata.period.end_date)

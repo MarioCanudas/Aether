@@ -3,7 +3,6 @@ from typing import Optional, List
 from decimal import Decimal
 from datetime import date
 from .bank_properties import BankName, StatementType
-from .records import TransactionRecord
 
 class Card(BaseModel):
     card_id: Optional[int] = None

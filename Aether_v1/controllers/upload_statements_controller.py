@@ -11,6 +11,7 @@ from services import (
 )
 from models.cards import Card
 from models.tables import AllTransactionsTable
+from models.transactions import Transaction
 from .base_controller import BaseController
 
 logger = logging.getLogger(__name__)
@@ -25,19 +26,14 @@ class UploadStatementsController(BaseController):
         all_transactions = []
         
         for uploaded_file in uploaded_files:
-            try:
-                # Set the transaction extraction service per file
-                statement_data_extraction_service = StatementDataExtractionService(uploaded_file)
-                transactions_table = statement_data_extraction_service.get_transactions()
-                metadata = statement_data_extraction_service.metadata_extractor.get_metadata()
-                
-                validated_transactions = self.data_validation_service.validate_transactions(transactions_table, metadata)
-                
-                all_transactions.append(validated_transactions.df)
-            except ValueError as e:
-                raise ValueError(f"Error processing {uploaded_file.name}: {e}")
-            except Exception as e:
-                raise ValueError(f"An unexpected error processing {uploaded_file.name}: {e}")
+            # Set the transaction extraction service per file
+            statement_data_extraction_service = StatementDataExtractionService(self.user_id, uploaded_file)
+            transactions_table = statement_data_extraction_service.get_transactions()
+            metadata = statement_data_extraction_service.metadata_extractor.get_metadata()
+            
+            validated_transactions = self.data_validation_service.validate_transactions(transactions_table, metadata)
+            
+            all_transactions.append(validated_transactions.df)
                 
         all_transactions_df = pd.concat(all_transactions, ignore_index=True)
         all_transactions_df['user_id'] = self.user_session_service.current_user_id
@@ -49,34 +45,34 @@ class UploadStatementsController(BaseController):
          
         return AllTransactionsTable(df=all_transactions_df)
     
-    def filter_transactions(self, all_transactions: AllTransactionsTable) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+    def filter_transactions(self, all_transactions: AllTransactionsTable) -> Tuple[List[Transaction], List[Transaction]]:
         user_id = self.user_id
         
         transactions_cleaned = self.data_validation_service.delete_double_transactions(all_transactions)
-        records = transactions_cleaned.records
+        transactions_to_insert = transactions_cleaned.get_transactions_dicts()
         
         # Batch processing optimization
-        if records:
+        if transactions_to_insert:
             # Get existing transactions in a single query
-            existing_keys = self.data_validation_service.get_existing_transaction_keys(records, user_id)
+            existing_keys = self.data_validation_service.get_existing_transaction_keys(transactions_to_insert, user_id)
             
             filtered_records = []
             duplicate_records = []
             
-            for record in records:
+            for transaction in transactions_to_insert:
                 # Create unique key for comparison
                 key = (
-                    record['date'].strftime('%Y-%m-%d') if hasattr(record['date'], 'strftime') else record['date'],
-                    record['amount'],
-                    record['description'],
-                    record['bank'],
-                    record['statement_type']
+                    transaction.date.strftime('%Y-%m-%d'),
+                    transaction.amount,
+                    transaction.description,
+                    transaction.bank,
+                    transaction.statement_type
                 )
                 
                 if key in existing_keys:
-                    duplicate_records.append(record)
+                    duplicate_records.append(transaction)
                 else:
-                    filtered_records.append(record)
+                    filtered_records.append(transaction)
         else:
             filtered_records = []
             duplicate_records = []
