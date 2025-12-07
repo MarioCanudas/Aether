@@ -62,11 +62,11 @@ class UploadStatementsController(BaseController):
             for transaction in transactions_to_insert:
                 # Create unique key for comparison
                 key = (
-                    transaction.date.strftime('%Y-%m-%d'),
-                    transaction.amount,
-                    transaction.description,
-                    transaction.bank,
-                    transaction.statement_type
+                    transaction['date'].strftime('%Y-%m-%d') if hasattr(transaction['date'], 'strftime') else transaction['date'],
+                    transaction['amount'],
+                    transaction['description'],
+                    transaction['bank'],
+                    transaction['statement_type']
                 )
                 
                 if key in existing_keys:
