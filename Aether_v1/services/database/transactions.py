@@ -13,7 +13,9 @@ from .base_db import BaseDBService
 class TransactionsDBService(BaseDBService):
     # Table information
     table_name = 'transactions'
-    allowed_columns = {'transaction_id', 'user_id', 'category_id', 'card_id', 'date', 'description', 'amount', 'type', 'bank', 'statement_type', 'filename'}
+    allowed_columns = {'transaction_id', 'user_id', 'category_id', 'card_id', 'date', 'description', 
+                       'amount', 'type', 'bank', 'statement_type', 'filename', 
+                       'duplicate_potential_state'}
     
     # Column names
     id_col = 'transaction_id'
@@ -27,6 +29,7 @@ class TransactionsDBService(BaseDBService):
     bank = 'bank'
     statement_type = 'statement_type'
     filename = 'filename'
+    duplicate_potential_state = 'duplicate_potential_state'
     
     def _ensure_partition_exists(self, date_value: str) -> None:
         """
@@ -196,19 +199,24 @@ class TransactionsDBService(BaseDBService):
         
         return Period(start_date= result['start_date'], end_date= result['end_date'])
     
-    def get_existing_keys(self, all_params: Dict[str, Any], query_values: List[str]) -> Set[Tuple[Any, ...]]:
+    def get_existing_keys(self, user_id: int, period: Optional[Period] = None) -> Set[Tuple[Any, ...]]:
         query = f"""
             SELECT {self.date}, {self.description}, {self.amount}, {self.bank}::text, {self.statement_type}::text
             FROM {self.table_name}
             WHERE {self.user_id} = %(user_id)s
-            AND ({self.date}, {self.description}, {self.amount}, {self.bank}::text, {self.statement_type}::text) IN (
-                VALUES {', '.join(query_values)}
-            )
         """
         
-        result = self.execute_query(query, params= all_params, fetch= 'all')
+        params = {'user_id': user_id}
+        
+        if period:
+            query += f" AND {self.date} BETWEEN %(start_date)s AND %(end_date)s"
+            params['start_date'] = period.start_date
+            params['end_date'] = period.end_date
+        
+        result = self.execute_query(query, params= params, fetch= 'all')
         
         return set(result)
+        
     
     def add_records(self, transactions: List[Transaction]) -> None:
         if not transactions:
@@ -251,11 +259,11 @@ class TransactionsDBService(BaseDBService):
             
             self.execute_query(query, params= params, batch=True)
         
-    def delete_transactions(self, deleted_transactions: List[Transaction]) -> None:
-        if not deleted_transactions:
+    def delete_transactions(self, transactions_to_delete: List[Transaction]) -> None:
+        if not transactions_to_delete:
             return
         
-        params = {f'id_{i}': t.transaction_id for i, t in enumerate(deleted_transactions)}
+        params = {f'id_{i}': t.transaction_id for i, t in enumerate(transactions_to_delete)}
         
         # Create the correct parameter placeholders
         param_keys = list(params.keys())

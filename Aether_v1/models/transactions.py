@@ -1,9 +1,22 @@
 from pydantic import BaseModel
+from enum import Enum
 from typing import Optional, List, Any, Tuple, Dict
 from datetime import date
 from decimal import Decimal
 from .amounts import TransactionType
 from .bank_properties import BankName, StatementType
+
+class DuplicateTransactionType(str, Enum):
+    """
+    >>> Values:
+        EXACT: The transaction is an exact duplicate of another transaction.
+        POTENTIAL: The transaction is a potential duplicate of another transaction.
+        NULL: The transaction is not a duplicate.
+    """
+    
+    EXACT = 'exact'
+    POTENTIAL = 'potential'
+    NULL = 'null'
 
 class Transaction(BaseModel):
     transaction_id: Optional[int] = None
@@ -17,6 +30,7 @@ class Transaction(BaseModel):
     card_id: Optional[int] = None
     statement_type: StatementType
     filename: Optional[str] = None
+    duplicate_potential_state: bool = False
     
     @property
     def default_values(self) -> List[str]:
@@ -38,6 +52,7 @@ class Transaction(BaseModel):
             'card_id',
             'description',
             'filename',
+            'duplicate_type',
         ]
     
     def __getitem__(self, key: str) -> Any:
@@ -58,9 +73,12 @@ class Transaction(BaseModel):
         else:
             raise KeyError(f"Key {key} not found in Transaction model")
         
-    def to_tuple(self) -> Tuple[Any, ...]:
+    def to_tuple(self, key: Optional[bool] = False) -> Tuple[Any, ...]:
         try:
-            return Tuple(getattr(self, key) for key in self.default_values + self.optional_values)
+            if key:
+                return tuple(getattr(self, key) for key in self.default_values)
+            else:
+                return tuple(getattr(self, key) for key in self.default_values + self.optional_values)
         except Exception as e:
             raise ValueError(f"Error converting Transaction model to tuple: {e}")
         
