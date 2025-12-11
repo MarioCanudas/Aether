@@ -7,7 +7,8 @@ from services import (
     DataProcessingService, 
     DataValidationService,
     TransactionsDBService,
-    CardsDBService
+    CardsDBService,
+    DuplicateTreatmentService
 )
 from models.cards import Card
 from models.tables import AllTransactionsTable
@@ -21,6 +22,7 @@ class UploadStatementsController(BaseController):
         super().__init__()
         self.data_processing_service = DataProcessingService()
         self.data_validation_service = DataValidationService()
+        self.dt_service = DuplicateTreatmentService()
         
     def process_uploaded_files(self, uploaded_files: list[BytesIO], card: Optional[Card] = None) -> AllTransactionsTable:
         all_transactions = []
@@ -46,38 +48,31 @@ class UploadStatementsController(BaseController):
         return AllTransactionsTable(df=all_transactions_df)
     
     def filter_transactions(self, all_transactions: AllTransactionsTable) -> Tuple[List[Transaction], List[Transaction]]:
-        user_id = self.user_id
+        duplicated, filtered = self.dt_service.eliminate_credit_and_debit_duplicates(all_transactions)
         
-        transactions_cleaned = self.data_validation_service.delete_double_transactions(all_transactions)
-        transactions_to_insert = transactions_cleaned.get_transactions_dicts()
+        with self.quick_read_conn as conn:
+            transaction_db = TransactionsDBService(conn)
+
+            period = self.dt_service.get_transactions_period(filtered)
+            existing_keys = transaction_db.get_existing_keys(self.user_id, period)
         
         # Batch processing optimization
-        if transactions_to_insert:
-            # Get existing transactions in a single query
-            existing_keys = self.data_validation_service.get_existing_transaction_keys(transactions_to_insert, user_id)
-            
-            filtered_records = []
-            duplicate_records = []
-            
-            for transaction in transactions_to_insert:
+        if filtered:
+            for transaction in filtered:
                 # Create unique key for comparison
                 key = (
-                    transaction['date'].strftime('%Y-%m-%d') if hasattr(transaction['date'], 'strftime') else transaction['date'],
-                    transaction['amount'],
-                    transaction['description'],
-                    transaction['bank'],
-                    transaction['statement_type']
+                    transaction.date.strftime('%Y-%m-%d'),
+                    transaction.amount,
+                    transaction.description,
+                    transaction.bank.value,
+                    transaction.statement_type.value
                 )
                 
                 if key in existing_keys:
-                    duplicate_records.append(transaction)
-                else:
-                    filtered_records.append(transaction)
-        else:
-            filtered_records = []
-            duplicate_records = []
+                    duplicated.append(transaction)
+                    del filtered[filtered.index(transaction)]
                 
-        return filtered_records, duplicate_records
+        return filtered, duplicated
     
     def upload_transactions(self, transactions: AllTransactionsTable) -> None:
         filtered_records, duplicate_records = self.filter_transactions(transactions)

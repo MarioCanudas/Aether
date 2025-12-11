@@ -1,8 +1,15 @@
 from typing import List, Optional, Dict
-from services import CategoryDBService, TransactionsDBService, TemplatesDBService, CardsDBService
+from functools import cache
+from services import (
+    CategoryDBService, 
+    TransactionsDBService, 
+    TemplatesDBService, 
+    CardsDBService,
+    DuplicateTreatmentService
+)
 from models.bank_properties import BankName
 from models.cards import Card
-from models.transactions import Transaction
+from models.transactions import Transaction, DuplicateTransactionType
 from models.templates import Template, TemplateType
 from .base_controller import BaseController
 
@@ -57,7 +64,32 @@ class AddTransactionController(BaseController):
             
             return result['name']
         
+    @cache
+    def _get_duplicate_type(self, transaction: Transaction) -> DuplicateTransactionType:
+        dt_service = DuplicateTreatmentService()
+        
+        duplicate_type = dt_service.detect_duplicates(transaction)
+        
+        return duplicate_type
+        
+    def is_exact_duplicate(self, transaction: Transaction) -> bool:
+        duplicate_type = self._get_duplicate_type(transaction)
+        
+        if duplicate_type == DuplicateTransactionType.EXACT:
+            return True
+        else:
+            return False
+        
     def add_transaction(self, transaction: Transaction) -> None:
+        duplicate_type = self._get_duplicate_type(transaction)
+        
+        if duplicate_type == DuplicateTransactionType.EXACT:
+            raise ValueError('Transaction is an exact duplicate')
+        elif duplicate_type == DuplicateTransactionType.POTENTIAL:
+            transaction.duplicate_type = DuplicateTransactionType.POTENTIAL
+        else:
+            transaction.duplicate_type = DuplicateTransactionType.NULL
+        
         with self.session_conn() as conn:
             transactions_db = TransactionsDBService(conn)
             
