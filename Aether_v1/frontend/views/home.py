@@ -62,6 +62,9 @@ def show_home():
     controller = HomeController()
     
     st.title('Home')
+    
+    if controller.user_have_potential_duplicates():
+        st.toast('Potential duplicates found. Please review them in the Transactions view.', icon= ':material/info:')
  
     if controller.user_have_transactions():
         home_view_data = asyncio.run(controller.get_home_view_data())

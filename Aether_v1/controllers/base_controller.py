@@ -7,6 +7,7 @@ from services import (
     UserSessionService,
     TransactionsDBService
 )
+from models.transactions import DuplicateTransactionType
 
 class BaseController(ABC):
     """
@@ -64,4 +65,10 @@ class BaseController(ABC):
             transactions_db = TransactionsDBService(conn)
             
             return transactions_db.exists(user_id= self.user_id)
+        
+    def user_have_potential_duplicates(self) -> bool:
+        with self.quick_read_conn() as conn:
+            transactions_db = TransactionsDBService(conn)
+            
+            return transactions_db.exists(user_id= self.user_id, duplicate_potential_state= DuplicateTransactionType.POTENTIAL)
 
