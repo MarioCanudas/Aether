@@ -68,32 +68,27 @@ class AddTransactionController(BaseController):
     def _get_duplicate_type(self, transaction: Transaction) -> DuplicateTransactionType:
         dt_service = DuplicateTreatmentService()
         
-        duplicate_type = dt_service.detect_duplicates(transaction)
+        with self.quick_read_conn() as conn:
+            duplicate_type = dt_service.detect_duplicates(conn, self.user_id, transaction)
         
         return duplicate_type
         
-    def is_exact_duplicate(self, transaction: Transaction) -> bool:
-        duplicate_type = self._get_duplicate_type(transaction)
-        
-        if duplicate_type == DuplicateTransactionType.EXACT:
-            return True
-        else:
-            return False
-        
     def add_transaction(self, transaction: Transaction) -> None:
-        duplicate_type = self._get_duplicate_type(transaction)
-        
-        if duplicate_type == DuplicateTransactionType.EXACT:
-            raise ValueError('Transaction is an exact duplicate')
-        elif duplicate_type == DuplicateTransactionType.POTENTIAL:
-            transaction.duplicate_type = DuplicateTransactionType.POTENTIAL
-        else:
-            transaction.duplicate_type = DuplicateTransactionType.NULL
-        
+        dt_service = DuplicateTreatmentService()
+
         with self.session_conn() as conn:
+            duplicate_type = dt_service.detect_duplicates(conn, self.user_id, transaction)
+            
+            if duplicate_type == DuplicateTransactionType.EXACT:
+                raise ValueError('Transaction is an exact duplicate')
+            elif duplicate_type == DuplicateTransactionType.POTENTIAL:
+                transaction.duplicate_potential_state = True
+            else:
+                transaction.duplicate_potential_state = False
+                
             transactions_db = TransactionsDBService(conn)
             
-            transactions_db.add_records([transaction.model_dump()])
+            transactions_db.add_records([transaction])
             
     def add_template(self, template: Template) -> None:
         with self.session_conn() as conn:

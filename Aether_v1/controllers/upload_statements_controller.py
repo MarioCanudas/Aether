@@ -50,12 +50,13 @@ class UploadStatementsController(BaseController):
     def filter_transactions(self, all_transactions: AllTransactionsTable) -> Tuple[List[Transaction], List[Transaction]]:
         duplicated, filtered = self.dt_service.eliminate_credit_and_debit_duplicates(all_transactions)
         
-        with self.quick_read_conn as conn:
+        with self.quick_read_conn() as conn:
             transaction_db = TransactionsDBService(conn)
 
             period = self.dt_service.get_transactions_period(filtered)
             existing_keys = transaction_db.get_existing_keys(self.user_id, period)
-        
+            
+        to_delete: List[int] = []
         # Batch processing optimization
         if filtered:
             for transaction in filtered:
@@ -70,7 +71,7 @@ class UploadStatementsController(BaseController):
                 
                 if key in existing_keys:
                     duplicated.append(transaction)
-                    del filtered[filtered.index(transaction)]
+                    to_delete.append(filtered.index(transaction))
                 
         return filtered, duplicated
     
