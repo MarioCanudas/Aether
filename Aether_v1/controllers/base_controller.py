@@ -71,7 +71,7 @@ class BaseController(ABC):
         with self.quick_read_conn() as conn:
             transactions_db = TransactionsDBService(conn)
             
-            return transactions_db.exists(user_id= self.user_id, duplicate_potential_state= DuplicateTransactionType.POTENTIAL)
+            return transactions_db.exists(user_id= self.user_id, duplicate_potential_state= False)
     @staticmethod
     def transactions_to_df(transactions: List[Transaction]) -> pd.DataFrame:
         return pd.DataFrame([transaction.model_dump() for transaction in transactions])

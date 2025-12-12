@@ -52,7 +52,7 @@ class Transaction(BaseModel):
             'card_id',
             'description',
             'filename',
-            'duplicate_type',
+            'duplicate_potential_state',
         ]
     
     def __getitem__(self, key: str) -> Any:
@@ -76,9 +76,9 @@ class Transaction(BaseModel):
     def to_tuple(self, key: Optional[bool] = False) -> Tuple[Any, ...]:
         try:
             if key:
-                return tuple(getattr(self, key) for key in self.default_values)
+                return tuple(getattr(self, k) for k in self.default_values)
             else:
-                return tuple(getattr(self, key) for key in self.default_values + self.optional_values)
+                return tuple(getattr(self, k) for k in self.default_values + self.optional_values)
         except Exception as e:
             raise ValueError(f"Error converting Transaction model to tuple: {e}")
         

@@ -230,8 +230,8 @@ def show_add_transaction():
                     else:
                         controller.add_transaction(transaction_record)
                     
-                    st.toast('Transaction added successfully', icon= ':material/check:')
-                    st.rerun()
+                        st.toast('Transaction added successfully', icon= ':material/check:')
+                        st.rerun()
                 except TypeError:
                     st.warning('Please, fill all the fields')
                 except Exception as e:
