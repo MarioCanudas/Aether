@@ -141,3 +141,10 @@ def show_data():
         st.write(
             "No transactions available. Please upload files or input transactions manually."
         )
+        
+    if controller.user_have_potential_duplicates():
+        potential_dupl_trans = controller.get_potential_duplicate_transactions()
+        
+        potential_dupl_trans_df = controller.transactions_to_df(potential_dupl_trans)
+        
+        st.dataframe(potential_dupl_trans_df)

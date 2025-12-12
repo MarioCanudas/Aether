@@ -164,3 +164,9 @@ class DataViewController(BaseController):
                 
             if modified_transactions['deleted']:
                 transactions_db.delete_transactions(modified_transactions['deleted'])
+
+    def get_potential_duplicate_transactions(self) -> List[Transaction]:
+        with self.quick_read_conn() as conn:
+            transactions_db = TransactionsDBService(conn)
+            
+            return transactions_db.get_transactions(user_id= self.user_id, duplicate_potential_state= True)

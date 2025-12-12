@@ -64,15 +64,14 @@ class AddTransactionController(BaseController):
             
             return result['name']
         
-    @cache
-    def _get_duplicate_type(self, transaction: Transaction) -> DuplicateTransactionType:
+    def is_exact_duplicate(self, transaction: Transaction) -> bool:
         dt_service = DuplicateTreatmentService()
         
         with self.quick_read_conn() as conn:
             duplicate_type = dt_service.detect_duplicates(conn, self.user_id, transaction)
-        
-        return duplicate_type
-        
+            
+            return duplicate_type == DuplicateTransactionType.EXACT
+    
     def add_transaction(self, transaction: Transaction) -> None:
         dt_service = DuplicateTreatmentService()
 

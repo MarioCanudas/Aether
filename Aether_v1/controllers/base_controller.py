@@ -1,13 +1,14 @@
 from abc import ABC
+import pandas as pd
 from psycopg2.extensions import connection
-from typing import Generator
+from typing import Generator, List
 from contextlib import contextmanager
 from services import (
     ConnectionManagementService, 
     UserSessionService,
     TransactionsDBService
 )
-from models.transactions import DuplicateTransactionType
+from models.transactions import Transaction, DuplicateTransactionType
 
 class BaseController(ABC):
     """
@@ -71,4 +72,6 @@ class BaseController(ABC):
             transactions_db = TransactionsDBService(conn)
             
             return transactions_db.exists(user_id= self.user_id, duplicate_potential_state= DuplicateTransactionType.POTENTIAL)
-
+    @staticmethod
+    def transactions_to_df(transactions: List[Transaction]) -> pd.DataFrame:
+        return pd.DataFrame([transaction.model_dump() for transaction in transactions])
