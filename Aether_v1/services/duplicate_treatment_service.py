@@ -1,26 +1,12 @@
 from psycopg2.extensions import connection
-from pydantic import BaseModel
 import asyncio
 from dateutil import relativedelta
 from functools import cache
 from typing import Optional, Tuple, List
 from models.dates import Period
-from models.transactions import Transaction, DuplicateTransactionType
+from models.transactions import Transaction, DuplicateResult
 from .database.transactions import TransactionsDBService
 from models.tables import AllTransactionsTable
-
-class DuplicateResult(BaseModel):
-    transaction: Transaction
-    exact_duplicates: List[Transaction] = []
-    potential_duplicates: List[Transaction] = []
-    
-    @property
-    def has_exact_duplicates(self) -> bool:
-        return len(self.exact_duplicates) > 0
-    
-    @property
-    def has_potential_duplicates(self) -> bool:
-        return len(self.potential_duplicates) > 0
 
 class DuplicateTreatmentService:
     """
@@ -32,7 +18,7 @@ class DuplicateTreatmentService:
         potential_duplicates = transactions_db.get_transactions(
             user_id= user_id,
             period= period,
-            duplicate_potential_state= DuplicateTransactionType.POTENTIAL,
+            duplicate_potential_state= True,
         )
         
         return potential_duplicates

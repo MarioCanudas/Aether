@@ -1,23 +1,10 @@
 from pydantic import BaseModel
-from enum import Enum
 from typing import Optional, List, Any, Tuple, Dict
 from datetime import date
 from dateutil.relativedelta import relativedelta
 from decimal import Decimal
 from .amounts import TransactionType
 from .bank_properties import BankName, StatementType
-
-class DuplicateTransactionType(str, Enum):
-    """
-    >>> Values:
-        EXACT: The transaction is an exact duplicate of another transaction.
-        POTENTIAL: The transaction is a potential duplicate of another transaction.
-        NULL: The transaction is not a duplicate.
-    """
-    
-    EXACT = 'exact'
-    POTENTIAL = 'potential'
-    NULL = 'null'
 
 class Transaction(BaseModel):
     transaction_id: Optional[int] = None
@@ -179,3 +166,16 @@ class Transaction(BaseModel):
         else:
             return False
         
+
+class DuplicateResult(BaseModel):
+    transaction: Transaction
+    exact_duplicates: List[Transaction] = []
+    potential_duplicates: List[Transaction] = []
+    
+    @property
+    def has_exact_duplicates(self) -> bool:
+        return len(self.exact_duplicates) > 0
+    
+    @property
+    def has_potential_duplicates(self) -> bool:
+        return len(self.potential_duplicates) > 0

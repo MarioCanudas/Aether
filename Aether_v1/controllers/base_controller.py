@@ -8,7 +8,7 @@ from services import (
     UserSessionService,
     TransactionsDBService
 )
-from models.transactions import Transaction, DuplicateTransactionType
+from models.transactions import Transaction
 
 class BaseController(ABC):
     """
