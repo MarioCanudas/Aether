@@ -1,8 +1,6 @@
 from psycopg2.extensions import connection
 import asyncio
-from dateutil import relativedelta
-from functools import cache
-from typing import Optional, Tuple, List
+from typing import Tuple, List
 from models.dates import Period
 from models.transactions import Transaction, DuplicateResult
 from .database.transactions import TransactionsDBService
@@ -12,17 +10,6 @@ class DuplicateTreatmentService:
     """
     This service is used to detect and treat duplicate transactions.
     """
-    def get_potential_duplicates(self, conn: connection, user_id: int, period: Optional[Period] = None) -> List[Optional[Transaction]]:
-        transactions_db = TransactionsDBService(conn)
-        
-        potential_duplicates = transactions_db.get_transactions(
-            user_id= user_id,
-            period= period,
-            duplicate_potential_state= True,
-        )
-        
-        return potential_duplicates
-    
     @staticmethod
     def get_transactions_period(transactions: List[Transaction]) -> Period:
         dates = [transaction.date for transaction in transactions]
@@ -93,30 +80,8 @@ class DuplicateTreatmentService:
         else:
             return results
         
-    @cache
-    def get_similar_transactions(self, conn: connection, transaction: Transaction, ids: Optional[bool] = False) -> List[Transaction]:
-        if not transaction.duplicate_potential_state:
-            return None
-        
-        transactions_db = TransactionsDBService(conn)
-        
-        period = Period(start_date= transaction.date - relativedelta(days= 5), end_date= transaction.date + relativedelta(days= 5))
-        transactions = transactions_db.get_transactions(user_id= transaction.user_id, period= period, duplicate_potential_state= True)
-        
-        similar_transactions: List[Transaction] = []
-        for t in transactions:
-            if self._determine_potential_duplicates(transaction, t.to_tuple(key= True)):
-                similar_transactions.append(t)
-        
-        return similar_transactions
-        
-    def eliminate_duplicates(self, conn: connection, transaction: Transaction) -> None:
-        similar_transactions = self.get_similar_transactions(conn, transaction)
-        
-        transactions_db = TransactionsDBService(conn)
-        transactions_db.delete_transactions(similar_transactions)
-        
-    def eliminate_credit_and_debit_duplicates(self, transactions: AllTransactionsTable) -> Tuple[List[Transaction], List[Transaction]]:
+    @staticmethod
+    def eliminate_credit_and_debit_duplicates(transactions: AllTransactionsTable) -> Tuple[List[Transaction], List[Transaction]]:
         """
         Classificates the duplicate transactions from a financial dataset, specifically targeting credit card payments
         (abonos) and their corresponding debit transactions (cargos) to avoid double-counting.
