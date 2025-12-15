@@ -1,11 +1,26 @@
 from psycopg2.extensions import connection
+from pydantic import BaseModel
+import asyncio
 from dateutil import relativedelta
 from functools import cache
-from typing import Optional, Set, Tuple, List, Dict, Any
+from typing import Optional, Tuple, List
 from models.dates import Period
 from models.transactions import Transaction, DuplicateTransactionType
 from .database.transactions import TransactionsDBService
 from models.tables import AllTransactionsTable
+
+class DuplicateResult(BaseModel):
+    transaction: Transaction
+    exact_duplicates: List[Transaction] = []
+    potential_duplicates: List[Transaction] = []
+    
+    @property
+    def has_exact_duplicates(self) -> bool:
+        return len(self.exact_duplicates) > 0
+    
+    @property
+    def has_potential_duplicates(self) -> bool:
+        return len(self.potential_duplicates) > 0
 
 class DuplicateTreatmentService:
     """
@@ -26,22 +41,45 @@ class DuplicateTreatmentService:
     def get_transactions_period(transactions: List[Transaction]) -> Period:
         dates = [transaction.date for transaction in transactions]
         
-        return Period(start_date= min(dates), end_date= max(dates))    
-    
-    @staticmethod
-    def _is_exact_duplicate(transaction: Transaction, existing_keys: Set[Tuple[Any, ...]]) -> bool:
-        ... 
+        return Period(start_date= min(dates), end_date= max(dates))  
         
     @staticmethod
-    def _is_potential_duplicate(transaction: Transaction, existing_keys: Set[Tuple[Any, ...]]) -> bool:
-        ...
+    async def _determine_transaction_duplicates(transaction: Transaction, existing_transactions: List[Transaction]) -> DuplicateResult:
+        exact_duplicates_task: List[asyncio.Task[bool]] = []
+        potential_duplicates_task: List[asyncio.Task[bool]] = []
         
-    def detect_duplicates(
+        for t in existing_transactions:
+            exact_duplicates_task.append(asyncio.create_task(transaction.exact_duplicate(t)))
+            potential_duplicates_task.append(asyncio.create_task(transaction.potencial_duplicate(t)))
+            
+        exact_duplicates: List[bool] = await asyncio.gather(*exact_duplicates_task)
+        potential_duplicates: List[bool] = await asyncio.gather(*potential_duplicates_task)
+        
+        exactly_duplicates_transactions: List[Transaction] = []
+        potential_duplicates_transactions: List[Transaction] = []
+        
+        # The transaction could be and exact and potential duplicate at the same time.
+        # So we need to iterate over the transaction and the boolean values to determine the type of duplicate
+        # by checking first for exact and then for potential, so if the transaction is an exact and potential duplicate,
+        # it will be added to the exactly_duplicates_transactions list.
+        for t, exact, potential in zip(existing_transactions, exact_duplicates, potential_duplicates):
+            if exact:
+                exactly_duplicates_transactions.append(t)
+            elif potential:
+                potential_duplicates_transactions.append(t)
+        
+        return DuplicateResult(
+            transaction= transaction,
+            exact_duplicates= exactly_duplicates_transactions,
+            potential_duplicates= potential_duplicates_transactions
+        )
+        
+    async def detect_duplicates(
             self, 
             conn: connection, 
             user_id: int, 
             transactions: List[Transaction] | Transaction
-        ) -> Dict[Transaction, DuplicateTransactionType] | DuplicateTransactionType:
+        ) -> List[DuplicateResult] | DuplicateResult:
         if isinstance(transactions, Transaction):
             transactions = [transactions]
         if not transactions:
@@ -50,19 +88,24 @@ class DuplicateTreatmentService:
         transactions_db = TransactionsDBService(conn)
         period = self.get_transactions_period(transactions)
         
-        existing_keys = transactions_db.get_existing_keys(user_id= user_id, period= period)
+        existing_transactions = transactions_db.get_transactions(
+            user_id= user_id, 
+            columns= ['transaction_id', 'date', 'amount', 'description', 'type', 'bank', 'statement_type'],
+            period= period,
+        )
         
-        duplicates = {}
+        tasks: List[asyncio.Task[DuplicateResult]] = []
         
-        for transaction in transactions:
-            if self._is_exact_duplicate(transaction, existing_keys):
-                duplicates[transaction] = DuplicateTransactionType.EXACT
-            elif self._is_potential_duplicate(transaction, existing_keys):
-                duplicates[transaction] = DuplicateTransactionType.POTENTIAL
-            else:
-                duplicates[transaction] = DuplicateTransactionType.NULL
-                
-        return duplicates if len(transactions) > 1 else duplicates[transactions[0]]
+        for t in transactions:
+            task = asyncio.create_task(self._determine_transaction_duplicates(t, existing_transactions))
+            tasks.append(task)
+            
+        results: List[DuplicateResult] = await asyncio.gather(*tasks)
+        
+        if len(results) == 1:
+            return results[0]
+        else:
+            return results
         
     @cache
     def get_similar_transactions(self, conn: connection, transaction: Transaction, ids: Optional[bool] = False) -> List[Transaction]:
@@ -76,7 +119,7 @@ class DuplicateTreatmentService:
         
         similar_transactions: List[Transaction] = []
         for t in transactions:
-            if self._is_potential_duplicate(transaction, t.to_tuple(key= True)):
+            if self._determine_potential_duplicates(transaction, t.to_tuple(key= True)):
                 similar_transactions.append(t)
         
         return similar_transactions

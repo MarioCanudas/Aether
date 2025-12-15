@@ -1,5 +1,5 @@
 from typing import List, Optional, Dict
-from functools import cache
+import asyncio
 from services import (
     CategoryDBService, 
     TransactionsDBService, 
@@ -9,7 +9,7 @@ from services import (
 )
 from models.bank_properties import BankName
 from models.cards import Card
-from models.transactions import Transaction, DuplicateTransactionType
+from models.transactions import Transaction
 from models.templates import Template, TemplateType
 from .base_controller import BaseController
 
@@ -68,24 +68,25 @@ class AddTransactionController(BaseController):
         dt_service = DuplicateTreatmentService()
         
         with self.quick_read_conn() as conn:
-            duplicate_type = dt_service.detect_duplicates(conn, self.user_id, transaction)
+            duplicate_result = asyncio.run(dt_service.detect_duplicates(conn, self.user_id, transaction))
             
-            return duplicate_type == DuplicateTransactionType.EXACT
+            return duplicate_result.has_exact_duplicates
     
     def add_transaction(self, transaction: Transaction) -> None:
         dt_service = DuplicateTreatmentService()
 
         with self.session_conn() as conn:
-            duplicate_type = dt_service.detect_duplicates(conn, self.user_id, transaction)
+            transactions_db = TransactionsDBService(conn)
+            duplicate_result = asyncio.run(dt_service.detect_duplicates(conn, self.user_id, transaction))
             
-            if duplicate_type == DuplicateTransactionType.EXACT:
+            if duplicate_result.has_exact_duplicates:
                 raise ValueError('Transaction is an exact duplicate')
-            elif duplicate_type == DuplicateTransactionType.POTENTIAL:
+            elif duplicate_result.has_potential_duplicates:
                 transaction.duplicate_potential_state = True
+                
+                transactions_db.update_transactions(duplicate_result.potential_duplicates)
             else:
                 transaction.duplicate_potential_state = False
-                
-            transactions_db = TransactionsDBService(conn)
             
             transactions_db.add_records([transaction])
             

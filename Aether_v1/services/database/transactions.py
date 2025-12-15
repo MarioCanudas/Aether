@@ -201,7 +201,7 @@ class TransactionsDBService(BaseDBService):
     
     def get_existing_keys(self, user_id: int, period: Optional[Period] = None) -> Set[Tuple[Any, ...]]:
         query = f"""
-            SELECT {self.date}, {self.description}, {self.amount}, {self.bank}::text, {self.statement_type}::text
+            SELECT {self.date}, {self.amount}, {self.type}::text, {self.bank}::text, {self.statement_type}::text
             FROM {self.table_name}
             WHERE {self.user_id} = %(user_id)s
         """
@@ -254,6 +254,7 @@ class TransactionsDBService(BaseDBService):
                     {self.statement_type} = %({self.statement_type})s, 
                     {self.filename} = %({self.filename})s,
                     {self.category_id} = %({self.category_id})s
+                    {self.duplicate_potential_state} = %({self.duplicate_potential_state})s
                 WHERE {self.id_col} = %({self.id_col})s
             """
             

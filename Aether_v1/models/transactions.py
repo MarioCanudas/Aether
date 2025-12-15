@@ -2,6 +2,7 @@ from pydantic import BaseModel
 from enum import Enum
 from typing import Optional, List, Any, Tuple, Dict
 from datetime import date
+from dateutil.relativedelta import relativedelta
 from decimal import Decimal
 from .amounts import TransactionType
 from .bank_properties import BankName, StatementType
@@ -33,15 +34,25 @@ class Transaction(BaseModel):
     duplicate_potential_state: bool = False
     
     @property
-    def default_values(self) -> List[str]:
+    def key_values(self) -> List[str]:
         return [
-            'user_id',
-            'category_id',
             'date',
-            'description',
             'amount',
             'type',
             'bank',
+            'statement_type',
+        ]
+    
+    @property
+    def default_values(self) -> List[str]:
+        return [
+            'user_id',
+            'date',
+            'amount',
+            'type',
+            'bank',
+            'statement_type',
+            'duplicate_potential_state',
         ]
         
     @property
@@ -49,10 +60,9 @@ class Transaction(BaseModel):
         return [
             'transaction_id',
             'category_id',
-            'card_id',
             'description',
+            'card_id',
             'filename',
-            'duplicate_potential_state',
         ]
     
     def __getitem__(self, key: str) -> Any:
@@ -74,9 +84,22 @@ class Transaction(BaseModel):
             raise KeyError(f"Key {key} not found in Transaction model")
         
     def to_tuple(self, key: Optional[bool] = False) -> Tuple[Any, ...]:
+        """
+        Convert the Transaction model to a tuple.
+        
+        - key values: date, amount, type, bank, statement_type
+        - default values: user_id, date, amount, type, bank, statement_type
+        - optional values: transaction_id, category_id, description, card_id, filename
+        
+        Args:
+            key (Optional[bool]): If True, return the tuple of key values. If False, return the tuple of default values and optional values.
+            
+        Returns:
+            Tuple[Any, ...]: The tuple of values.
+        """
         try:
             if key:
-                return tuple(getattr(self, k) for k in self.default_values)
+                return tuple(getattr(self, k) for k in self.key_values)
             else:
                 return tuple(getattr(self, k) for k in self.default_values + self.optional_values)
         except Exception as e:
@@ -88,3 +111,71 @@ class Transaction(BaseModel):
         del record['transaction_id']
         
         return record
+    
+    async def exact_duplicate(self, other: 'Transaction') -> bool:
+        return all(getattr(self, k) == getattr(other, k) for k in self.key_values)
+    
+    async def potencial_duplicate(self, other: 'Transaction') -> bool:
+        # If the transactions are exact duplicates, they are also potential duplicates.
+        is_exact_duplicate = await self.exact_duplicate(other)
+        
+        if is_exact_duplicate:
+            return True
+        
+        # First case: Gap between the dates is less than 3 days.
+        if relativedelta(self.date, other.date).days <= 3:
+            self_key = (self.amount, self.type, self.bank, self.statement_type)
+            other_key = (other.amount, other.type, other.bank, other.statement_type)
+            
+            if self_key == other_key:
+                return True
+            else:
+                return False
+        # Second case: Amount difference is less than $25.00
+        elif abs(self.amount - other.amount) <= Decimal('25.00'):
+            self_key = (self.date, self.type, self.bank, self.statement_type)
+            other_key = (other.date, other.type, other.bank, other.statement_type)
+            
+            if self_key == other_key:
+                return True
+            else:
+                return False
+        # Third case: Banks are different.
+        elif self.bank != other.bank:
+            self_key = (self.date, self.amount, self.type, self.statement_type)
+            other_key = (other.date, other.amount, other.type, other.statement_type)
+            
+            if self_key == other_key:
+                return True
+            else:
+                return False
+        # Fourth case: Card IDs are different.
+        elif self.card_id != other.card_id:
+            self_key = (self.date, self.amount, self.type, self.bank, self.statement_type)
+            other_key = (other.date, other.amount, other.type, other.bank, other.statement_type)
+            
+            if self_key == other_key:
+                return True
+            else:
+                return False
+        # Fifth case: Category IDs are different.
+        elif self.category_id != other.category_id:
+            self_key = (self.date, self.amount, self.type, self.bank, self.statement_type)
+            other_key = (other.date, other.amount, other.type, other.bank, other.statement_type)
+            
+            if self_key == other_key:
+                return True
+            else:
+                return False
+        # Sixth case: Types are different.
+        elif self.type != other.type:
+            self_key = (self.date, abs(self.amount), self.bank, self.statement_type)
+            other_key = (other.date, abs(other.amount), other.bank, other.statement_type)
+            
+            if self_key == other_key:
+                return True
+            else:
+                return False
+        else:
+            return False
+        
