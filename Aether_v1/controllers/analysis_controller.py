@@ -164,8 +164,9 @@ class AnalysisController(BaseController):
             avarage_sums = tg.create_task(transactions_db.get_avg_all_time_sums(self.user_id))
             
         if category == 'Abono':
+            all_time_income = all_time_sums.result().income + first_initial_balance['amount'] if first_initial_balance else all_time_sums.result().income
             return AnalysisAmountsPerPeriod(
-                all_time= all_time_sums.result().income + first_initial_balance['amount'],
+                all_time= all_time_income,
                 current_month= current_month_sums.result().income,
                 last_month= last_month_sums.result().income,
                 avarage= avarage_sums.result().income
