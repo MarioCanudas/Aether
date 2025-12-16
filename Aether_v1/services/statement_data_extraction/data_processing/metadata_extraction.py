@@ -1,13 +1,15 @@
 import re
+from decimal import Decimal
 from typing import List, Tuple, Literal
 from functools import cache
 from datetime import date
 from dateutil.relativedelta import relativedelta
 import pandas as pd
-from utils import clean_amount, search_phrase_in_df
-from models.bank_properties import StatementType, Metadata, Balances
+from utils import clean_amount, search_phrase_in_df, to_decimal
+from models.amounts import TransactionType
+from models.bank_properties import BankName, StatementType, Metadata, Balances
 from models.dates import Period
-from models.records import TransactionRecord
+from models.transactions import Transaction
 from ..core import MetadataExtractor
 
 class DefaultMetadataExtractor(MetadataExtractor):
@@ -107,7 +109,7 @@ class DefaultMetadataExtractor(MetadataExtractor):
         else:
             raise ValueError("More than 2 period dates found in the statement.")
         
-    def get_generated_amount(self) -> float | None:
+    def get_generated_amount(self) -> Decimal | None:
         """
         Get the generated amount from the statement text.
         Searches for the generated amount phrase and returns the following numeric value.
@@ -134,16 +136,16 @@ class DefaultMetadataExtractor(MetadataExtractor):
             text = clean_amount(text)
             
             try: 
-                amount = float(text)
+                amount = to_decimal(text)
                 
-                if amount > 0:
+                if amount > Decimal('0.00'):
                     return amount
             except ValueError:
                 continue
         else:
             return None
         
-    def get_generated_amount_row(self, filename: str) -> TransactionRecord | None:
+    def get_generated_amount_row(self, user_id: int, filename: str) -> Transaction | None:
         generated_amount = self.get_generated_amount()
         
         if generated_amount is None:
@@ -152,15 +154,16 @@ class DefaultMetadataExtractor(MetadataExtractor):
         period = self.get_period()
         final_date = pd.to_datetime(period.end_date)
         
-        return {
-            'date': final_date,
-            'description': 'Intereses generados',
-            'amount': generated_amount,
-            'type': 'Abono',
-            'bank': self.bank_properties.bank.value,
-            'statement_type': self.bank_properties.statement_type.value,
-            'filename': filename,
-        }
+        return Transaction(
+            user_id= user_id,
+            date= final_date,
+            description= 'Intereses generados',
+            amount= generated_amount,
+            type= TransactionType.INCOME,
+            bank= self.bank_properties.bank,
+            statement_type= self.bank_properties.statement_type,
+            filename= filename,
+        )
                 
     def get_balance(self, balance: Literal['initial', 'final']) -> float | None:
         """
@@ -198,7 +201,7 @@ class DefaultMetadataExtractor(MetadataExtractor):
 
         return None    
     
-    def get_initial_balance_row(self, filename: str) -> TransactionRecord | None:
+    def get_initial_balance_row(self, user_id: int, filename: str) -> Transaction | None:
         initial_balance = self.get_balance('initial')
         
         if initial_balance is None:
@@ -207,15 +210,16 @@ class DefaultMetadataExtractor(MetadataExtractor):
         period = self.get_period()
         first_date = pd.to_datetime(period.start_date)
         
-        return {
-            'date': first_date,
-            'description': 'Saldo inicial',
-            'amount': initial_balance,
-            'type': 'Saldo inicial',
-            'bank': self.bank_properties.bank.value,
-            'statement_type': self.bank_properties.statement_type.value,
-            'filename': filename,
-        }
+        return Transaction(
+            user_id= user_id,
+            date= first_date,
+            description= 'Saldo inicial',
+            amount= to_decimal(initial_balance),
+            type= TransactionType.INITIAL_BALANCE,
+            bank= self.bank_properties.bank,
+            statement_type= self.bank_properties.statement_type,
+            filename= filename,
+        )
     
     def get_years(self) -> List[int]:
         """

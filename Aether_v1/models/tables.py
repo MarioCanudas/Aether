@@ -1,10 +1,11 @@
 import pandas as pd
 from pydantic import BaseModel,ConfigDict, field_validator, model_validator
 from decimal import Decimal
-from typing import List, Literal
+from typing import List, Literal, Dict, Any
 from utils import to_decimal
 from .amounts import AmountColumns
-from .records import TransactionRecord, MonthlyResultRecord
+from .records import MonthlyResultRecord
+from .transactions import Transaction
 
 TABLE_CONFIG = ConfigDict(arbitrary_types_allowed=True) 
 
@@ -465,13 +466,16 @@ class TransactionsTable(BaseModel):
     @property
     def filename(self) -> str:
         return self.df['filename'].iloc[0]
-    
-    def add_row(self, row: TransactionRecord) -> None:
-        self.df = pd.concat([self.df, pd.DataFrame([row])], ignore_index=True)
         
     @property
-    def records(self) -> List[TransactionRecord]:
-        return self.df.to_dict(orient='records')
+    def transactions(self) -> List[Transaction]:
+        return [Transaction(**transaction) for transaction in self.df.to_dict(orient='records')]
+    
+    def add_transaction(self, transaction: Transaction) -> None:
+        record = transaction.model_dump()
+        
+        record['amount'] = float(record['amount'])
+        self.df = pd.concat([self.df, pd.DataFrame([record])], ignore_index=True)
     
     def get_all_incomes(self) -> float:
         return self.df[self.df['type'] == 'Abono']['amount'].sum()
@@ -481,10 +485,6 @@ class TransactionsTable(BaseModel):
     
     def get_all_transactions(self) -> float:
         return self.df['amount'].sum()
-    
-    @property
-    def records(self) -> List[TransactionRecord]:
-        return self.df.to_dict(orient='records')
     
 class AllTransactionsTable(TransactionsTable):
     """Represents a table of all transactions from all statements with the following columns:
@@ -531,6 +531,9 @@ class AllTransactionsTable(TransactionsTable):
         
         self.df['category_id'] = category_id
         
+    def get_transactions_dicts(self) -> List[Dict[str, Any]]:   
+        return self.df.to_dict(orient='records')
+    
 class MonthlyResultsTable(BaseModel):
     """Represents a table of monthly results with the following columns:
     - year_month: The year and month of the result

@@ -1,5 +1,5 @@
 import asyncio
-from typing import List
+from typing import List, Dict, Any
 import pandas as pd
 from altair import Chart
 from datetime import date
@@ -9,7 +9,7 @@ from services import CardsDBService, TransactionsDBService, PlottingService
 from models.bank_properties import BankName, StatementType
 from models.cards import Card, CardMetrics
 from models.amounts import TransactionType
-from models.records import TransactionRecord
+from models.transactions import Transaction
 from models.views_data import CardViewData
 from .base_controller import BaseController
 
@@ -41,11 +41,8 @@ class CardsViewController(BaseController):
             
             return cards_db.get_card_by_id(self.user_id, card_id)
         
-    async def get_income_vs_expenses_chart(self, transactions: List[TransactionRecord]) -> Chart | None:
+    async def get_income_vs_expenses_chart(self, transactions: List[Dict[str, Any]]) -> Chart | None:
         df = pd.DataFrame(transactions)
-        
-        if df.empty:
-            return None
         
         df['date'] = pd.to_datetime(df['date'])
         
@@ -89,7 +86,9 @@ class CardsViewController(BaseController):
                 show_categories_names= True, 
                 card_id= card_id, 
                 order_col='date', 
-                order='desc'
+                order='desc',
+                limit= 5,
+                transaction_model= False,
             )
             
             return CardViewData(

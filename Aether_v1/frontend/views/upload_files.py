@@ -29,11 +29,8 @@ def show_upload_statements():
         if st.form_submit_button(label= 'Upload', icon= ':material/save:'):
             if uploaded_files:
                 st.write("Processing Files...")
-                try:
-                    transactions = controller.process_uploaded_files(uploaded_files, card)
-                    confirm_upload_popup(transactions)
-                except Exception as e:
-                    st.error(f"An unexpected error processing files: {e}")
+                transactions = controller.process_uploaded_files(uploaded_files, card)
+                confirm_upload_popup(transactions)
             else:
                 st.toast('No files uploaded', icon= ':material/info:')
                 
