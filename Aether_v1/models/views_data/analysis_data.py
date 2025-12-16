@@ -76,31 +76,31 @@ class AnalysisViewData(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     
     period: Period
-    amount_per_category_chart: alt.Chart | alt.LayerChart
-    avg_monthly_bar_chart: alt.Chart
-    avg_daily_bar_chart: alt.Chart
+    amount_per_category_chart: Optional[alt.Chart | alt.LayerChart]
+    avg_monthly_bar_chart: Optional[alt.Chart]
+    avg_daily_bar_chart: Optional[alt.Chart]
     analysis_amounts: AnalysisAmounts
     
     @field_validator('amount_per_category_chart')
     @classmethod
-    def validate_amount_per_category_chart(cls, amount_per_category_chart: alt.Chart | alt.LayerChart) -> alt.Chart | alt.LayerChart:
-        if not isinstance(amount_per_category_chart, (alt.Chart, alt.LayerChart)):
+    def validate_amount_per_category_chart(cls, amount_per_category_chart: Optional[alt.Chart | alt.LayerChart]) -> Optional[alt.Chart | alt.LayerChart]:
+        if (amount_per_category_chart is not None) and not isinstance(amount_per_category_chart, (alt.Chart, alt.LayerChart)):
             raise ValueError('Amount per category chart must be a Altair Chart object')
         
         return amount_per_category_chart
     
     @field_validator('avg_monthly_bar_chart')
     @classmethod
-    def validate_avg_monthly_bar_chart(cls, avg_monthly_bar_chart: alt.Chart) -> alt.Chart:
-        if not isinstance(avg_monthly_bar_chart, alt.Chart):
+    def validate_avg_monthly_bar_chart(cls, avg_monthly_bar_chart: Optional[alt.Chart]) -> Optional[alt.Chart]:
+        if (avg_monthly_bar_chart is not None) and not isinstance(avg_monthly_bar_chart, alt.Chart):
             raise ValueError('Average monthly bar chart must be a Altair Chart object')
         
         return avg_monthly_bar_chart
     
     @field_validator('avg_daily_bar_chart')
     @classmethod
-    def validate_avg_daily_bar_chart(cls, avg_daily_bar_chart: alt.Chart) -> alt.Chart:
-        if not isinstance(avg_daily_bar_chart, alt.Chart):
+    def validate_avg_daily_bar_chart(cls, avg_daily_bar_chart: Optional[alt.Chart]) -> Optional[alt.Chart]:
+        if (avg_daily_bar_chart is not None) and not isinstance(avg_daily_bar_chart, alt.Chart):
             raise ValueError('Average daily bar chart must be a Altair Chart object')
         
         return avg_daily_bar_chart

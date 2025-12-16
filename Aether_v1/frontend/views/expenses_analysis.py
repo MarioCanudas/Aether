@@ -94,7 +94,11 @@ def show_expenses_analysis():
                     )
                 
                 st.subheader('Expenses per Day')
-                st.altair_chart(controller.get_daily_bar_chart('Cargo', MonthLabels(month), year))
+                daily_bar_chart = controller.get_daily_bar_chart('Cargo', year)
+                if daily_bar_chart:
+                    st.altair_chart(daily_bar_chart)
+                else:
+                    st.info("No transactions available. Please upload files in the Home view.")
             else:
                 year = right_2.selectbox(
                     label= 'Select year',
@@ -103,20 +107,36 @@ def show_expenses_analysis():
                     index= 0,
                 )
                 st.subheader('Total Expenses per Month')
-                st.altair_chart(controller.get_monthly_bar_chart('Cargo', year))
+                monthly_bar_chart = controller.get_monthly_bar_chart('Cargo', year)
+                if monthly_bar_chart:
+                    st.altair_chart(monthly_bar_chart)
+                else:
+                    st.info("No transactions available. Please upload files in the Home view.")
                 
         with st.container(border= True):
             st.subheader('Sources of Expenses')
-            st.altair_chart(view_data.amount_per_category_chart)
+            amount_per_category_chart = view_data.amount_per_category_chart
+            if amount_per_category_chart:
+                st.altair_chart(amount_per_category_chart)
+            else:
+                st.info("No transactions available. Please upload files in the Home view.")
                 
         with st.container(border= True):
             st.subheader('Average Expenses')
             
             left_4, right_4 = st.columns(2)
             with left_4:
-                st.altair_chart(view_data.avg_monthly_bar_chart)
+                avg_monthly_bar_chart = view_data.avg_monthly_bar_chart
+                if avg_monthly_bar_chart:
+                    st.altair_chart(avg_monthly_bar_chart)
+                else:
+                    st.info("No transactions available. Please upload files in the Home view.")
             with right_4:
-                st.altair_chart(view_data.avg_daily_bar_chart)
+                avg_daily_bar_chart = view_data.avg_daily_bar_chart
+                if avg_daily_bar_chart:
+                    st.altair_chart(avg_daily_bar_chart)
+                else:
+                    st.info("No transactions available. Please upload files in the Home view.")
                   
     else: 
         st.info("No transactions available. Please upload files in the Home view.")
