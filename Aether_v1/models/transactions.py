@@ -1,10 +1,30 @@
 from pydantic import BaseModel
-from typing import Optional, List, Any, Tuple, Dict
+from typing import Optional, List, Any, Dict
 from datetime import date
 from dateutil.relativedelta import relativedelta
 from decimal import Decimal
 from .amounts import TransactionType
 from .bank_properties import BankName, StatementType
+
+class TransactionKey(BaseModel):
+    date: date
+    amount: Decimal
+    type: TransactionType
+    bank: BankName
+    statement_type: StatementType
+    
+    def __eq__(self, other: 'TransactionKey') -> bool:
+        if not isinstance(other, TransactionKey):
+            return False
+        else:
+            return self.model_dump() == other.model_dump()
+        
+    def __ne__(self, other: 'TransactionKey') -> bool:
+        if not isinstance(other, TransactionKey):
+            return True
+        else:
+            return self.model_dump() != other.model_dump()
+    
 
 class Transaction(BaseModel):
     transaction_id: Optional[int] = None
@@ -19,6 +39,18 @@ class Transaction(BaseModel):
     statement_type: StatementType
     filename: Optional[str] = None
     duplicate_potential_state: bool = False
+    
+    def __eq__(self, other: 'Transaction') -> bool:
+        if not isinstance(other, Transaction):
+            return False
+        else:
+            return self.model_dump() == other.model_dump()
+        
+    def __ne__(self, other: 'Transaction') -> bool:
+        if not isinstance(other, Transaction):
+            return True
+        else:
+            return self.model_dump() != other.model_dump()
     
     @property
     def key_values(self) -> List[str]:
@@ -51,46 +83,10 @@ class Transaction(BaseModel):
             'card_id',
             'filename',
         ]
-    
-    def __getitem__(self, key: str) -> Any:
-        if key in self.default_values + self.optional_values:
-            return getattr(self, key)
-        else:
-            raise KeyError(f"Key {key} not found in Transaction model")
         
-    def __setitem__(self, key: str, value: Any) -> None:
-        if key in self.default_values + self.optional_values:
-            setattr(self, key, value)
-        else:
-            raise KeyError(f"Key {key} not found in Transaction model")
-        
-    def __delitem__(self, key: str) -> None:
-        if key in self.default_values + self.optional_values:
-            delattr(self, key)
-        else:
-            raise KeyError(f"Key {key} not found in Transaction model")
-        
-    def to_tuple(self, key: Optional[bool] = False) -> Tuple[Any, ...]:
-        """
-        Convert the Transaction model to a tuple.
-        
-        - key values: date, amount, type, bank, statement_type
-        - default values: user_id, date, amount, type, bank, statement_type
-        - optional values: transaction_id, category_id, description, card_id, filename
-        
-        Args:
-            key (Optional[bool]): If True, return the tuple of key values. If False, return the tuple of default values and optional values.
-            
-        Returns:
-            Tuple[Any, ...]: The tuple of values.
-        """
-        try:
-            if key:
-                return tuple(getattr(self, k) for k in self.key_values)
-            else:
-                return tuple(getattr(self, k) for k in self.default_values + self.optional_values)
-        except Exception as e:
-            raise ValueError(f"Error converting Transaction model to tuple: {e}")
+    @property
+    def key(self) -> TransactionKey:
+        return TransactionKey(**{k: getattr(self, k) for k in self.key_values})
         
     def dump_to_add(self) -> Dict[str, Any]:
         record = self.model_dump()

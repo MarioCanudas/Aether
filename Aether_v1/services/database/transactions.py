@@ -1,4 +1,4 @@
-from typing import Optional, List, Dict, Set, Tuple, Any, Literal
+from typing import Optional, List, Dict, Any, Literal
 from decimal import Decimal
 from datetime import datetime, date
 from dateutil.relativedelta import relativedelta
@@ -198,25 +198,6 @@ class TransactionsDBService(BaseDBService):
         result = self.execute_query(query, params= {'user_id': user_id}, fetch= 'one', dict_cursor= True)
         
         return Period(start_date= result['start_date'], end_date= result['end_date'])
-    
-    def get_existing_keys(self, user_id: int, period: Optional[Period] = None) -> Set[Tuple[Any, ...]]:
-        query = f"""
-            SELECT {self.date}, {self.amount}, {self.type}::text, {self.bank}::text, {self.statement_type}::text
-            FROM {self.table_name}
-            WHERE {self.user_id} = %(user_id)s
-        """
-        
-        params = {'user_id': user_id}
-        
-        if period:
-            query += f" AND {self.date} BETWEEN %(start_date)s AND %(end_date)s"
-            params['start_date'] = period.start_date
-            params['end_date'] = period.end_date
-        
-        result = self.execute_query(query, params= params, fetch= 'all')
-        
-        return set(result)
-        
     
     def add_records(self, transactions: List[Transaction]) -> None:
         if not transactions:

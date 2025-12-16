@@ -1,10 +1,10 @@
 from psycopg2.extensions import connection
 import asyncio
+import pandas as pd
 from typing import Tuple, List
 from models.dates import Period
 from models.transactions import Transaction, DuplicateResult
 from .database.transactions import TransactionsDBService
-from models.tables import AllTransactionsTable
 
 class DuplicateTreatmentService:
     """
@@ -63,7 +63,7 @@ class DuplicateTreatmentService:
         
         existing_transactions = transactions_db.get_transactions(
             user_id= user_id, 
-            columns= ['transaction_id', 'date', 'amount', 'description', 'type', 'bank', 'statement_type'],
+            columns= ['transaction_id', 'date', 'amount', 'type', 'bank', 'statement_type'],
             period= period,
         )
         
@@ -81,7 +81,7 @@ class DuplicateTreatmentService:
             return results
         
     @staticmethod
-    def eliminate_credit_and_debit_duplicates(transactions: AllTransactionsTable) -> Tuple[List[Transaction], List[Transaction]]:
+    def eliminate_credit_and_debit_duplicates(transactions: List[Transaction]) -> Tuple[List[Transaction], List[Transaction]]:
         """
         Classificates the duplicate transactions from a financial dataset, specifically targeting credit card payments
         (abonos) and their corresponding debit transactions (cargos) to avoid double-counting.
@@ -103,16 +103,11 @@ class DuplicateTreatmentService:
         Returns:
             Tuple[List[Transaction], List[Transaction]]: A tuple containing the duplicated and not duplicated transactions.
         """
-        transactions_cleaned = transactions.df.copy()
+        transactions_cleaned = [t.model_dump() for t in transactions]
+        df = pd.DataFrame(transactions_cleaned)
 
-        credit_transactions = transactions_cleaned[
-            (transactions_cleaned['statement_type'] == 'credit') &
-            (transactions_cleaned['type'] == 'Abono')
-        ]
-        debit_transactions = transactions_cleaned[
-            (transactions_cleaned['statement_type'] == 'debit') &
-            (transactions_cleaned['type'] == 'Cargo')
-        ]
+        credit_transactions = df[(df['statement_type'] == 'credit') & (df['type'] == 'Abono')]
+        debit_transactions = df[(df['statement_type'] == 'debit') & (df['type'] == 'Cargo')]
 
         indices_to_remove = []
 
@@ -128,7 +123,10 @@ class DuplicateTreatmentService:
                 # Add indices of credit and the last matching debit to the list
                 indices_to_remove.extend([index, last_matching_debit.name])
                 
-        duplicated = transactions_cleaned.iloc[indices_to_remove]
-        not_duplicated = transactions_cleaned.drop(indices_to_remove)
+        duplicated = df.iloc[indices_to_remove]
+        not_duplicated = df.drop(indices_to_remove)
         
-        return [Transaction(**t) for t in duplicated], [Transaction(**t) for t in not_duplicated]
+        return (
+            [Transaction(**t) for t in duplicated.to_dict(orient='records')], 
+            [Transaction(**t) for t in not_duplicated.to_dict(orient='records')]
+        )
