@@ -28,6 +28,9 @@ class DuplicateTreatmentService:
         exact_duplicates: List[bool] = await asyncio.gather(*exact_duplicates_task)
         potential_duplicates: List[bool] = await asyncio.gather(*potential_duplicates_task)
         
+        if any(potential_duplicates):
+            transaction.duplicate_potential_state = True
+
         exactly_duplicates_transactions: List[Transaction] = []
         potential_duplicates_transactions: List[Transaction] = []
         
@@ -39,6 +42,7 @@ class DuplicateTreatmentService:
             if exact:
                 exactly_duplicates_transactions.append(t)
             elif potential:
+                t.duplicate_potential_state = True
                 potential_duplicates_transactions.append(t)
         
         return DuplicateResult(

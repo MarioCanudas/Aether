@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+import pandas as pd
 from typing import Optional, List, Any, Dict
 from datetime import date
 from dateutil.relativedelta import relativedelta
@@ -51,6 +52,9 @@ class Transaction(BaseModel):
             return True
         else:
             return self.model_dump() != other.model_dump()
+        
+    def __hash__(self) -> int:
+        return hash(tuple(self.model_dump().items()))
     
     @property
     def key_values(self) -> List[str]:
@@ -175,3 +179,26 @@ class DuplicateResult(BaseModel):
     @property
     def has_potential_duplicates(self) -> bool:
         return len(self.potential_duplicates) > 0
+    
+
+class FilteredTransactionsResult(BaseModel):
+    clean: List[Transaction] = []
+    potential_duplicates_to_upload: List[Transaction] = []
+    potential_duplicates_to_modify: List[Transaction] = []
+    duplicated: List[Transaction] = []
+    
+    @property
+    def clean_df(self) -> pd.DataFrame:
+        return pd.DataFrame([t.model_dump() for t in self.clean])
+    
+    @property
+    def potential_duplicates_to_upload_df(self) -> pd.DataFrame:
+        return pd.DataFrame([t.model_dump() for t in self.potential_duplicates_to_upload])
+    
+    @property
+    def potential_duplicates_to_modify_df(self) -> pd.DataFrame:
+        return pd.DataFrame([t.model_dump() for t in self.potential_duplicates_to_modify])
+    
+    @property
+    def duplicated_df(self) -> pd.DataFrame:
+        return pd.DataFrame([t.model_dump() for t in self.duplicated])

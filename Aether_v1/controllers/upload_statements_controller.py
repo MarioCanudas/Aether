@@ -1,6 +1,6 @@
 import pandas as pd
 from io import BytesIO
-from typing import List, Tuple, Dict, Optional, Any
+from typing import List, Dict, Optional, Any
 import logging
 from services import (
     StatementDataExtractionService,
@@ -11,7 +11,7 @@ from services import (
     DuplicateTreatmentService
 )
 from models.cards import Card
-from models.transactions import Transaction, DuplicateResult
+from models.transactions import Transaction, DuplicateResult, FilteredTransactionsResult
 from .base_controller import BaseController
 
 logger = logging.getLogger(__name__)
@@ -49,33 +49,36 @@ class UploadStatementsController(BaseController):
         
         return [Transaction(**r) for r in records]
     
-    async def filter_transactions(self, transactions: List[Transaction]) -> Tuple[List[Transaction], List[Transaction], List[Transaction]]:
+    async def filter_transactions(self, transactions: List[Transaction]) -> FilteredTransactionsResult:
         clean_transactions, duplicated_transactions = self.dt_service.eliminate_credit_and_debit_duplicates(transactions)
         
         with self.quick_read_conn as conn:
             duplicates_results: List[DuplicateResult] = await self.dt_service.detect_duplicates(conn, self.user_id, clean_transactions)
             
-        potential_duplicates: List[Transaction] = []
-        to_delete: List[int] = []
+        filtered_transactions_result = FilteredTransactionsResult(duplicated= duplicated_transactions)
             
         for result in duplicates_results:
             if result.has_exact_duplicates:
-                duplicated_transactions.append(result.transaction)
-                to_delete.append(clean_transactions.index(result.transaction))
+                filtered_transactions_result.duplicated.append(result.transaction)
             elif result.has_potential_duplicates:
-                potential_duplicates.append(result.transaction)
-                to_delete.append(clean_transactions.index(result.transaction))
-                
-        if to_delete:
-            clean_transactions.pop(to_delete)
+                filtered_transactions_result.potential_duplicates_to_upload.append(result.transaction)
+                filtered_transactions_result.potential_duplicates_to_modify.extend(result.potential_duplicates)
+            else:
+                filtered_transactions_result.clean.append(result.transaction)
         
-        return clean_transactions, potential_duplicates, duplicated_transactions
+        return filtered_transactions_result
     
-    def upload_transactions(self, transactions: List[Transaction]) -> None:
+    def upload_transactions(self, filtered_transactions_result: FilteredTransactionsResult) -> None:
         with self.batch_conn() as conn:
             transactions_db = TransactionsDBService(conn)
             
-            transactions_db.add_records(transactions)
+            if len(filtered_transactions_result.potential_duplicates_to_modify) > 0:
+                transactions_db.update_transactions(list(set(filtered_transactions_result.potential_duplicates_to_modify)))
+                
+            transactions_to_upload = filtered_transactions_result.potential_duplicates_to_upload + filtered_transactions_result.clean
+            
+            if len(transactions_to_upload) > 0:
+                transactions_db.add_records(transactions_to_upload)
             
     def get_cards(self) -> List[str]:
         with self.quick_read_conn() as conn:
