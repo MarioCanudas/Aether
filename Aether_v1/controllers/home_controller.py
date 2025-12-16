@@ -209,7 +209,7 @@ class HomeController(BaseController):
         last_transactions['Amount'] = last_transactions['Amount'].apply(lambda x: f"${x:,.2f}")
         
         all_time_sums = all_time_sums.result()
-        all_time_sums.add_to_income(first_initial_balance['amount'])
+        all_time_sums.add_to_income(first_initial_balance['amount']) if first_initial_balance else None
             
         return HomeViewData(
             label= label,
