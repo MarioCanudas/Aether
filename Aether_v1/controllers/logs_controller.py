@@ -11,7 +11,7 @@ class LogsController(BaseController):
     def password_context(self) -> CryptContext:
         return CryptContext(schemes= ['argon2'], deprecated= 'auto')
     
-    def _hash_password(self, password: str) -> str:
+    def hash_password(self, password: str) -> str:
         return self.password_context.hash(password)
     
     def _verify_password(self, password: str, hashed_password: str) -> bool:
