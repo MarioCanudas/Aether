@@ -17,12 +17,13 @@ def show_expenses_analysis():
         layout='wide'
     )
     controller = AnalysisController()
-    view_data = asyncio.run(controller.get_analysis_view_data('Cargo'))
     
     st.title('Expenses Analysis')
 
     # Check if monthly results are available
     if controller.user_have_transactions():
+        view_data = asyncio.run(controller.get_analysis_view_data('Cargo'))
+        
         with st.container(border= True):
             selected_period = period_select_box(key= "period_selectbox_expenses")
     
