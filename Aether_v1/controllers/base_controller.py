@@ -1,4 +1,5 @@
 from abc import ABC
+from typing import Any, Dict, Optional
 import pandas as pd
 from psycopg2.extensions import connection
 from typing import Generator, List
@@ -6,7 +7,9 @@ from contextlib import contextmanager
 from services import (
     ConnectionManagementService, 
     UserSessionService,
-    TransactionsDBService
+    TransactionsDBService,
+    CategoryDBService,
+    CardsDBService
 )
 from models.transactions import Transaction
 
@@ -72,6 +75,41 @@ class BaseController(ABC):
             transactions_db = TransactionsDBService(conn)
             
             return transactions_db.exists(user_id= self.user_id, duplicate_potential_state= True)
-    @staticmethod
-    def transactions_to_df(transactions: List[Transaction]) -> pd.DataFrame:
-        return pd.DataFrame([transaction.model_dump() for transaction in transactions])
+    
+    def get_category_name(self, category_id: int) -> Optional[str]:
+        if not category_id:
+            raise ValueError('Category ID is required')
+        
+        with self.quick_read_conn() as conn:
+            category_db = CategoryDBService(conn)
+            
+            return category_db.get_category_name(category_id)
+        
+    def get_card_name(self, card_id: int) -> Optional[str]:
+        if not card_id:
+            raise ValueError('Card ID is required')
+        
+        with self.quick_read_conn() as conn:
+            cards_db = CardsDBService(conn)
+            
+            return cards_db.get_card_name(card_id)
+
+    def transactions_to_df(self, transactions: List[Transaction], to_view: bool = False) -> pd.DataFrame:
+        dicts_to_df: List[Dict[str, Any]] = []
+        
+        for t in transactions:
+            dict_to_df = t.model_dump()
+            
+            if to_view:
+                dict_to_df['category'] = self.get_category_name(t.category_id) if t.category_id else None
+                dict_to_df['card'] = self.get_card_name(t.card_id) if t.card_id else None
+                
+                del dict_to_df['category_id']
+                del dict_to_df['card_id']
+                del dict_to_df['duplicate_potential_state']
+                del dict_to_df['user_id']
+                del dict_to_df['transaction_id']
+            
+            dicts_to_df.append(dict_to_df)
+            
+        return pd.DataFrame(dicts_to_df)
