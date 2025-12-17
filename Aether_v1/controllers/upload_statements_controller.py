@@ -1,17 +1,17 @@
 import pandas as pd
 from io import BytesIO
-from typing import List, Tuple, Dict, Any, Optional
+from typing import List, Dict, Optional, Any
 import logging
 from services import (
     StatementDataExtractionService,
     DataProcessingService, 
     DataValidationService,
     TransactionsDBService,
-    CardsDBService
+    CardsDBService,
+    DuplicateTreatmentService
 )
 from models.cards import Card
-from models.tables import AllTransactionsTable
-from models.transactions import Transaction
+from models.transactions import Transaction, DuplicateResult, FilteredTransactionsResult
 from .base_controller import BaseController
 
 logger = logging.getLogger(__name__)
@@ -21,8 +21,9 @@ class UploadStatementsController(BaseController):
         super().__init__()
         self.data_processing_service = DataProcessingService()
         self.data_validation_service = DataValidationService()
+        self.dt_service = DuplicateTreatmentService()
         
-    def process_uploaded_files(self, uploaded_files: list[BytesIO], card: Optional[Card] = None) -> AllTransactionsTable:
+    def process_uploaded_files(self, uploaded_files: list[BytesIO], card: Optional[Card] = None) -> List[Transaction]:
         all_transactions = []
         
         for uploaded_file in uploaded_files:
@@ -38,63 +39,46 @@ class UploadStatementsController(BaseController):
         all_transactions_df = pd.concat(all_transactions, ignore_index=True)
         all_transactions_df['user_id'] = self.user_session_service.current_user_id
         all_transactions_df['category_id'] = None
+        
         if card:
             all_transactions_df['card_id'] = card.card_id
         else:
             all_transactions_df['card_id'] = None
          
-        return AllTransactionsTable(df=all_transactions_df)
+        records: List[Dict[str, Any]] = all_transactions_df.to_dict(orient='records')
+        
+        return [Transaction(**r) for r in records]
     
-    def filter_transactions(self, all_transactions: AllTransactionsTable) -> Tuple[List[Transaction], List[Transaction]]:
-        user_id = self.user_id
+    async def filter_transactions(self, transactions: List[Transaction]) -> FilteredTransactionsResult:
+        clean_transactions, duplicated_transactions = self.dt_service.eliminate_credit_and_debit_duplicates(transactions)
         
-        transactions_cleaned = self.data_validation_service.delete_double_transactions(all_transactions)
-        transactions_to_insert = transactions_cleaned.get_transactions_dicts()
+        with self.quick_read_conn as conn:
+            duplicates_results: List[DuplicateResult] = await self.dt_service.detect_duplicates(conn, self.user_id, clean_transactions)
+            
+        filtered_transactions_result = FilteredTransactionsResult(duplicated= duplicated_transactions)
+            
+        for result in duplicates_results:
+            if result.has_exact_duplicates:
+                filtered_transactions_result.duplicated.append(result.transaction)
+            elif result.has_potential_duplicates:
+                filtered_transactions_result.potential_duplicates_to_upload.append(result.transaction)
+                filtered_transactions_result.potential_duplicates_to_modify.extend(result.potential_duplicates)
+            else:
+                filtered_transactions_result.clean.append(result.transaction)
         
-        # Batch processing optimization
-        if transactions_to_insert:
-            # Get existing transactions in a single query
-            existing_keys = self.data_validation_service.get_existing_transaction_keys(transactions_to_insert, user_id)
-            
-            filtered_records = []
-            duplicate_records = []
-            
-            for transaction in transactions_to_insert:
-                # Create unique key for comparison
-                key = (
-                    transaction.date.strftime('%Y-%m-%d'),
-                    transaction.amount,
-                    transaction.description,
-                    transaction.bank,
-                    transaction.statement_type
-                )
-                
-                if key in existing_keys:
-                    duplicate_records.append(transaction)
-                else:
-                    filtered_records.append(transaction)
-        else:
-            filtered_records = []
-            duplicate_records = []
-                
-        return filtered_records, duplicate_records
+        return filtered_transactions_result
     
-    def upload_transactions(self, transactions: AllTransactionsTable) -> None:
-        filtered_records, duplicate_records = self.filter_transactions(transactions)
-        
-        if duplicate_records:   
-            logger.warning(f"{len(duplicate_records)} duplicate records found")
-            
-        if not filtered_records:
-            logger.warning("No records to insert into the transactions table")
-            return
-        
+    def upload_transactions(self, filtered_transactions_result: FilteredTransactionsResult) -> None:
         with self.batch_conn() as conn:
             transactions_db = TransactionsDBService(conn)
             
-            transactions_db.add_records(filtered_records)
+            if len(filtered_transactions_result.potential_duplicates_to_modify) > 0:
+                transactions_db.update_transactions(list(set(filtered_transactions_result.potential_duplicates_to_modify)))
+                
+            transactions_to_upload = filtered_transactions_result.potential_duplicates_to_upload + filtered_transactions_result.clean
             
-            logger.info(f"Inserted {len(filtered_records)} records into the transactions table")
+            if len(transactions_to_upload) > 0:
+                transactions_db.add_records(transactions_to_upload)
             
     def get_cards(self) -> List[str]:
         with self.quick_read_conn() as conn:

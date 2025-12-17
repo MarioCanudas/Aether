@@ -1,5 +1,12 @@
 from typing import List, Optional, Dict
-from services import CategoryDBService, TransactionsDBService, TemplatesDBService, CardsDBService
+import asyncio
+from services import (
+    CategoryDBService, 
+    TransactionsDBService, 
+    TemplatesDBService, 
+    CardsDBService,
+    DuplicateTreatmentService
+)
 from models.bank_properties import BankName
 from models.cards import Card
 from models.transactions import Transaction
@@ -57,11 +64,31 @@ class AddTransactionController(BaseController):
             
             return result['name']
         
+    def is_exact_duplicate(self, transaction: Transaction) -> bool:
+        dt_service = DuplicateTreatmentService()
+        
+        with self.quick_read_conn() as conn:
+            duplicate_result = asyncio.run(dt_service.detect_duplicates(conn, self.user_id, transaction))
+            
+            return duplicate_result.has_exact_duplicates
+    
     def add_transaction(self, transaction: Transaction) -> None:
+        dt_service = DuplicateTreatmentService()
+
         with self.session_conn() as conn:
             transactions_db = TransactionsDBService(conn)
+            duplicate_result = asyncio.run(dt_service.detect_duplicates(conn, self.user_id, transaction))
             
-            transactions_db.add_records([transaction.model_dump()])
+            if duplicate_result.has_exact_duplicates:
+                raise ValueError('Transaction is an exact duplicate')
+            elif duplicate_result.has_potential_duplicates:
+                transaction.duplicate_potential_state = True
+                
+                transactions_db.update_transactions(duplicate_result.potential_duplicates)
+            else:
+                transaction.duplicate_potential_state = False
+            
+            transactions_db.add_records([transaction])
             
     def add_template(self, template: Template) -> None:
         with self.session_conn() as conn:

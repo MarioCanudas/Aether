@@ -222,10 +222,16 @@ def show_add_transaction():
                         filename= None,
                     )
                     
-                    controller.add_transaction(transaction_record)
+                    if controller.is_exact_duplicate(transaction_record):
+                        st.toast(
+                            'Warning: Transaction is an exact duplicate. Check the given values and try again', 
+                            icon= ':material/warning:'
+                        )
+                    else:
+                        controller.add_transaction(transaction_record)
                     
-                    st.toast('Transaction added successfully', icon= ':material/check:')
-                    st.rerun()
+                        st.toast('Transaction added successfully', icon= ':material/check:')
+                        st.rerun()
                 except TypeError:
                     st.warning('Please, fill all the fields')
                 except Exception as e:

@@ -1,9 +1,31 @@
 from pydantic import BaseModel
-from typing import Optional, List, Any, Tuple, Dict
+import pandas as pd
+from typing import Optional, List, Any, Dict
 from datetime import date
+from dateutil.relativedelta import relativedelta
 from decimal import Decimal
 from .amounts import TransactionType
 from .bank_properties import BankName, StatementType
+
+class TransactionKey(BaseModel):
+    date: date
+    amount: Decimal
+    type: TransactionType
+    bank: BankName
+    statement_type: StatementType
+    
+    def __eq__(self, other: 'TransactionKey') -> bool:
+        if not isinstance(other, TransactionKey):
+            return False
+        else:
+            return self.model_dump() == other.model_dump()
+        
+    def __ne__(self, other: 'TransactionKey') -> bool:
+        if not isinstance(other, TransactionKey):
+            return True
+        else:
+            return self.model_dump() != other.model_dump()
+    
 
 class Transaction(BaseModel):
     transaction_id: Optional[int] = None
@@ -17,17 +39,43 @@ class Transaction(BaseModel):
     card_id: Optional[int] = None
     statement_type: StatementType
     filename: Optional[str] = None
+    duplicate_potential_state: bool = False
+    
+    def __eq__(self, other: 'Transaction') -> bool:
+        if not isinstance(other, Transaction):
+            return False
+        else:
+            return self.model_dump() == other.model_dump()
+        
+    def __ne__(self, other: 'Transaction') -> bool:
+        if not isinstance(other, Transaction):
+            return True
+        else:
+            return self.model_dump() != other.model_dump()
+        
+    def __hash__(self) -> int:
+        return hash(tuple(self.model_dump().items()))
+    
+    @property
+    def key_values(self) -> List[str]:
+        return [
+            'date',
+            'amount',
+            'type',
+            'bank',
+            'statement_type',
+        ]
     
     @property
     def default_values(self) -> List[str]:
         return [
             'user_id',
-            'category_id',
             'date',
-            'description',
             'amount',
             'type',
             'bank',
+            'statement_type',
+            'duplicate_potential_state',
         ]
         
     @property
@@ -35,34 +83,14 @@ class Transaction(BaseModel):
         return [
             'transaction_id',
             'category_id',
-            'card_id',
             'description',
+            'card_id',
             'filename',
         ]
-    
-    def __getitem__(self, key: str) -> Any:
-        if key in self.default_values + self.optional_values:
-            return getattr(self, key)
-        else:
-            raise KeyError(f"Key {key} not found in Transaction model")
         
-    def __setitem__(self, key: str, value: Any) -> None:
-        if key in self.default_values + self.optional_values:
-            setattr(self, key, value)
-        else:
-            raise KeyError(f"Key {key} not found in Transaction model")
-        
-    def __delitem__(self, key: str) -> None:
-        if key in self.default_values + self.optional_values:
-            delattr(self, key)
-        else:
-            raise KeyError(f"Key {key} not found in Transaction model")
-        
-    def to_tuple(self) -> Tuple[Any, ...]:
-        try:
-            return Tuple(getattr(self, key) for key in self.default_values + self.optional_values)
-        except Exception as e:
-            raise ValueError(f"Error converting Transaction model to tuple: {e}")
+    @property
+    def key(self) -> TransactionKey:
+        return TransactionKey(**{k: getattr(self, k) for k in self.key_values})
         
     def dump_to_add(self) -> Dict[str, Any]:
         record = self.model_dump()
@@ -70,3 +98,107 @@ class Transaction(BaseModel):
         del record['transaction_id']
         
         return record
+    
+    async def exact_duplicate(self, other: 'Transaction') -> bool:
+        return all(getattr(self, k) == getattr(other, k) for k in self.key_values)
+    
+    async def potencial_duplicate(self, other: 'Transaction') -> bool:
+        # If the transactions are exact duplicates, they are also potential duplicates.
+        is_exact_duplicate = await self.exact_duplicate(other)
+        
+        if is_exact_duplicate:
+            return True
+        
+        # First case: Gap between the dates is less than 3 days.
+        if relativedelta(self.date, other.date).days <= 3:
+            self_key = (self.amount, self.type, self.bank, self.statement_type)
+            other_key = (other.amount, other.type, other.bank, other.statement_type)
+            
+            if self_key == other_key:
+                return True
+            else:
+                return False
+        # Second case: Amount difference is less than $25.00
+        elif abs(self.amount - other.amount) <= Decimal('25.00'):
+            self_key = (self.date, self.type, self.bank, self.statement_type)
+            other_key = (other.date, other.type, other.bank, other.statement_type)
+            
+            if self_key == other_key:
+                return True
+            else:
+                return False
+        # Third case: Banks are different.
+        elif self.bank != other.bank:
+            self_key = (self.date, self.amount, self.type, self.statement_type)
+            other_key = (other.date, other.amount, other.type, other.statement_type)
+            
+            if self_key == other_key:
+                return True
+            else:
+                return False
+        # Fourth case: Card IDs are different.
+        elif self.card_id != other.card_id:
+            self_key = (self.date, self.amount, self.type, self.bank, self.statement_type)
+            other_key = (other.date, other.amount, other.type, other.bank, other.statement_type)
+            
+            if self_key == other_key:
+                return True
+            else:
+                return False
+        # Fifth case: Category IDs are different.
+        elif self.category_id != other.category_id:
+            self_key = (self.date, self.amount, self.type, self.bank, self.statement_type)
+            other_key = (other.date, other.amount, other.type, other.bank, other.statement_type)
+            
+            if self_key == other_key:
+                return True
+            else:
+                return False
+        # Sixth case: Types are different.
+        elif self.type != other.type:
+            self_key = (self.date, abs(self.amount), self.bank, self.statement_type)
+            other_key = (other.date, abs(other.amount), other.bank, other.statement_type)
+            
+            if self_key == other_key:
+                return True
+            else:
+                return False
+        else:
+            return False
+        
+
+class DuplicateResult(BaseModel):
+    transaction: Transaction
+    exact_duplicates: List[Transaction] = []
+    potential_duplicates: List[Transaction] = []
+    
+    @property
+    def has_exact_duplicates(self) -> bool:
+        return len(self.exact_duplicates) > 0
+    
+    @property
+    def has_potential_duplicates(self) -> bool:
+        return len(self.potential_duplicates) > 0
+    
+
+class FilteredTransactionsResult(BaseModel):
+    clean: List[Transaction] = []
+    potential_duplicates_to_upload: List[Transaction] = []
+    potential_duplicates_to_modify: List[Transaction] = []
+    duplicated: List[Transaction] = []
+    
+    @property
+    def clean_df(self) -> pd.DataFrame:
+        return pd.DataFrame([t.model_dump() for t in self.clean])
+    
+    @property
+    def potential_duplicates_to_upload_df(self) -> pd.DataFrame:
+        return pd.DataFrame([t.model_dump() for t in self.potential_duplicates_to_upload])
+    
+    @property
+    def potential_duplicates_to_modify_df(self) -> pd.DataFrame:
+        return pd.DataFrame([t.model_dump() for t in self.potential_duplicates_to_modify])
+    
+    @property
+    def duplicated_df(self) -> pd.DataFrame:
+        return pd.DataFrame([t.model_dump() for t in self.duplicated])

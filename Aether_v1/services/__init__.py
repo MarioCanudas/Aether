@@ -11,6 +11,7 @@ from .database.transactions import TransactionsDBService
 from .database.goals import GoalsDBService
 from .database.templates import TemplatesDBService
 from .database.cards import CardsDBService
+from .duplicate_treatment_service import DuplicateTreatmentService
 
 __all__ = [
     'DataProcessingService',
@@ -26,4 +27,5 @@ __all__ = [
     'GoalsDBService',
     'TemplatesDBService',
     'CardsDBService',
+    'DuplicateTreatmentService',
 ]
