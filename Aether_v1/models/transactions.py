@@ -2,7 +2,6 @@ from pydantic import BaseModel
 import pandas as pd
 from typing import Optional, List, Any, Dict
 from datetime import date
-from dateutil.relativedelta import relativedelta
 from decimal import Decimal
 from .amounts import TransactionType
 from .bank_properties import BankName, StatementType
@@ -86,10 +85,7 @@ class Transaction(BaseModel):
             'card_id',
             'filename',
         ]
-        
-    @property
-    def key(self) -> TransactionKey:
-        return TransactionKey(**{k: getattr(self, k) for k in self.key_values})
+
         
     def dump_to_add(self) -> Dict[str, Any]:
         record = self.model_dump()
@@ -185,6 +181,10 @@ class FilteredTransactionsResult(BaseModel):
     potential_duplicates_to_upload: List[Transaction] = []
     potential_duplicates_to_modify: List[Transaction] = []
     duplicated: List[Transaction] = []
+    
+    @property
+    def potential_duplicates_to_upload_unique(self) -> List[Transaction]:
+        return list(set(self.potential_duplicates_to_upload))
     
     @property
     def clean_df(self) -> pd.DataFrame:

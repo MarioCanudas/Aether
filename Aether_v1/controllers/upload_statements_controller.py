@@ -73,7 +73,7 @@ class UploadStatementsController(BaseController):
             transactions_db = TransactionsDBService(conn)
             
             if len(filtered_transactions_result.potential_duplicates_to_modify) > 0:
-                transactions_db.update_transactions(list(set(filtered_transactions_result.potential_duplicates_to_modify)))
+                transactions_db.update_transactions(filtered_transactions_result.potential_duplicates_to_modify_unique)
                 
             transactions_to_upload = filtered_transactions_result.potential_duplicates_to_upload + filtered_transactions_result.clean
             
