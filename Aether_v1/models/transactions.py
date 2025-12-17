@@ -19,12 +19,6 @@ class TransactionKey(BaseModel):
             return False
         else:
             return self.model_dump() == other.model_dump()
-        
-    def __ne__(self, other: 'TransactionKey') -> bool:
-        if not isinstance(other, TransactionKey):
-            return True
-        else:
-            return self.model_dump() != other.model_dump()
     
 
 class Transaction(BaseModel):
@@ -47,14 +41,19 @@ class Transaction(BaseModel):
         else:
             return self.model_dump() == other.model_dump()
         
-    def __ne__(self, other: 'Transaction') -> bool:
-        if not isinstance(other, Transaction):
-            return True
-        else:
-            return self.model_dump() != other.model_dump()
-        
     def __hash__(self) -> int:
-        return hash(tuple(self.model_dump().items()))
+        def _to_hashable(value: Any):
+            if isinstance(value, (list, tuple)):
+                return tuple(_to_hashable(v) for v in value)
+            
+            try:
+                hash(value)
+                return value
+            except TypeError:
+                return repr(value)
+            
+        items = tuple(sorted((k, _to_hashable(v)) for k, v in self.model_dump().items()))
+        return hash(tuple(items))
     
     @property
     def key_values(self) -> List[str]:
