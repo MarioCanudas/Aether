@@ -109,18 +109,18 @@ class Transaction(BaseModel):
             return True
         
         # First case: Gap between the dates is less than 3 days.
-        if relativedelta(self.date, other.date).days <= 3:
-            self_key = (self.amount, self.type, self.bank, self.statement_type)
-            other_key = (other.amount, other.type, other.bank, other.statement_type)
+        if 0 < abs((self.date - other.date).days) <= 3:
+            self_key = (self.amount, self.type, self.bank, self.card_id, self.statement_type)
+            other_key = (other.amount, other.type, other.bank, other.card_id, other.statement_type)
             
             if self_key == other_key:
                 return True
             else:
                 return False
         # Second case: Amount difference is less than $25.00
-        elif abs(self.amount - other.amount) <= Decimal('25.00'):
-            self_key = (self.date, self.type, self.bank, self.statement_type)
-            other_key = (other.date, other.type, other.bank, other.statement_type)
+        elif 0 < abs(self.amount - other.amount) <= Decimal('25.00'):
+            self_key = (self.date, self.type, self.bank, self.card_id, self.statement_type)
+            other_key = (other.date, other.type, other.bank, other.card_id, other.statement_type)
             
             if self_key == other_key:
                 return True
@@ -128,8 +128,8 @@ class Transaction(BaseModel):
                 return False
         # Third case: Banks are different.
         elif self.bank != other.bank:
-            self_key = (self.date, self.amount, self.type, self.statement_type)
-            other_key = (other.date, other.amount, other.type, other.statement_type)
+            self_key = (self.date, self.amount, self.type, self.card_id, self.statement_type)
+            other_key = (other.date, other.amount, other.type, other.card_id, other.statement_type)
             
             if self_key == other_key:
                 return True
@@ -146,8 +146,8 @@ class Transaction(BaseModel):
                 return False
         # Fifth case: Category IDs are different.
         elif self.category_id != other.category_id:
-            self_key = (self.date, self.amount, self.type, self.bank, self.statement_type)
-            other_key = (other.date, other.amount, other.type, other.bank, other.statement_type)
+            self_key = (self.date, self.amount, self.type, self.bank, self.card_id, self.statement_type)
+            other_key = (other.date, other.amount, other.type, other.bank, other.card_id, other.statement_type)
             
             if self_key == other_key:
                 return True
@@ -155,8 +155,8 @@ class Transaction(BaseModel):
                 return False
         # Sixth case: Types are different.
         elif self.type != other.type:
-            self_key = (self.date, abs(self.amount), self.bank, self.statement_type)
-            other_key = (other.date, abs(other.amount), other.bank, other.statement_type)
+            self_key = (self.date, abs(self.amount), self.bank, self.card_id, self.statement_type)
+            other_key = (other.date, abs(other.amount), other.bank, other.card_id, other.statement_type)
             
             if self_key == other_key:
                 return True

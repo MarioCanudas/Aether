@@ -6,7 +6,28 @@ from constants.views_icons import ADD_TRANSACTION_ICON
 from components import new_transaction_template_popup, modify_template_popup
 from models.amounts import TransactionType
 from models.bank_properties import BankName, StatementType
-from models.transactions import Transaction
+from models.transactions import Transaction, DuplicateResult
+
+@st.dialog('Potential Duplicate transactions')
+def _confirm_potential_duplicate_upload(duplicate_result: DuplicateResult) -> None:
+    controller = AddTransactionController()
+    
+    st.warning('This transaction is a potential duplicate. Do you want to upload it anyway?')
+    
+    st.subheader('Potential duplicates')
+    potential_duplicates_df = controller.transactions_to_df(duplicate_result.potential_duplicates, to_view= True)
+    st.dataframe(potential_duplicates_df)
+    
+    left, _, right = st.columns(3, gap= 'large')
+    
+    if left.button(label= 'Confirm', type= 'secondary', width= 'stretch'):
+        duplicate_result.transaction.duplicate_potential_state = True
+        controller.add_transaction(duplicate_result.transaction)
+        
+        controller.modify_potential_duplicate_transactions(duplicate_result.potential_duplicates)
+    
+    if right.button(label= 'Cancel', type= 'primary', width= 'stretch'):
+        st.rerun()
 
 def show_add_transaction():
     # Page config
@@ -208,6 +229,8 @@ def show_add_transaction():
                 )  
                 
             if st.form_submit_button(label= 'Sumbit', type= 'primary'):
+                transaction_record = None
+                
                 try:
                     transaction_record = Transaction(
                         user_id= controller.user_id,
@@ -220,19 +243,25 @@ def show_add_transaction():
                         card_id= transaction_card.card_id if transaction_card else None,
                         statement_type= transaction_statement_type,
                         filename= None,
+                        duplicate_potential_state= False
                     )
                     
-                    if controller.is_exact_duplicate(transaction_record):
-                        st.toast(
-                            'Warning: Transaction is an exact duplicate. Check the given values and try again', 
-                            icon= ':material/warning:'
-                        )
-                    else:
-                        controller.add_transaction(transaction_record)
-                    
-                        st.toast('Transaction added successfully', icon= ':material/check:')
-                        st.rerun()
                 except TypeError:
                     st.warning('Please, fill all the fields')
+                except ValueError as e:
+                    st.warning('Please, check the given values and try again')
                 except Exception as e:
                     raise e
+                
+                if transaction_record:
+                    duplicate_result = controller.get_duplicate_result(transaction_record)
+                    
+                    if duplicate_result.has_exact_duplicates:
+                        st.toast('Transaction is an exact duplicate. Check the given values and try again', icon= ':material/warning:')
+                    elif duplicate_result.has_potential_duplicates:
+                        _confirm_potential_duplicate_upload(duplicate_result)
+                    else:
+                        controller.add_transaction(transaction_record)
+                
+                        st.toast('Transaction added successfully', icon= ':material/check:')
+                        st.rerun()

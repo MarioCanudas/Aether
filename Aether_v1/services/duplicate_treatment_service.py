@@ -67,7 +67,7 @@ class DuplicateTreatmentService:
         
         existing_transactions = transactions_db.get_transactions(
             user_id= user_id, 
-            columns= ['transaction_id', 'date', 'amount', 'type', 'bank', 'statement_type'],
+            columns= ['user_id', 'transaction_id', 'category_id', 'date', 'amount', 'type', 'bank', 'card_id', 'statement_type'],
             period= period,
         )
         
