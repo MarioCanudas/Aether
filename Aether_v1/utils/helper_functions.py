@@ -1,11 +1,13 @@
-from typing import Literal
 import re
-import pandas as pd
-from decimal import Decimal
 from datetime import date
+from decimal import Decimal
+from typing import Literal
+
+import pandas as pd
 from dateutil.relativedelta import relativedelta
 from models.dates import Period
 from models.views_data import PeriodsOptions
+
 
 def get_min_month(months: list[str]) -> str:
     """
@@ -19,14 +21,25 @@ def get_min_month(months: list[str]) -> str:
     """
     # Define the mapping of month abbreviations to numeric values
     month_order = {
-        'ENE': 1, 'FEB': 2, 'MAR': 3, 'ABR': 4, 'MAY': 5, 'JUN': 6,
-        'JUL': 7, 'AGO': 8, 'SEP': 9, 'OCT': 10, 'NOV': 11, 'DEC': 12
+        "ENE": 1,
+        "FEB": 2,
+        "MAR": 3,
+        "ABR": 4,
+        "MAY": 5,
+        "JUN": 6,
+        "JUL": 7,
+        "AGO": 8,
+        "SEP": 9,
+        "OCT": 10,
+        "NOV": 11,
+        "DEC": 12,
     }
 
     # Convert the months to numeric values and find the minimum
     min_month = min(months, key=lambda m: month_order[m.upper()])
 
     return min_month
+
 
 def eliminate_ocr_errors_for_amounts(value: str) -> str:
     """
@@ -39,26 +52,29 @@ def eliminate_ocr_errors_for_amounts(value: str) -> str:
         A corrected string representing the numerical value with the decimal point correctly positioned.
     """
 
-    value = value.replace(' ', '')
+    value = value.replace(" ", "")
 
-    parts = re.split(r',', value)
+    parts = re.split(r",", value)
 
     if len(parts) > 1:
         if len(parts[-1]) == 2:
-            int_part = ''.join(parts[:-1])
+            int_part = "".join(parts[:-1])
             decimal_part = parts[-1]
 
-            value = f'{int_part}.{decimal_part}'
+            value = f"{int_part}.{decimal_part}"
         else:
-            value = ''.join(parts)
+            value = "".join(parts)
 
-    if value.count('.') > 1:
-        *int_parts, decimal_part = value.split('.')
+    if value.count(".") > 1:
+        *int_parts, decimal_part = value.split(".")
         value = f"{''.join(int_parts)}.{decimal_part}"
 
     return value
 
-def search_phrase_in_df(df: pd.DataFrame | pd.Series, phrase: list[str], type_return: Literal['idx', 'bool'] = 'idx') -> int | bool | None:
+
+def search_phrase_in_df(
+    df: pd.DataFrame | pd.Series, phrase: list[str], type_return: Literal["idx", "bool"] = "idx"
+) -> int | bool | None:
     """
     Search for a phrase in a DataFrame.
     The phrase must be in lower case.
@@ -71,75 +87,83 @@ def search_phrase_in_df(df: pd.DataFrame | pd.Series, phrase: list[str], type_re
     Returns:
         int | bool: The index of the phrase if type_return is 'idx', True if the phrase is found, False otherwise.
     """
-    
+
     # Iterate through the DataFrame, stopping before we run out of rows to compare
     # We subtract len(phrase) to ensure we don't go beyond the DataFrame bounds
     for i in range(len(df) - len(phrase)):
         # Extract a slice of text from the current position with the same length as the phrase
         # Convert all text to lowercase for case-insensitive comparison
-        current_slice = list(df['text'].iloc[i : i + len(phrase)].str.lower()) if isinstance(df, pd.DataFrame) else list(df.iloc[i : i + len(phrase)].str.lower())
-        
+        current_slice = (
+            list(df["text"].iloc[i : i + len(phrase)].str.lower())
+            if isinstance(df, pd.DataFrame)
+            else list(df.iloc[i : i + len(phrase)].str.lower())
+        )
+
         # Check if the current slice exactly matches the target phrase
         if current_slice == phrase:
             # Return based on the requested return type
-            if type_return == 'idx':
+            if type_return == "idx":
                 return i  # Return the starting index where the phrase was found
-            elif type_return == 'bool':
+            elif type_return == "bool":
                 return True  # Return True indicating the phrase was found
-    
+
     # If no match was found, return appropriate default value based on return type
-    if type_return == 'idx':
+    if type_return == "idx":
         return None  # Return None when no index is found
-    elif type_return == 'bool':
+    elif type_return == "bool":
         return False  # Return False when phrase is not found
+
 
 def is_amount(value: str) -> bool:
     """
     Checks if a string is a valid amount.
-    
+
     Args:
         value (str): The string to check.
-        
+
     Returns:
         bool: True if the string is a valid amount, False otherwise.
     """
     # Ignore the empty strings
-    if value == '':
+    if value == "":
         return True
-    
-    amount_pattern = r'^[+-]?\$?[+-]?(0|[1-9]\d{0,2}(?:,\d{3})*)\.\d{2}[-+]?$'
+
+    amount_pattern = r"^[+-]?\$?[+-]?(0|[1-9]\d{0,2}(?:,\d{3})*)\.\d{2}[-+]?$"
 
     return bool(re.match(amount_pattern, value.strip()))
 
-def classify_words(date_pattern: str, text: str) -> Literal['date', 'amount', 'description']:
+
+def classify_words(date_pattern: str, text: str) -> Literal["date", "amount", "description"]:
     """
     Classifies a word into a category based on its content, based on the date pattern and the amount pattern.
-    
+
     Args:
         date_pattern (str): The pattern to match dates.
         text (str): The word to classify.
-        
+
     Returns:
         str: The category of the word.
     """
     if re.match(date_pattern, text):
-        return 'date'
+        return "date"
     elif is_amount(text):
-        return 'amount'
+        return "amount"
     else:
-        return 'description'
-    
+        return "description"
+
+
 def clean_amount(amount: str) -> str:
     """
     Cleans an amount string by removing commas, dollar signs, plus signs, and minus signs.
-    
+
     Args:
         amount (str): The amount string to clean.
-        
+
     Returns:
         str: The cleaned amount string.
     """
-    return amount.replace(',', '').replace('$', '').replace('+', '').replace('-','')
+    return amount.replace(",", "").replace("$", "").replace("+", "").replace("-", "")
+
 
 def identify_date_separator(date_pattern: re.Pattern[str] | str) -> str:
     """
@@ -147,16 +171,17 @@ def identify_date_separator(date_pattern: re.Pattern[str] | str) -> str:
     """
     if isinstance(date_pattern, re.Pattern):
         date_pattern = date_pattern.pattern
-    
-    matches = re.findall(r'\)[^\w\\]*([^\w\\])\(', date_pattern)
-    
+
+    matches = re.findall(r"\)[^\w\\]*([^\w\\])\(", date_pattern)
+
     if matches:
         return max(set(matches), key=matches.count)
-    
-    if re.search(r'\)\s+\(', date_pattern):
-        return ' '
-    
+
+    if re.search(r"\)\s+\(", date_pattern):
+        return " "
+
     raise ValueError(f"Not found any separator in the date pattern: {date_pattern}")
+
 
 def to_decimal(value: float | str) -> Decimal:
     """
@@ -167,57 +192,65 @@ def to_decimal(value: float | str) -> Decimal:
             value = float(value)
         except ValueError:
             raise ValueError(f"Value {value} is not a valid number")
-        
-    return Decimal(value).quantize(Decimal('0.01'))
+
+    return Decimal(value).quantize(Decimal("0.01"))
+
 
 def give_amount_format(amount: Decimal | float | int | str) -> str:
     # Convert amount to a number if possible
     numeric_amount: Decimal | float | int
     try:
         if isinstance(amount, str):
-            cleaned = amount.replace(',', '').replace('$', '').replace(' ', '')
+            cleaned = amount.replace(",", "").replace("$", "").replace(" ", "")
             numeric_amount = float(cleaned)
         else:
             numeric_amount = amount
         # If the amount is very close to 0, set it to 'N/A'
         if abs(float(numeric_amount)) < 5e-3:
-            return 'N/A'
+            return "N/A"
         if float(numeric_amount) >= 0:
-            return f'${float(numeric_amount):,.2f}'
+            return f"${float(numeric_amount):,.2f}"
         else:
-            return f'-${abs(float(numeric_amount)):,.2f}'
+            return f"-${abs(float(numeric_amount)):,.2f}"
     except Exception:
         return str(amount)
 
-def months_map(month_num: int) -> Literal['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']:
-    months_map: dict[int, Literal['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']] = {
-        1: 'Jan',
-        2: 'Feb',
-        3: 'Mar',
-        4: 'Apr',
-        5: 'May',
-        6: 'Jun',
-        7: 'Jul',
-        8: 'Aug',
-        9: 'Sep',
-        10: 'Oct',
-        11: 'Nov',
-        12: 'Dec',
+
+def months_map(
+    month_num: int,
+) -> Literal["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]:
+    months_map: dict[
+        int,
+        Literal["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+    ] = {
+        1: "Jan",
+        2: "Feb",
+        3: "Mar",
+        4: "Apr",
+        5: "May",
+        6: "Jun",
+        7: "Jul",
+        8: "Aug",
+        9: "Sep",
+        10: "Oct",
+        11: "Nov",
+        12: "Dec",
     }
     return months_map[month_num]
 
+
 def modify_period(period: Period, period_options: PeriodsOptions) -> Period:
     today = date.today()
-    
+
     match period_options:
         case PeriodsOptions.ALL_TIME:
             return period
         case PeriodsOptions.CURRENT_MONTH:
-            return Period(start_date= today.replace(day= 1), end_date= today)
+            return Period(start_date=today.replace(day=1), end_date=today)
         case PeriodsOptions.LAST_MONTH:
             return Period(
-                start_date= today.replace(day= 1) - relativedelta(months= 1), 
-                end_date= today.replace(day= 1) - relativedelta(days= 1)
+                start_date=today.replace(day=1) - relativedelta(months=1),
+                end_date=today.replace(day=1) - relativedelta(days=1),
             )
         case PeriodsOptions.AVARAGE:
             return period
