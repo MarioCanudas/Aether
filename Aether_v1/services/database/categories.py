@@ -1,29 +1,31 @@
-from typing import List, Dict, Optional
+from typing import Any
 from models.categories import NewCategory
 from .base_db import BaseDBService
 
 class CategoryDBService(BaseDBService):
     # Table information
-    table_name = 'categories'
-    allowed_columns = {'category_id', 'user_id', 'group', 'name', 'description'}
+    table_name: str = 'categories'
+    allowed_columns: set[str] = {'category_id', 'user_id', 'group', 'name', 'description'}
     
     # Column names
-    id_col = 'category_id'
-    user_id = 'user_id'
-    group = 'group'
-    name = 'name'
-    description = 'description'
+    id_col: str = 'category_id'
+    user_id: str = 'user_id'
+    group: str = 'group'
+    name: str = 'name'
+    description: str = 'description'
     
-    def get_categories_by_user(self, user_id: int) -> List[str]:
+    def get_categories_by_user(self, user_id: int) -> list[str]:
         query = """
             SELECT name FROM categories WHERE user_id IS NULL OR user_id = %(user_id)s
         """
         
         result = self.execute_query(query, params={'user_id': user_id}, fetch= 'all')
         
-        return [r[0] for r in result]
+        if result and isinstance(result, list):
+            return [r[0] for r in result if isinstance(r, tuple)]
+        return []
     
-    def get_categories_by_user_mapped(self, user_id: int) -> Dict[str, int]:
+    def get_categories_by_user_mapped(self, user_id: int) -> dict[str, int]:
         categories = {}
         query = """
             SELECT name, category_id FROM categories WHERE user_id IS NULL OR user_id = %(user_id)s
@@ -31,19 +33,21 @@ class CategoryDBService(BaseDBService):
         
         result = self.execute_query(query, params={'user_id': user_id}, fetch= 'all', dict_cursor= True)
         
-        for r in result:
-            categories[r['name']] = r['category_id']
+        if result and isinstance(result, list):
+            for r in result:
+                if isinstance(r, dict):
+                    categories[r['name']] = r['category_id']
             
         return categories
     
-    def _validate_new_category(self, user_id: int, new_category: NewCategory) -> False:
+    def _validate_new_category(self, user_id: int, new_category: NewCategory) -> bool:
         query = f'''
             SELECT COUNT(*) FROM {self.table_name} WHERE {self.user_id} = %(user_id)s AND {self.name} = %(name)s AND "group" = %(group)s
         '''
         
         result = self.execute_query(query, params= {'user_id': user_id, 'name': new_category.name, 'group': new_category.group.value}, fetch= 'one')
         
-        if result[0] > 0:
+        if result and isinstance(result, tuple) and result[0] > 0:
             return False
         else:
             return True
@@ -58,15 +62,15 @@ class CategoryDBService(BaseDBService):
                     VALUES (%(user_id)s, %(group)s, %(name)s, %(description)s)
                 '''
                 
-                params = new_category.model_dump() | {'user_id': user_id}
+                params: dict[str, Any] = new_category.model_dump() | {'user_id': user_id}
                 
                 self.execute_query(query, params= params)
                 
-    def get_category_name(self, category_id: int) -> Optional[str]:
+    def get_category_name(self, category_id: int) -> str | None:
         query = f"""
             SELECT {self.name} FROM {self.table_name} WHERE {self.id_col} = %(category_id)s
         """
         
         result = self.execute_query(query, params= {'category_id': category_id}, fetch= 'one')
         
-        return result[0] if result else None
+        return result[0] if result and isinstance(result, tuple) else None

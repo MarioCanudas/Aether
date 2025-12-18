@@ -1,7 +1,7 @@
 from psycopg2.extensions import connection
 import asyncio
 import pandas as pd
-from typing import Tuple, List
+from typing import cast
 from models.dates import Period
 from models.transactions import Transaction, DuplicateResult
 from .database.transactions import TransactionsDBService
@@ -11,28 +11,28 @@ class DuplicateTreatmentService:
     This service is used to detect and treat duplicate transactions.
     """
     @staticmethod
-    def get_transactions_period(transactions: List[Transaction]) -> Period:
+    def get_transactions_period(transactions: list[Transaction]) -> Period:
         dates = [transaction.date for transaction in transactions]
         
         return Period(start_date= min(dates), end_date= max(dates))  
         
     @staticmethod
-    async def _determine_transaction_duplicates(transaction: Transaction, existing_transactions: List[Transaction]) -> DuplicateResult:
-        exact_duplicates_task: List[asyncio.Task[bool]] = []
-        potential_duplicates_task: List[asyncio.Task[bool]] = []
+    async def _determine_transaction_duplicates(transaction: Transaction, existing_transactions: list[Transaction]) -> DuplicateResult:
+        exact_duplicates_task: list[asyncio.Task[bool]] = []
+        potential_duplicates_task: list[asyncio.Task[bool]] = []
         
         for t in existing_transactions:
             exact_duplicates_task.append(asyncio.create_task(transaction.exact_duplicate(t)))
             potential_duplicates_task.append(asyncio.create_task(transaction.potencial_duplicate(t)))
             
-        exact_duplicates: List[bool] = await asyncio.gather(*exact_duplicates_task)
-        potential_duplicates: List[bool] = await asyncio.gather(*potential_duplicates_task)
+        exact_duplicates: list[bool] = await asyncio.gather(*exact_duplicates_task)
+        potential_duplicates: list[bool] = await asyncio.gather(*potential_duplicates_task)
         
         if any(potential_duplicates):
             transaction.duplicate_potential_state = True
 
-        exactly_duplicates_transactions: List[Transaction] = []
-        potential_duplicates_transactions: List[Transaction] = []
+        exactly_duplicates_transactions: list[Transaction] = []
+        potential_duplicates_transactions: list[Transaction] = []
         
         # The transaction could be and exact and potential duplicate at the same time.
         # So we need to iterate over the transaction and the boolean values to determine the type of duplicate
@@ -55,8 +55,8 @@ class DuplicateTreatmentService:
             self, 
             conn: connection, 
             user_id: int, 
-            transactions: List[Transaction] | Transaction
-        ) -> List[DuplicateResult] | DuplicateResult:
+            transactions: list[Transaction] | Transaction
+        ) -> list[DuplicateResult] | DuplicateResult:
         if isinstance(transactions, Transaction):
             transactions = [transactions]
         if not transactions:
@@ -70,14 +70,15 @@ class DuplicateTreatmentService:
             columns= ['user_id', 'transaction_id', 'category_id', 'date', 'amount', 'type', 'bank', 'card_id', 'statement_type'],
             period= period,
         )
+        existing_transactions = cast(list[Transaction], existing_transactions)
         
-        tasks: List[asyncio.Task[DuplicateResult]] = []
+        tasks: list[asyncio.Task[DuplicateResult]] = []
         
         for t in transactions:
             task = asyncio.create_task(self._determine_transaction_duplicates(t, existing_transactions))
             tasks.append(task)
             
-        results: List[DuplicateResult] = await asyncio.gather(*tasks)
+        results: list[DuplicateResult] = await asyncio.gather(*tasks)
         
         if len(results) == 1:
             return results[0]
@@ -85,7 +86,7 @@ class DuplicateTreatmentService:
             return results
         
     @staticmethod
-    def eliminate_credit_and_debit_duplicates(transactions: List[Transaction]) -> Tuple[List[Transaction], List[Transaction]]:
+    def eliminate_credit_and_debit_duplicates(transactions: list[Transaction]) -> tuple[list[Transaction], list[Transaction]]:
         """
         Classificates the duplicate transactions from a financial dataset, specifically targeting credit card payments
         (abonos) and their corresponding debit transactions (cargos) to avoid double-counting.
@@ -120,6 +121,8 @@ class DuplicateTreatmentService:
                 (debit_transactions['amount'] == -credit['amount']) &
                 (debit_transactions['date'] <= credit['date'])
             ]
+            
+            matching_debit = cast(pd.DataFrame, matching_debit)
 
             if not matching_debit.empty:
                 # Find the last matching debit based on date

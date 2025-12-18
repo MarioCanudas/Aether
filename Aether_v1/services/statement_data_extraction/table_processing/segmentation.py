@@ -1,3 +1,5 @@
+from typing import Any, cast
+import pandas as pd
 from models.delimitations import ColumnDelimitations
 from models.tables import GroupedRows
 from ..core import ColumnSegmenter, RowSegmenter
@@ -6,7 +8,7 @@ class DefaultColumnSegmenter(ColumnSegmenter):
     def delimit_column_positions(self) -> ColumnDelimitations:
         filtered_words = self.filtered_table_words
         
-        rows = filtered_words.records # Convert the DataFrame to a list of dictionaries
+        rows: list[dict[str, Any]] = filtered_words.records # Convert the DataFrame to a list of dictionaries
         columns = self.bank_properties.columns
         
         # Initialize a dictionary to store the column positions
@@ -22,10 +24,10 @@ class DefaultColumnSegmenter(ColumnSegmenter):
             words_num = len(words_col) # Get the number of words in the column name
             
             # Initialize a dictionary to store the verification of the column name
-            words_col_verification = {col: False for col in words_col}
+            words_col_verification: dict[str, bool] = {col: False for col in words_col}
             
-            col_x0 = None
-            col_x1 = None
+            col_x0: float | None = None
+            col_x1: float | None = None
             
             for row in rows:
                 word = row['text'].strip() # Get the text of the row
@@ -55,8 +57,8 @@ class DefaultColumnSegmenter(ColumnSegmenter):
                             break
             
             # Add the x0 and x1 positions to the list, once the loop is finished
-            delimitations.x0.append(col_x0)
-            delimitations.x1.append(col_x1)
+            delimitations.x0.append(col_x0 if col_x0 is not None else 0)
+            delimitations.x1.append(col_x1 if col_x1 is not None else 0)
                     
         return delimitations
     
@@ -65,7 +67,9 @@ class DefaultRowSegmenter(RowSegmenter):
         df_filtered_words = self.filtered_table_words.df
         
         top_diffs = df_filtered_words.groupby("page")["top"].diff()
-        positive_diffs = top_diffs[top_diffs >= 0].dropna()
+        top_diffs = cast(pd.Series, top_diffs)
+        
+        positive_diffs = cast(pd.Series, top_diffs[top_diffs >= 0]).dropna()
 
         q1 = positive_diffs.quantile(0.25)
         q3 = positive_diffs.quantile(0.75)
@@ -79,7 +83,8 @@ class DefaultRowSegmenter(RowSegmenter):
         min_threshold = 2
         max_threshold = 7
         
-        return min(max(filtered_diffs.median(), min_threshold), max_threshold)
+        median: float = cast(Any, filtered_diffs).median()
+        return cast(float, min(max(median, min_threshold), max_threshold))
     
     def group_rows(self) -> GroupedRows:
         df_filtered_words = self.filtered_table_words.df

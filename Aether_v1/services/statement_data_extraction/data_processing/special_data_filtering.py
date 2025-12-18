@@ -1,4 +1,6 @@
 import re
+import pandas as pd
+from typing import cast
 from models.tables import TransactionsTable
 from ..core import SpecialDataFiltering
 
@@ -11,4 +13,6 @@ class NuSpecialDataFiltering(SpecialDataFiltering):
         
         mask = ~normalized_table.descriptions.str.lower().str.contains(pattern, case=False, regex=True)
         
-        return TransactionsTable(df=normalized_table.df[mask])
+        result = cast(pd.DataFrame, normalized_table.df[mask])
+        
+        return TransactionsTable(df=result)

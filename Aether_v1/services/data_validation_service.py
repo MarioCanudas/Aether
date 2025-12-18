@@ -3,6 +3,7 @@ import numpy as np
 from logging import getLogger
 from models.bank_properties import Metadata, StatementType
 from models.tables import TransactionsTable
+from typing import cast
 
 logger = getLogger(__name__)
 
@@ -40,17 +41,16 @@ class DataValidationService:
         final_date = pd.to_datetime(metadata.period.end_date)
 
         # Filter the transactions by the period
-        transactions_df = transactions_df[
-            (transactions_df['date'] >= initial_date) &
-            (transactions_df['date'] <= final_date)
-        ]
+        # Filter the transactions by the period
+        mask = (transactions_df['date'] >= initial_date) & (transactions_df['date'] <= final_date)
+        transactions_df = cast(pd.DataFrame, transactions_df[mask])
 
         if metadata.statement_type == StatementType.DEBIT:
             initial_balance = metadata.balances.initial
             final_balance = metadata.balances.final
 
             if initial_balance is not None and final_balance is not None:
-                transactions_cleaned = TransactionsTable(df=transactions_df)
+                transactions_cleaned = TransactionsTable(df=pd.DataFrame(transactions_df))
                 all_incomes = transactions_cleaned.get_all_incomes()
                 all_expenses = transactions_cleaned.get_all_expenses()
 
@@ -66,4 +66,4 @@ class DataValidationService:
                     "Warning: Balances were not validated because either the initial or final balance is missing."
                 )
 
-        return TransactionsTable(df=transactions_df)
+        return TransactionsTable(df=pd.DataFrame(transactions_df))

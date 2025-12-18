@@ -1,19 +1,19 @@
-from typing import Optional, Any, Dict, List
+from typing import Any
 from models.users import UserProfile, NewUser
 from .base_db import BaseDBService
 
 class UserDBService(BaseDBService):
     # Table information
-    table_name = 'users'
-    allowed_columns = {'user_id', 'username', 'password_hash', 'created_at', 'last_login', 'updated_at'}
+    table_name: str = 'users'
+    allowed_columns: set[str] = {'user_id', 'username', 'password_hash', 'created_at', 'last_login', 'updated_at'}
     
     # Column names
-    id_col = 'user_id'
-    username = 'username'
-    password_hash = 'password_hash'
-    created_at = 'created_at'
-    last_login = 'last_login'
-    updated_at = 'updated_at'
+    id_col: str = 'user_id'
+    username: str = 'username'
+    password_hash: str = 'password_hash'
+    created_at: str = 'created_at'
+    last_login: str = 'last_login'
+    updated_at: str = 'updated_at'
     
     def get_user(self, **conditions: Any) -> UserProfile | None:
         query = f"SELECT * FROM {self.table_name}"
@@ -28,15 +28,21 @@ class UserDBService(BaseDBService):
             
         result = self.execute_query(query, params= params, fetch='one', dict_cursor=True)
         
-        return UserProfile.from_dict(result) if result else None
+        if result and isinstance(result, dict):
+            return UserProfile.from_dict(result)
+        return None
     
-    def get_users(self, columns: Optional[List[str]] = None) -> List[Dict[str, Any]]:
+    def get_users(self, columns: list[str] | None = None) -> list[dict[str, Any]]:
         if columns:
             query = f"SELECT {', '.join(columns)} FROM {self.table_name}"
         else:
             query = f"SELECT * FROM {self.table_name}"
         
-        return self.execute_query(query, fetch='all', dict_cursor=True)
+        result = self.execute_query(query, fetch='all', dict_cursor=True)
+        
+        if result and isinstance(result, list):
+            return [r for r in result if isinstance(r, dict)]
+        return []
     
     def add_user(self, new_user: NewUser) -> None:
         with self.transaction():
@@ -68,4 +74,3 @@ class UserDBService(BaseDBService):
             """
             
             self.execute_query(query, params= {'id': user_id})
-        

@@ -1,28 +1,28 @@
 from datetime import date
-from typing import Literal, Optional, List, Dict, Any
+from typing import Literal, Any
 from models.goals import Goal
 from .base_db import BaseDBService
 
 class GoalsDBService(BaseDBService):
     # Table information
-    table_name = 'goals'
-    allowed_columns = {'goal_id', 'user_id', 'type', 'category_id', 'name', 'amount', 'added_amount', 
+    table_name: str = 'goals'
+    allowed_columns: set[str] = {'goal_id', 'user_id', 'type', 'category_id', 'name', 'amount', 'added_amount', 
                        'created_at', 'updated_at', 'start_date', 'end_date', 'status', 'related_transaction_type'}
     
     # Column names
-    id_col = 'goal_id'
-    user_id = 'user_id'
-    type = 'type'
-    category_id = 'category_id'
-    name = 'name'
-    amount = 'amount'
-    added_amount = 'added_amount'
-    created_at = 'created_at'
-    updated_at = 'updated_at'
-    start_date = 'start_date'
-    end_date = 'end_date'
-    status = 'status'
-    related_transaction_type = 'related_transaction_type'
+    id_col: str = 'goal_id'
+    user_id: str = 'user_id'
+    type: str = 'type'
+    category_id: str = 'category_id'
+    name: str = 'name'
+    amount: str = 'amount'
+    added_amount: str = 'added_amount'
+    created_at: str = 'created_at'
+    updated_at: str = 'updated_at'
+    start_date: str = 'start_date'
+    end_date: str = 'end_date'
+    status: str = 'status'
+    related_transaction_type: str = 'related_transaction_type'
     
     def add_goal(self, goal: Goal) -> None:
         with self.transaction():
@@ -36,16 +36,17 @@ class GoalsDBService(BaseDBService):
     def get_goals(
             self,
             user_id: int,
-            status: Optional[Literal['current', 'past']] = None,
-            columns: Optional[List[str]] = None,
-            order_by: Optional[Literal['start_date', 'end_date']] = None,
-            order: Optional[Literal['asc', 'desc']] = None,
-            show_categories_names: Optional[bool] = False
-        ) -> List[Dict[str, Any]]:
+            status: Literal['current', 'past'] | None = None,
+            columns: list[str] | None = None,
+            order_by: Literal['start_date', 'end_date'] | None = None,
+            order: Literal['asc', 'desc'] | None = None,
+            show_categories_names: bool | None = False
+        ) -> list[dict[str, Any]]:
         if columns:
             columns = self._validate_columns(columns)
             columns = [f'g.{col}' for col in columns]
-            columns.append('c.name AS category') if show_categories_names else None
+            if show_categories_names:
+                columns.append('c.name AS category')
             
             query = f"""
                 SELECT {', '.join(columns)} FROM {self.table_name} AS g
@@ -60,7 +61,7 @@ class GoalsDBService(BaseDBService):
             
         query += f" WHERE g.{self.user_id} = %(user_id)s"
         
-        params = {'user_id': user_id}
+        params: dict[str, Any] = {'user_id': user_id}
         
         if status:
             query += f" AND g.{self.end_date} >= %(today)s" if status == 'current' else f" AND g.{self.end_date} < %(today)s"
@@ -69,4 +70,8 @@ class GoalsDBService(BaseDBService):
         if order_by:
             query += f" ORDER BY g.{order_by}" if not order else f" ORDER BY g.{order_by} {order.upper()}"
         
-        return self.execute_query(query, params= params, fetch= 'all', dict_cursor= True)
+        result = self.execute_query(query, params= params, fetch= 'all', dict_cursor= True)
+        
+        if result and isinstance(result, list):
+            return [r for r in result if isinstance(r, dict)]
+        return []

@@ -1,20 +1,20 @@
 import re
 from decimal import Decimal
-from typing import List, Tuple, Literal
+from typing import Literal
 from functools import cache
 from datetime import date
 from dateutil.relativedelta import relativedelta
 import pandas as pd
 from utils import clean_amount, search_phrase_in_df, to_decimal
 from models.amounts import TransactionType
-from models.bank_properties import BankName, StatementType, Metadata, Balances
+from models.bank_properties import StatementType, Metadata, Balances
 from models.dates import Period
 from models.transactions import Transaction
 from ..core import MetadataExtractor
 
 class DefaultMetadataExtractor(MetadataExtractor):
     @cache
-    def get_period_idx(self) -> int:
+    def get_period_idx(self) -> int | None:
         """
         Finds the index position where the statement period information starts.
         Searches for a specific phrase and returns the index after the match.
@@ -75,11 +75,15 @@ class DefaultMetadataExtractor(MetadataExtractor):
         for date_match in found_dates:
             # Convert month to number if needed
             month_pattern: dict[str, str] | None = self.bank_properties.period_month_pattern
-            year_group: int = self.bank_properties.period_group.year
+            if self.bank_properties.period_group is None:
+                raise ValueError("Period group configuration is missing")
+                
+            year_group: int | None = self.bank_properties.period_group.year
             month_group: int = self.bank_properties.period_group.month
             day_group: int = self.bank_properties.period_group.day
             
-            year: str = date_match.group(year_group)
+            # Year can be None in DateGroups, but should be present here if pattern expects it
+            year: str = date_match.group(year_group) if year_group is not None else str(date.today().year) # Fallback if None?
             month: str = date_match.group(month_group)
             day: str = date_match.group(day_group)
             
@@ -152,6 +156,9 @@ class DefaultMetadataExtractor(MetadataExtractor):
             return None
         
         period = self.get_period()
+        if period is None:
+             raise ValueError("Period could not be determined")
+             
         final_date = pd.to_datetime(period.end_date)
         
         return Transaction(
@@ -191,11 +198,11 @@ class DefaultMetadataExtractor(MetadataExtractor):
             processed_window = [word.lower().rstrip(':') for word in window_words]
             
             if processed_window == balance_phrase:
-                balance = df_extracted_words["text"].iloc[i + len(balance_phrase)]
-                balance = clean_amount(balance)
+                balance_val = df_extracted_words["text"].iloc[i + len(balance_phrase)]
+                balance_val = clean_amount(balance_val)
                 
                 try:
-                    return float(balance)
+                    return float(balance_val)
                 except ValueError:
                     return None
 
@@ -208,6 +215,9 @@ class DefaultMetadataExtractor(MetadataExtractor):
             return None
         
         period = self.get_period()
+        if period is None:
+             raise ValueError("Period could not be determined")
+             
         first_date = pd.to_datetime(period.start_date)
         
         return Transaction(
@@ -221,18 +231,20 @@ class DefaultMetadataExtractor(MetadataExtractor):
             filename= filename,
         )
     
-    def get_years(self) -> List[int]:
+    def get_years(self) -> list[int]:
         """
         
         """
-        period: Tuple[date, date] | None = self.get_period()
+        period: Period | None = self.get_period()
         
         if not period: 
             period_idx = self.get_period_idx()
             
             df_extracted_words = self.corrected_extracted_words.df.copy()
             period_pattern = self.bank_properties.period_pattern
-            year_group = self.bank_properties.year_group
+            if self.bank_properties.period_group is None:
+                 raise ValueError("Period group configuration is missing")
+            year_group = self.bank_properties.period_group.year
             detected_years = []
             
             if period_idx is None or df_extracted_words.empty:
@@ -246,7 +258,7 @@ class DefaultMetadataExtractor(MetadataExtractor):
                 if period_pattern:
                     year_match = re.search(period_pattern, text)
                     
-                    if year_match:
+                    if year_match and year_group is not None:
                         try:
                             year = int(year_match.group(year_group))
                             detected_years.append(year)
@@ -271,28 +283,30 @@ class DefaultMetadataExtractor(MetadataExtractor):
             
             return sorted(years)
     
-    def get_months(self) -> List[str]:
+    def get_months(self) -> list[str]:
         """
         Extracts the months from the statement text.
         """
-        period: Tuple[date, date] | None = self.get_period()
+        period: Period | None = self.get_period()
         
         if not period:
-            return None
+            return []
         
         months = [period.start_date.month, period.end_date.month]
         months = list(set(months))
         
-        return sorted(months)
+        return sorted([str(m) for m in months])
     
     def get_metadata(self) -> Metadata:
         bank = self.bank_properties.bank
         statement_type = self.bank_properties.statement_type
         period = self.get_period()
+        if period is None:
+             raise ValueError("Period is missing for metadata")
+             
         initial_balance = self.get_balance('initial')
         final_balance = self.get_balance('final')
         
         balances = Balances(initial= initial_balance, final= final_balance)
         
         return Metadata(bank= bank, statement_type= statement_type, period= period, balances= balances)
-        

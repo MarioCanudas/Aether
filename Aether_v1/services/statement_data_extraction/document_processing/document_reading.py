@@ -49,7 +49,7 @@ class PDFReader(Reader):
         Extract words from the PDF using pdfplumber.
 
         Returns:
-            pd.DataFrame: A DataFrame with the following columns:
+            ExtractedWords: A DataFrame with the following columns:
 
             - page: The page number of the word.
             - text: The text of the word.

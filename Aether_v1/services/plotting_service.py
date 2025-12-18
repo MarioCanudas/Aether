@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
 import altair as alt
 import pandas as pd
 import numpy as np
@@ -32,7 +33,7 @@ class PlottingService:
             raise ValueError(f"Invalid label: {label}")
         
     @staticmethod
-    async def get_plot_savings_donut_chart(donut_chart_config: DonutChartConfig) -> plt.Figure:
+    async def get_plot_savings_donut_chart(donut_chart_config: DonutChartConfig) -> Figure:
         """
         Plots a donut chart based on the savings compared to the average income.
 
@@ -142,7 +143,7 @@ class PlottingService:
         
         return bar_chart
     
-    def daily_bar_chart(self, amounts_per_day: Series, category: Literal['Abono', 'Cargo']) -> alt.Chart:
+    def daily_bar_chart(self, amounts_per_day: DataFrame, category: Literal['Abono', 'Cargo']) -> alt.Chart:
         bar_chart = alt.Chart(amounts_per_day).mark_bar(
             color=PlottingService.INCOME_COLOR if category == 'Abono' else PlottingService.EXPENSES_COLOR, 
             width = 10
@@ -165,7 +166,7 @@ class PlottingService:
         
         return bar_chart
     
-    def category_amount_bar_chart(self, data: DataFrame, category: Literal['Abono', 'Cargo']) -> alt.Chart:
+    def category_amount_bar_chart(self, data: DataFrame, category: Literal['Abono', 'Cargo']) -> alt.Chart | alt.LayerChart:
         base = alt.Chart(data).encode(
             x= alt.X(
                 'amount:Q', 
@@ -183,7 +184,7 @@ class PlottingService:
         
         return base.mark_bar() + base.mark_text(align= 'left', dx= 2)
     
-    def donut_chart_goal_progress(self, goal_info: GoalInfo) -> plt.figure:
+    def donut_chart_goal_progress(self, goal_info: GoalInfo) -> Figure:
         completion_percentage = goal_info.progress_porcentage * 100
         porcentage_text = f'{int(completion_percentage)}%'
         
@@ -262,7 +263,7 @@ class PlottingService:
         
         days = (goal_info.end_date - goal_info.start_date).days
         tick_interval = days / 2 if days < 30 else days / 3
-                
+        
         date_range = pd.date_range(start= goal_info.start_date, end= goal_info.end_date)
         target_progress = np.linspace(0, target_amount, len(date_range))
         target_progress_df = pd.DataFrame({
@@ -312,4 +313,3 @@ class PlottingService:
         )
         
         return target_amount_chart
-    

@@ -1,5 +1,7 @@
 import re
 from functools import cache
+import pandas as pd
+from typing import cast
 from ..core import DocumentAnalyzer, Reader
 from utils import search_phrase_in_df
 from constants.banks_properties import BANKS_CODES
@@ -22,7 +24,7 @@ class DefaultDocumentAnalyzer(DocumentAnalyzer):
         Detect the bank by analyzing the footer of the document.
         
         Returns:
-            str: The detected bank name if found, otherwise None.
+            BankName | None: The detected bank name if found, otherwise None.
         """
         try:
             extracted_words = self.reader.extract_words()
@@ -32,7 +34,8 @@ class DefaultDocumentAnalyzer(DocumentAnalyzer):
             footer_threshold = document_height * footer_percentage # Calculate the footer threshold using 15% of the document height
 
             df_footer = extracted_words.df[extracted_words.df['bottom'] > document_height - footer_threshold] # Filter the rows that are in the footer
-
+            df_footer = cast(pd.DataFrame, df_footer)
+            
             # Convert all footer text to lowercase for case-insensitive searches
             footer_text = df_footer['text'].apply(lambda x: x.lower())
             
@@ -58,12 +61,12 @@ class DefaultDocumentAnalyzer(DocumentAnalyzer):
         except Exception as e:
             raise ValueError(f"Error detecting bank in footer: {e}")
         
-    def detect_bank_by_code(self) -> BankName | None:
+    def detect_bank_by_code(self) -> BankName | str | None:
         """
         Detect the bank by analyzing the CLABE code in the document.
         
         Returns:
-            str: The detected bank name if found, otherwise None.
+            BankName | None: The detected bank name if found, otherwise None.
         """
         try:
             extracted_words = self.reader.extract_words()
@@ -110,7 +113,7 @@ class DefaultDocumentAnalyzer(DocumentAnalyzer):
         Detect the bank by analyzing the CLABE code or the footer of the document.
         
         Returns:
-            str: The detected bank name if found, otherwise None.
+            BankName: The detected bank name.
         """
         try:
             bank = self.detect_bank_by_code()
@@ -124,6 +127,8 @@ class DefaultDocumentAnalyzer(DocumentAnalyzer):
             raise ValueError(f"Error detecting bank in {file_name}: {e}")
         
         if bank:
+            if not isinstance(bank, BankName):
+                bank = BankName(bank)
             return bank
         else:
             raise ValueError(f"Bank not detected in {self.reader.get_file_name()}")
@@ -134,7 +139,7 @@ class DefaultDocumentAnalyzer(DocumentAnalyzer):
         Detect the statement type by analyzing the credit condition phrase in the document.
         
         Returns:
-            str: The detected statement type if found, otherwise 'debit'.
+            StatementType: The detected statement type if found, otherwise 'debit'.
         """
         try:
             extracted_words = self.reader.extract_words()
@@ -191,7 +196,7 @@ class DefaultDocumentAnalyzer(DocumentAnalyzer):
         Uses lazy loading to only load the properties for the detected bank.
         
         Returns:
-            dict: The statement properties for the given bank and statement type.
+            BankProperties: The statement properties for the given bank and statement type.
             
         Raises:
             ValueError: If bank or statement type cannot be detected or properties not found
