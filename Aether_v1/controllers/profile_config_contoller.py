@@ -1,7 +1,7 @@
 from datetime import date
 from functools import cached_property
 from passlib.context import CryptContext
-from typing import Optional
+
 from services import UserDBService, TransactionsDBService, GoalsDBService
 from models.users import UserProfile
 from models.views_data import ProfileConfigViewData
@@ -25,7 +25,10 @@ class ProfileConfigController(BaseController):
         with self.quick_read_conn() as conn:
             users_db = UserDBService(conn)
             
-            return users_db.get_user(user_id= self.user_id)
+            profile = users_db.get_user(user_id= self.user_id)
+            if profile is None:
+                raise ValueError(f"User with id {self.user_id} not found")
+            return profile
     
     def _format_account_age(self, account_age_days: int) -> str:
         """
@@ -64,19 +67,21 @@ class ProfileConfigController(BaseController):
             
             # Get profile data
             profile = users_db.get_user(user_id=self.user_id)
+            if profile is None:
+                 raise ValueError(f"User with id {self.user_id} not found")
             
             # Calculate account age and days since last login
             today = date.today()
             account_age_days = (today - profile.created_at.date()).days
-            days_since_login = (today - profile.last_login.date()).days
+            days_since_login = (today - profile.last_login.date()).days if profile.last_login else 0
             
             # Get account statistics
             transaction_count = transactions_db.count(user_id=self.user_id)
             goal_count = goals_db.count(user_id=self.user_id)
             
             # Get last transaction date
-            last_transaction_date: Optional[date] = None
-            days_since_last_transaction: Optional[int] = None
+            last_transaction_date: date | None = None
+            days_since_last_transaction: int | None = None
             
             if transaction_count > 0:
                 period = transactions_db.get_transactions_period(self.user_id)
@@ -100,8 +105,8 @@ class ProfileConfigController(BaseController):
     def modify_user(
             self, 
             current_password: str,
-            new_username: Optional[str] = None, 
-            new_password: Optional[str] = None
+            new_username: str | None = None, 
+            new_password: str | None = None
         ) -> None:
         if new_username == '':
             new_username = None
@@ -123,6 +128,8 @@ class ProfileConfigController(BaseController):
             new_password_hash = self._hash_password(new_password) if new_password else None
             
             user_id = users_db.find_id(username= profile.username)
+            if user_id is None:
+                 raise ValueError(f"User {profile.username} not found")
             
             match new_username, new_password:
                 case (None, None):

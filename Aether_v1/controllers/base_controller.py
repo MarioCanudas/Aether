@@ -1,8 +1,7 @@
 from abc import ABC
-from typing import Any, Dict, Optional
+from typing import Any, Generator
 import pandas as pd
 from psycopg2.extensions import connection
-from typing import Generator, List
 from contextlib import contextmanager
 from services import (
     ConnectionManagementService, 
@@ -62,6 +61,9 @@ class BaseController(ABC):
             
     @property
     def user_id(self) -> int:
+        if not self.user_session_service.current_user_id:
+            raise ValueError('User ID is not set')
+        
         return self.user_session_service.current_user_id
             
     def user_have_transactions(self) -> bool:
@@ -76,7 +78,7 @@ class BaseController(ABC):
             
             return transactions_db.exists(user_id= self.user_id, duplicate_potential_state= True)
     
-    def get_category_name(self, category_id: int) -> Optional[str]:
+    def get_category_name(self, category_id: int) -> str | None:
         if not category_id:
             raise ValueError('Category ID is required')
         
@@ -85,7 +87,7 @@ class BaseController(ABC):
             
             return category_db.get_category_name(category_id)
         
-    def get_card_name(self, card_id: int) -> Optional[str]:
+    def get_card_name(self, card_id: int) -> str | None:
         if not card_id:
             raise ValueError('Card ID is required')
         
@@ -94,8 +96,8 @@ class BaseController(ABC):
             
             return cards_db.get_card_name(card_id)
 
-    def transactions_to_df(self, transactions: List[Transaction], to_view: bool = False) -> pd.DataFrame:
-        dicts_to_df: List[Dict[str, Any]] = []
+    def transactions_to_df(self, transactions: list[Transaction], to_view: bool = False) -> pd.DataFrame:
+        dicts_to_df: list[dict[str, Any]] = []
         
         for t in transactions:
             dict_to_df = t.model_dump()

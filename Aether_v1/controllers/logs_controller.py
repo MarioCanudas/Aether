@@ -1,4 +1,4 @@
-from typing import List
+
 from functools import cached_property
 from passlib.context import CryptContext
 from datetime import datetime
@@ -43,7 +43,7 @@ class LogsController(BaseController):
     def clear_user_session(self) -> None:
         self.user_session_service.clear_current_user()
         
-    def get_users(self) -> List[str]:
+    def get_users(self) -> list[str]:
         with self.quick_read_conn() as conn:
             users_db = UserDBService(conn)
             
@@ -53,7 +53,10 @@ class LogsController(BaseController):
         with self.quick_read_conn() as conn:
             users_db = UserDBService(conn)
             
-            return users_db.find_id(username= username)
+            user_id = users_db.find_id(username= username)
+            if user_id is None:
+                raise ValueError(f"User {username} not found")
+            return user_id
         
     def add_user(self, new_user: NewUser) -> None:
         with self.session_conn() as conn:
