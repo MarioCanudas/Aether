@@ -2,15 +2,13 @@ from pydantic import BaseModel, ConfigDict, field_validator
 import pandas as pd
 from altair import Chart
 from matplotlib.figure import Figure
-from enum import Enum
-from typing import List
 from ..financial import FinancialStatus, FinancialAmountsSums
 
 class HomeViewData(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     
     label: FinancialStatus
-    tips: List[str]
+    tips: list[str]
     last_transactions: pd.DataFrame
     donut_score_chart: Figure
     income_vs_expenses_bar_chart: Chart
@@ -51,4 +49,3 @@ class HomeViewData(BaseModel):
             raise ValueError('Last transactions must be a pandas DataFrame')
         
         return last_transactions
-    

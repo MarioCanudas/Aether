@@ -1,21 +1,21 @@
 from pydantic import BaseModel
 from datetime import datetime
-from typing import Optional, Dict, Any 
+from typing import Any 
 
 class NewUser(BaseModel):
     username: str
-    password_hash: Optional[str] = None # Optional because it's not required when adding a user for now
+    password_hash: str | None = None # Optional because it's not required when adding a user for now
 
 class UserProfile(BaseModel):
     user_id: int
     username: str
-    password_hash: Optional[str] = None
+    password_hash: str | None = None
     created_at: datetime
     last_login: datetime
-    updated_at: Optional[datetime] = None
+    updated_at: datetime | None = None
     
     @classmethod
-    def from_dict(cls, dict_data: Dict[str, Any]) -> 'UserProfile':
+    def from_dict(cls, dict_data: dict[str, Any]) -> 'UserProfile':
         return cls(**dict_data)
     
     @property
@@ -32,4 +32,3 @@ class UserProfile(BaseModel):
             return 'Not updated yet'
         else:
             return self.updated_at.strftime('%Y-%m-%d %H:%M')
-    

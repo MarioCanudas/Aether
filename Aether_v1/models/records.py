@@ -1,4 +1,4 @@
-from typing import Optional, TypedDict
+from typing import TypedDict
 from decimal import Decimal
 from datetime import date
     
@@ -6,14 +6,14 @@ class MonthlyResultRecord(TypedDict):
     """
     Represents a monthly result record in the database.
     
-    >>> user_id: Optional[int]
+    >>> user_id: int | None
     >>> year_month: str
     >>> initial_balance: float
     >>> total_income: float
     >>> total_withdrawal: float
     >>> savings: float
     """
-    user_id: Optional[int]
+    user_id: int | None
     year_month: str
     initial_balance: float
     total_income: float

@@ -1,9 +1,9 @@
 from enum import Enum
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, ValidationInfo
 from dataclasses import dataclass
 from dateutil.relativedelta import relativedelta
 from datetime import date
-from typing import Optional, Dict, Tuple, List
+from typing import Any
 
 class DateGroups(BaseModel):
     """
@@ -12,7 +12,7 @@ class DateGroups(BaseModel):
     It's principally used to extract the date groups from the statement.
     """
     
-    year: Optional[int] = None
+    year: int | None = None
     month: int
     day: int
     
@@ -22,7 +22,7 @@ class DateGroups(BaseModel):
     
     @field_validator('year', 'month', 'day')
     @classmethod
-    def validate_date_groups_instance(cls, v, info):
+    def validate_date_groups_instance(cls, v: Any, info: ValidationInfo) -> Any:
         """
         Validate that month and day are integers between 1 and 3,
         and that none of the values (year, month, day) are equal to each other,
@@ -57,7 +57,7 @@ class Period(BaseModel):
     
     @field_validator('end_date')
     @classmethod
-    def validate_dates_not_greater(cls, v, info):
+    def validate_dates_not_greater(cls, v: Any, info: ValidationInfo) -> Any:
         """
         Validate that the start date is not greater than the end date.
         """
@@ -76,10 +76,10 @@ class Period(BaseModel):
     def final_year(self) -> int:
         return self.end_date.year
     
-    def get_available_years(self) -> List[int]:
+    def get_available_years(self) -> list[int]:
         return list(range(self.initial_year, self.final_year + 1))
     
-    def get_available_months(self) -> Dict[int, List[int]]:
+    def get_available_months(self) -> dict[int, list[int]]:
         years = self.get_available_years()
         months = {}
         
@@ -94,7 +94,7 @@ class Period(BaseModel):
         return months
                 
     
-    def to_tuple(self) -> Tuple[date, date]:
+    def to_tuple(self) -> tuple[date, date]:
         return (self.start_date, self.end_date)
 
 class PeriodRange(Enum):
@@ -108,7 +108,7 @@ class PeriodRange(Enum):
     OTHER = 'Otro'
     
     @property
-    def days_to_add(self):
+    def days_to_add(self) -> relativedelta | None:
         match self:
             case PeriodRange.WEEKLY:
                 return relativedelta(weeks= 1)
@@ -130,10 +130,8 @@ class PeriodRange(Enum):
 @dataclass(frozen=True)
 class MonthPatterns:
     # Abbreviated month names to numeric month names
-    abbr_to_num: Dict[str, str] # e.g. 'ENE' -> '01'
+    abbr_to_num: dict[str, str] # e.g. 'ENE' -> '01'
     # Numeric month names to abbreviated month names
-    num_to_abbr: Dict[str, str] # e.g. '01' -> 'ENE'
+    num_to_abbr: dict[str, str] # e.g. '01' -> 'ENE'
     # Month names to numeric month names
-    month_to_num: Dict[str, str] # e.g. 'Enero' -> '01'
-    
-            
+    month_to_num: dict[str, str] # e.g. 'Enero' -> '01'

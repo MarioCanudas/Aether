@@ -1,6 +1,5 @@
 from pydantic import BaseModel
 from enum import Enum
-from typing import Optional
 from decimal import Decimal     
 
 class FinancialStatus(str, Enum):
@@ -54,7 +53,7 @@ class FinancialAmountsSums(BaseModel):
     """
     income: Decimal
     withdrawal: Decimal
-    savings: Optional[Decimal]
+    savings: Decimal | None
     
     @property
     def balance(self) -> Decimal:
@@ -62,4 +61,3 @@ class FinancialAmountsSums(BaseModel):
     
     def add_to_income(self, amount: Decimal) -> None:
         self.income += amount
-    

@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from enum import Enum
-from typing import Optional, List, Dict, Any
+from typing import Any
 from .amounts import AmountColumns, AmountSigns, Balances
 from .dates import DateGroups, Period
 
@@ -16,7 +16,7 @@ class BankName(str, Enum):
     SANTANDER = 'santander'
     
     @classmethod
-    def get_values(cls) -> List[str]:
+    def get_values(cls) -> list[str]:
         return [bank.value for bank in cls]
     
     
@@ -25,7 +25,7 @@ class StatementType(str, Enum):
     DEBIT = 'debit'
     
     @classmethod
-    def get_values(cls) -> List[str]:
+    def get_values(cls) -> list[str]:
         return [statement_type.value for statement_type in cls]
     
     
@@ -35,34 +35,31 @@ class Metadata(BaseModel):
     period: Period
     balances: Balances
     
-    def get_years(self) -> List[int]:
-        return sorted(list(set([year for year in self.period.years])))
-    
     
 class BankProperties(BaseModel):
     bank: BankName
     statement_type: StatementType
-    new_format: Optional[bool] = None
+    new_format: bool | None = None
     
-    start_phrase: List[str]
-    end_phrase: List[str]
-    period_phrase: Optional[List[str]] = None
-    initial_balance_phrase: Optional[List[str]] = None
-    final_balance_phrase: Optional[List[str]] = None
-    initial_balance_description: Optional[str] = None
-    generated_amount_phrase: Optional[List[str]] = None
+    start_phrase: list[str]
+    end_phrase: list[str]
+    period_phrase: list[str] | None = None
+    initial_balance_phrase: list[str] | None = None
+    final_balance_phrase: list[str] | None = None
+    initial_balance_description: str | None = None
+    generated_amount_phrase: list[str] | None = None
     
-    columns: List[str]
+    columns: list[str]
     amount_columns: AmountColumns
     
     date_pattern: str
     date_groups: DateGroups
-    month_pattern: Dict[str, str]
+    month_pattern: dict[str, str]
     
     amount_signs: AmountSigns
     
-    period_pattern: Optional[str] = None
-    period_month_pattern: Optional[Dict[str, str]] = None
-    period_group: Optional[DateGroups] = None
+    period_pattern: str | None = None
+    period_month_pattern: dict[str, str] | None = None
+    period_group: DateGroups | None = None
     
     special_data_filtering: Any = None

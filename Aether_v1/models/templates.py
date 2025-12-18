@@ -3,7 +3,7 @@ from enum import Enum
 import json
 from datetime import date
 from decimal import Decimal
-from typing import Optional, Dict, Any, TypedDict
+from typing import Any, TypedDict
 from .amounts import TransactionType
 from .dates import PeriodRange
 from .goals import GoalType
@@ -15,17 +15,17 @@ class TemplateType(str, Enum):
 
     
 class TransactionDefaultValues(BaseModel):
-    transaction_date: Optional[date] = Field(default= None)
+    transaction_date: date | None = Field(default= None)
     type: TransactionType
-    amount: Optional[Decimal] = Field(default= None)
-    category_id: Optional[int] = Field(default= None)
-    card_id: Optional[int] = Field(default= None)
-    statement_type: Optional[StatementType] = Field(default= None)
-    bank_name: Optional[BankName] = Field(default= None)
-    description: Optional[str] = Field(default= None, max_length= 200)
+    amount: Decimal | None = Field(default= None)
+    category_id: int | None = Field(default= None)
+    card_id: int | None = Field(default= None)
+    statement_type: StatementType | None = Field(default= None)
+    bank_name: BankName | None = Field(default= None)
+    description: str | None = Field(default= None, max_length= 200)
     
     @classmethod
-    def from_dict(cls, values: Dict[str, Any]) -> 'TransactionDefaultValues':
+    def from_dict(cls, values: dict[str, Any]) -> 'TransactionDefaultValues':
         """
         Deserialize a dictionary into a TransactionDefaultValues instance.
 
@@ -61,12 +61,12 @@ class TransactionDefaultValues(BaseModel):
 class GoalDefaultValues(BaseModel):
     name: str
     type: GoalType
-    category_id: Optional[int] = Field(default= None)
-    amount: Optional[Decimal] = Field(default= None)
-    period_range: Optional[PeriodRange] = Field(default= None)
+    category_id: int | None = Field(default= None)
+    amount: Decimal | None = Field(default= None)
+    period_range: PeriodRange | None = Field(default= None)
     
     @classmethod
-    def from_dict(cls, values: Dict[str, Any]) -> 'GoalDefaultValues':
+    def from_dict(cls, values: dict[str, Any]) -> 'GoalDefaultValues':
         """
         Deserialize a dictionary into a GoalDefaultValues instance.
 
@@ -95,28 +95,10 @@ class GoalDefaultValues(BaseModel):
         return json.dumps({k:v for k, v in model_dump.items() if v is not None})
     
     
-class TemplateRecord(TypedDict):
-    """
-    Represents a template record in the database.
-    
-    >>> Values:
-    user_id: Optional[int]
-    template_name: str
-    template_description: Optional[str]
-    template_type: TemplateType
-    default_values: str
-    """
-    user_id: Optional[int]
-    template_name: str
-    template_description: Optional[str]
-    template_type: TemplateType
-    default_values: str
-    
-    
 class Template(BaseModel):
-    user_id: Optional[int]
+    user_id: int | None
     template_name: str
-    template_description: Optional[str]
+    template_description: str | None
     template_type: TemplateType
     default_values: TransactionDefaultValues | GoalDefaultValues
     
@@ -130,14 +112,16 @@ class Template(BaseModel):
     
     @field_validator('template_description')
     @classmethod
-    def validate_template_description_length(cls, v: str) -> str:
+    def validate_template_description_length(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
         if len(v) > 200:
             raise ValueError('Template description must be less than 200 characters')
         else:
             return v
 
-    def to_record(self) -> TemplateRecord:
-        record : TemplateRecord = {
+    def to_record(self) -> dict[str, Any]:
+        record : dict[str, Any] = {
             'user_id': self.user_id,
             'template_name': self.template_name,
             'template_description': self.template_description,

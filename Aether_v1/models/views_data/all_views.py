@@ -1,5 +1,4 @@
 from enum import Enum
-from typing import List
 
 class PeriodsOptions(str, Enum):
     CURRENT_MONTH = 'Current Month'
@@ -9,5 +8,5 @@ class PeriodsOptions(str, Enum):
     ALL_TIME = 'All Time'
     
     @classmethod
-    def get_values(self) -> List[str]:
-        return [option.value for option in self]
+    def get_values(cls) -> list[str]:
+        return [option.value for option in cls]

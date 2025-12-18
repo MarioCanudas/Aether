@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 import pandas as pd
-from typing import Optional, List, Any, Dict
+from typing import Any
 from datetime import date
 from decimal import Decimal
 from .amounts import TransactionType
@@ -21,17 +21,17 @@ class TransactionKey(BaseModel):
     
 
 class Transaction(BaseModel):
-    transaction_id: Optional[int] = None
+    transaction_id: int | None = None
     user_id: int
-    category_id: Optional[int] = None
+    category_id: int | None = None
     date: date
-    description: Optional[str] = None
+    description: str | None = None
     amount: Decimal
     type: TransactionType
     bank: BankName
-    card_id: Optional[int] = None
+    card_id: int | None = None
     statement_type: StatementType
-    filename: Optional[str] = None
+    filename: str | None = None
     duplicate_potential_state: bool = False
     
     def __eq__(self, other: 'Transaction') -> bool:
@@ -41,7 +41,7 @@ class Transaction(BaseModel):
             return self.model_dump() == other.model_dump()
         
     def __hash__(self) -> int:
-        def _to_hashable(value: Any):
+        def _to_hashable(value: Any) -> Any:
             if isinstance(value, (list, tuple)):
                 return tuple(_to_hashable(v) for v in value)
             
@@ -55,7 +55,7 @@ class Transaction(BaseModel):
         return hash(tuple(items))
     
     @property
-    def key_values(self) -> List[str]:
+    def key_values(self) -> list[str]:
         return [
             'date',
             'amount',
@@ -65,7 +65,7 @@ class Transaction(BaseModel):
         ]
     
     @property
-    def default_values(self) -> List[str]:
+    def default_values(self) -> list[str]:
         return [
             'user_id',
             'date',
@@ -77,7 +77,7 @@ class Transaction(BaseModel):
         ]
         
     @property
-    def optional_values(self) -> List[str]:
+    def optional_values(self) -> list[str]:
         return [
             'transaction_id',
             'category_id',
@@ -87,7 +87,7 @@ class Transaction(BaseModel):
         ]
 
         
-    def dump_to_add(self) -> Dict[str, Any]:
+    def dump_to_add(self) -> dict[str, Any]:
         record = self.model_dump()
         
         del record['transaction_id']
@@ -164,8 +164,8 @@ class Transaction(BaseModel):
 
 class DuplicateResult(BaseModel):
     transaction: Transaction
-    exact_duplicates: List[Transaction] = []
-    potential_duplicates: List[Transaction] = []
+    exact_duplicates: list[Transaction] = []
+    potential_duplicates: list[Transaction] = []
     
     @property
     def has_exact_duplicates(self) -> bool:
@@ -177,13 +177,13 @@ class DuplicateResult(BaseModel):
     
 
 class FilteredTransactionsResult(BaseModel):
-    clean: List[Transaction] = []
-    potential_duplicates_to_upload: List[Transaction] = []
-    potential_duplicates_to_modify: List[Transaction] = []
-    duplicated: List[Transaction] = []
+    clean: list[Transaction] = []
+    potential_duplicates_to_upload: list[Transaction] = []
+    potential_duplicates_to_modify: list[Transaction] = []
+    duplicated: list[Transaction] = []
     
     @property
-    def potential_duplicates_to_upload_unique(self) -> List[Transaction]:
+    def potential_duplicates_to_upload_unique(self) -> list[Transaction]:
         return list(set(self.potential_duplicates_to_upload))
     
     @property
