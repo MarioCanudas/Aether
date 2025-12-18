@@ -1,4 +1,6 @@
 import streamlit as st
+from typing import cast
+from io import BytesIO
 from controllers import UploadStatementsController
 from components.confirm_upload import confirm_upload_popup
 from constants.views_icons import UPLOAD_STATEMENTS_ICON
@@ -29,6 +31,11 @@ def show_upload_statements():
         if st.form_submit_button(label= 'Upload', icon= ':material/save:'):
             if uploaded_files:
                 st.write("Processing Files...")
+                
+                # From streamlit documentation:
+                # The UploadedFile class is a subclass of BytesIO, and therefore is "file-like". 
+                # This means you can pass an instance of it anywhere a file is expected.
+                uploaded_files = cast(list[BytesIO], uploaded_files)
                 transactions = controller.process_uploaded_files(uploaded_files, card)
                 confirm_upload_popup(transactions)
             else:

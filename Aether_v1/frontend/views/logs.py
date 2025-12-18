@@ -21,20 +21,25 @@ def show_login():
             password = st.text_input('Password', type= 'password', value= '', placeholder= 'Enter your password', key= 'password_input')
             
             if st.form_submit_button('Login', key= 'login_button'):
-                try:
-                    if controller.verify_login(username, password):
-                        user_id = controller.get_user_id(username)
-                        controller.update_user_id(user_id)
-                        controller.update_last_login(user_id)
-                        st.session_state.user_id = user_id
-                        
-                        st.session_state.logged_in = True
-                        st.toast(f'Logged in as {username} with id: {user_id}')
-                        st.rerun()
-                    else:
-                        st.error('Invalid username or password')
-                except ValueError as e:
-                    st.error(f'Error verifying login: {e}')
+                if not username or not password:
+                    st.error('Username and password are required')
+                else: 
+                    try:
+                        if controller.verify_login(username, password):
+                            user_id = controller.get_user_id(username)
+                            if user_id:
+                                controller.update_last_login(user_id)
+                                st.session_state.user_id = user_id
+                                
+                                st.session_state.logged_in = True
+                                st.toast(f'Logged in as {username} with id: {user_id}')
+                                st.rerun()
+                            else:
+                               st.error('User not found') 
+                        else:
+                            st.error('Invalid username or password')
+                    except ValueError as e:
+                        st.error(f'Error verifying login: {e}')
                     
         if st.button('Add User', icon= ':material/add:', type= 'primary', key= 'add_user_button', help= 'Add a new user'):
             add_user_popup(controller)

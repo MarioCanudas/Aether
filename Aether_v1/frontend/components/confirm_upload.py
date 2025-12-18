@@ -1,14 +1,14 @@
 import streamlit as st
 import pandas as pd
 import asyncio
-from typing import List
+
 from controllers import UploadStatementsController
 from models.transactions import Transaction
 
 controller = UploadStatementsController()
 
 @st.dialog('Confirm Upload', width= 'medium')
-def confirm_upload_popup(transactions: List[Transaction]) -> None:
+def confirm_upload_popup(transactions: list[Transaction]) -> None:
     st.header('Transactions to be uploaded')
     filtered_transactions_result = asyncio.run(controller.filter_transactions(transactions))
     

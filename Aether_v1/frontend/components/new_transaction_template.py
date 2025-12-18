@@ -13,7 +13,7 @@ def new_transaction_template_popup() -> None:
     with st.form(key= 'new_transaction_template_form', border= False):
         left, right = st.columns([1, 3])
         
-        template_name = left.text_input('Name', value= None, max_chars= 50, key= 'new_transaction_template_name')
+        template_name = left.text_input('Name', value= '', max_chars= 50, key= 'new_transaction_template_name')
         
         template_description = right.text_input(
             'Description', 
@@ -32,8 +32,8 @@ def new_transaction_template_popup() -> None:
             key= 'new_transaction_template_statement_type'
         )
         
-        if transaction_statement_type in StatementType.get_values():
-            transaction_statement_type = StatementType(transaction_statement_type)
+        # Logic moved to form submit
+        pass
         
         left, right = st.columns([4, 7])
         
@@ -45,7 +45,9 @@ def new_transaction_template_popup() -> None:
         )
         
         if transaction_bank_name in BankName.get_values():
-            transaction_bank_name = BankName(transaction_bank_name)
+            transaction_bank_name_enum = BankName(transaction_bank_name)
+        else:
+            transaction_bank_name_enum = None
         
         transaction_card_name = right.selectbox(
             'Card Name', 
@@ -54,8 +56,10 @@ def new_transaction_template_popup() -> None:
             key= 'new_transaction_template_card_name'
         )
         
+        transaction_card_id = None
         if transaction_card_name:
-            transaction_card_id = controller.get_card_by_name(transaction_card_name).card_id
+            card_obj = controller.get_card_by_name(transaction_card_name)
+            transaction_card_id = card_obj.card_id if card_obj else None
         
         transaction_type = left.pills(
             'Type', 
@@ -87,19 +91,28 @@ def new_transaction_template_popup() -> None:
         )
         
         if st.form_submit_button('Add transaction template', type= 'primary'):
+            transaction_category_id = None
             if transaction_category:
                 transaction_category_id = controller.get_category_id(transaction_category)
                 
             try:
+                # Prepare Enum values
+                transaction_type_enum = TransactionType(transaction_type)
+                statement_type_enum = None
+                if transaction_statement_type and transaction_statement_type in StatementType.get_values():
+                     statement_type_enum = StatementType(transaction_statement_type)
+                elif isinstance(transaction_statement_type, StatementType):
+                     statement_type_enum = transaction_statement_type
+
                 # First verify that the transaction default values are valid
                 default_values = TransactionDefaultValues(
                     transaction_date= transaction_date,
-                    type= TransactionType(transaction_type),
+                    type= transaction_type_enum,
                     amount= to_decimal(transaction_amount) if transaction_amount else None,
                     category_id= transaction_category_id,
                     description= transaction_description,
-                    statement_type= StatementType(transaction_statement_type),
-                    bank_name= transaction_bank_name,
+                    statement_type= statement_type_enum,
+                    bank_name= transaction_bank_name_enum,
                     card_id= transaction_card_id
                 )
                 

@@ -1,4 +1,6 @@
 import streamlit as st
+from typing import cast
+from Aether_v1.services.database import categories
 from controllers import DataViewController
 from constants.views_icons import TRANSACTIONS_ICON
 from models.amounts import TransactionType
@@ -53,21 +55,37 @@ def show_data():
                 TransactionType(amount_type) for amount_type in amount_types
             ]
 
-        if date_range:
+        if date_range and isinstance(date_range, tuple) and len(date_range) == 2:
             period = Period(start_date=date_range[0], end_date=date_range[1])
+        else:
+            period = transactions_period
 
         if banks:
-            banks = [BankName(bank) for bank in banks]
+            # banks is list[Any], need manual cast logic or trust list comprehension
+            banks_enum: list[BankName] = [BankName(bank) for bank in banks]
+        else:
+            banks_enum = []
+            
+        # Ensure strict typing for arguments passed to get_filtered_transactions
+        # Assuming get_filtered_transactions expects optional lists
+        filtered_statement_type = StatementType(statement_type) if statement_type else None
+        
+        filtered_amount_types: list[TransactionType] | None = None
+        if amount_types:
+             filtered_amount_types = [TransactionType(t) for t in amount_types]
 
         try:
             filtered_transactions = controller.get_filtered_transactions(
-                period, banks, statement_type, amount_types
+                period, banks_enum, filtered_statement_type, filtered_amount_types
             )
         except Exception:
             filtered_transactions = controller.get_filtered_transactions(
-                transactions_period, banks, statement_type, amount_types
+                transactions_period, banks_enum, filtered_statement_type, filtered_amount_types # Fallback
             )
         finally:
+            categories_list = cast(list[str | None], controller.get_categories())
+            categories_list = categories_list.append(None)
+            
             edited_transactions = st.data_editor(
                 data=filtered_transactions.copy(),
                 column_config={
@@ -75,7 +93,7 @@ def show_data():
                         label="Date", format="YYYY/MM/DD"
                     ),
                     "category": st.column_config.SelectboxColumn(
-                        label="Category", options=controller.get_categories() + [None]
+                        label="Category", options= categories_list,
                     ),
                     "description": st.column_config.TextColumn(
                         label="Description",
