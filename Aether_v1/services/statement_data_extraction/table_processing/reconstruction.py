@@ -1,14 +1,17 @@
-import pandas as pd
-import numpy as np
 import re
-from sklearn.cluster import KMeans
 from functools import cache
 from typing import Any, cast
-from ..core import Reconstructor
-from utils import classify_words, identify_date_separator
+
+import numpy as np
+import pandas as pd
 from models.amounts import AmountColumns
 from models.delimitations import ColumnDelimitations
 from models.tables import ReconstructedTable
+from sklearn.cluster import KMeans
+from utils import classify_words, identify_date_separator
+
+from ..core import Reconstructor
+
 
 class TableReconstructor(Reconstructor):
     @cache
@@ -16,44 +19,44 @@ class TableReconstructor(Reconstructor):
         """Classifies each word from the grouped rows into date, description or amount columns"""
         # Get the grouped rows DataFrame to process each row of detected words
         grouped_rows = self.grouped_rows.df
-        
+
         # Retrieve statement properties, including date and amount column patterns
         date_pattern = self.bank_properties.date_pattern
         all_amount_columns = self.bank_properties.amount_columns.all_list
-        
+
         reconstructed_table = []
-        
+
         # Iterate over each grouped row to classify its words
         for _, row in grouped_rows.iterrows():
             # Initialize the row structure depending    on the number of amount columns
             if len(all_amount_columns) > 1:
-                current_row = {'date': None, 'description': '', 'amount': []}
+                current_row = {"date": None, "description": "", "amount": []}
             else:
-                current_row = {'date': None, 'description': '', 'amount': None}
-            
+                current_row = {"date": None, "description": "", "amount": None}
+
             # For each word in the row, classify as date, amount, or description
-            for text, x0, _ in row['words']:
+            for text, x0, _ in row["words"]:
                 classification = classify_words(date_pattern, text)
-                
+
                 # Assign the word to the appropriate field based on its classification
-                if classification == 'date' and not current_row['date']:
-                    current_row['date'] = text
-                elif classification == 'amount':
+                if classification == "date" and not current_row["date"]:
+                    current_row["date"] = text
+                elif classification == "amount":
                     if len(all_amount_columns) > 1:
                         # For multiple amount columns, store both value and position
-                        current_row['amount'].append((text, x0))
+                        current_row["amount"].append((text, x0))
                     else:
                         # For a single amount column, just store the value
-                        current_row['amount'] = text
-                elif classification == 'description':
+                        current_row["amount"] = text
+                elif classification == "description":
                     # Concatenate description words
-                    current_row['description'] += text + " "
-            
+                    current_row["description"] += text + " "
+
             # If no amount was found, set to None for consistency
-            if not current_row['amount']:
-                current_row['amount'] = None
+            if not current_row["amount"]:
+                current_row["amount"] = None
             reconstructed_table.append(current_row)
-        
+
         # Return the reconstructed table as a DataFrame
         if reconstructed_table:
             return pd.DataFrame(reconstructed_table)
@@ -61,14 +64,16 @@ class TableReconstructor(Reconstructor):
             # For the empty case, build the DataFrame from an explicit mapping
             # so type checkers see a concrete column-to-empty-list structure.
             return pd.DataFrame({"date": [], "description": [], "amount": []})
-    
+
     @staticmethod
-    def get_amount_columns_centroids(column_delimitation: ColumnDelimitations, amount_columns: AmountColumns) -> np.ndarray:
+    def get_amount_columns_centroids(
+        column_delimitation: ColumnDelimitations, amount_columns: AmountColumns
+    ) -> np.ndarray:
         """
         Get the centroids of the amount columns, based on the column delimitation of the amount columns.
-        
+
         The centroids are calculated as the average of the x0 and x1 positions of the column delimitation.
-        
+
         Returns:
             np.ndarray: The centroids of the amount columns.
         """
@@ -76,29 +81,31 @@ class TableReconstructor(Reconstructor):
         columns = column_delimitation.columns
         x0_list = column_delimitation.x0
         x1_list = column_delimitation.x1
-        
+
         centroids = []
-        
+
         # Iterate over all columns to find those that are amount columns
         for i, col in enumerate(columns):
             if col in amount_columns.all_list:
                 # Calculate the centroid as the average of x0 and x1 for the column
                 centroid = (x0_list[i] + x1_list[i]) / 2
                 centroids.append(centroid)
-        
+
         # Return the centroids as a numpy array with shape (n, 1)
         return np.array(centroids).reshape(-1, 1)
-    
+
     @staticmethod
-    def filter_amounts_by_alignment(classified_rows: pd.DataFrame, column_centroids: np.ndarray) -> tuple[list[float], list[tuple[int, str]]]:
+    def filter_amounts_by_alignment(
+        classified_rows: pd.DataFrame, column_centroids: np.ndarray
+    ) -> tuple[list[float], list[tuple[int, str]]]:
         """
         Filters amounts that are horizontally aligned with known amount column positions.
         Returns their x-coordinates and row references for clustering.
         """
         all_x0 = []
         row_indices = []
-        tolerance = 25 # pixels
-        
+        tolerance = 25  # pixels
+
         # Check each row for amounts that align with column centroids
         for i, row in classified_rows.iterrows():
             amount_field = row["amount"]
@@ -107,32 +114,33 @@ class TableReconstructor(Reconstructor):
                 for amount, x0 in amount_field:
                     # Check if amount position is within tolerance of any column centroid
                     is_near_column = any(
-                        abs(x0 - centroid[0]) <= tolerance 
-                        for centroid in column_centroids
+                        abs(x0 - centroid[0]) <= tolerance for centroid in column_centroids
                     )
-                    
+
                     if is_near_column:
                         all_x0.append(x0)
                         row_indices.append((i, amount))
-        
+
         return all_x0, row_indices
-    
+
     @staticmethod
-    def cluster_amounts_columns(all_x0: list[float], column_centroids: np.ndarray, amount_columns: AmountColumns) -> tuple[np.ndarray, dict[int, str]]:
+    def cluster_amounts_columns(
+        all_x0: list[float], column_centroids: np.ndarray, amount_columns: AmountColumns
+    ) -> tuple[np.ndarray, dict[int, str]]:
         """
         Clusters the amounts into their respective columns using K-means clustering on x-coordinates.
-        
+
         Args:
             all_x0 (list[float]): The x-coordinates of the amounts.
             column_centroids (np.ndarray): The centroids of the amount columns.
             amount_columns (AmountColumns): The names of the amount columns.
-            
+
         Returns:
             tuple[np.ndarray, dict[int, str]]: The clusters and the mapping of clusters to column names.
         """
         all_amount_columns = amount_columns.all_list
         n_amount_columns = len(all_amount_columns)
-        
+
         X = np.array(all_x0).reshape(-1, 1)
         # `init` and `n_init` accept non‑string values at runtime, but some type
         # stubs are stricter. We use `cast(Any, ...)` to document this usage
@@ -143,14 +151,16 @@ class TableReconstructor(Reconstructor):
             n_init=cast(Any, 1),
         )
         clusters = kmeans.fit_predict(X)
-        
+
         # Map clusters to column names based on horizontal position
         final_centroids = kmeans.cluster_centers_.flatten()
         sorted_cluster_indices = np.argsort(final_centroids)
-        cluster_to_column = {sorted_cluster_indices[i]: all_amount_columns[i] for i in range(n_amount_columns)}
-        
+        cluster_to_column = {
+            sorted_cluster_indices[i]: all_amount_columns[i] for i in range(n_amount_columns)
+        }
+
         return clusters, cluster_to_column
-        
+
     @cache
     def get_structured_table(self) -> ReconstructedTable:
         """
@@ -159,32 +169,36 @@ class TableReconstructor(Reconstructor):
         """
         classified_rows = self.get_classified_rows()
         amount_columns = self.bank_properties.amount_columns
-        
+
         # Simple case: single amount column
         if amount_columns.is_mono_column:
-            df = classified_rows.rename(columns={'amount': amount_columns.column})
-            return ReconstructedTable(df= df, amount_columns= amount_columns)
-        
-        # Complex case: multiple amount columns - use clustering        
-        column_centroids = self.get_amount_columns_centroids(self.column_delimitation, amount_columns)
+            df = classified_rows.rename(columns={"amount": amount_columns.column})
+            return ReconstructedTable(df=df, amount_columns=amount_columns)
+
+        # Complex case: multiple amount columns - use clustering
+        column_centroids = self.get_amount_columns_centroids(
+            self.column_delimitation, amount_columns
+        )
         all_x0, row_indices = self.filter_amounts_by_alignment(classified_rows, column_centroids)
-        clusters, cluster_to_column = self.cluster_amounts_columns(all_x0, column_centroids, amount_columns)
-        
+        clusters, cluster_to_column = self.cluster_amounts_columns(
+            all_x0, column_centroids, amount_columns
+        )
+
         # Assign amounts to their respective columns
         result_df = classified_rows.copy()
         for col in amount_columns.all_list:
             result_df[col] = ""
-        
+
         for i, (row_idx, amount_text) in enumerate(row_indices):
             cluster = clusters[i]
             column_name = cluster_to_column[cluster]
             if result_df.loc[row_idx, column_name] == "":
                 result_df.loc[row_idx, column_name] = amount_text
-                
-        df = result_df.drop('amount', axis=1)
-        
-        return ReconstructedTable(df= df, amount_columns= amount_columns)
-    
+
+        df = result_df.drop("amount", axis=1)
+
+        return ReconstructedTable(df=df, amount_columns=amount_columns)
+
     def correct_date_errors(self, merged_rows: list[dict[str, Any]]) -> pd.DataFrame:
         """
         Corrects date errors in the reconstructed table.
@@ -193,20 +207,20 @@ class TableReconstructor(Reconstructor):
         day_group = date_groups.day
         month_group = date_groups.month
         year_group = date_groups.year
-        
+
         if year_group is None:
             return pd.DataFrame(merged_rows)
-        
+
         month_pattern = self.bank_properties.month_pattern
         date_pattern = re.compile(self.bank_properties.date_pattern)
         date_separator = identify_date_separator(date_pattern)
-        
+
         rows_to_delete = []
-        
+
         for i, row in enumerate(merged_rows):
-            date = row['date']
+            date = row["date"]
             match = date_pattern.match(date)
-            
+
             if not match:
                 rows_to_delete.append(i)
                 continue
@@ -214,24 +228,24 @@ class TableReconstructor(Reconstructor):
             day = match.group(day_group)
             month = match.group(month_group)
             year = match.group(year_group)
-            
+
             if not year:
                 # We track date components as strings; empty strings represent
                 # unknown parts that may be filled later.
                 date_order: list[str] = ["", "", ""]
                 date_order[day_group - 1] = day
                 date_order[month_group - 1] = month
-                
-                no_date_word = ' '.join(date.split(date_separator)[year_group - 1:])
-                
+
+                no_date_word = " ".join(date.split(date_separator)[year_group - 1 :])
+
                 for j in range(len(merged_rows)):
-                    j_date: str = merged_rows[j]['date']
+                    j_date: str = merged_rows[j]["date"]
                     j_match = date_pattern.match(j_date)
                     if not j_match:
                         continue
                     j_date_month: str = j_match.group(month_group)
                     j_date_year: str = j_match.group(year_group)
-                    
+
                     if j_date_month == month and j_date_year.isdigit():
                         date_order[year_group - 1] = j_date_year
                         break
@@ -241,20 +255,20 @@ class TableReconstructor(Reconstructor):
                     dic = month_keys[-1]
                     relative_year: str | None = None
                     relative_month: str | None = None
-                    
+
                     for j in range(len(merged_rows)):
-                        j_date_rel: str = merged_rows[j]['date']
+                        j_date_rel: str = merged_rows[j]["date"]
                         j_match_rel = date_pattern.match(j_date_rel)
                         if not j_match_rel:
                             continue
                         j_date_month_rel: str = j_match_rel.group(month_group)
                         j_date_year_rel: str = j_match_rel.group(year_group)
-                        
+
                         if j_date_year_rel.isdigit():
                             relative_year = j_date_year_rel
                             relative_month = j_date_month_rel
                             break
-                        
+
                     if relative_year is not None and relative_month is not None:
                         if month == jan and relative_month == dic:
                             date_order[year_group - 1] = str(int(relative_year) + 1)
@@ -262,12 +276,12 @@ class TableReconstructor(Reconstructor):
                             date_order[year_group - 1] = str(int(relative_year) - 1)
                         else:
                             date_order[year_group - 1] = relative_year
-                
-                merged_rows[i]['date'] = date_separator.join(date_order)
-                merged_rows[i]['description'] = no_date_word.strip() + merged_rows[i]['description']
-                
+
+                merged_rows[i]["date"] = date_separator.join(date_order)
+                merged_rows[i]["description"] = no_date_word.strip() + merged_rows[i]["description"]
+
         return pd.DataFrame(merged_rows).drop(rows_to_delete).reset_index(drop=True)
-    
+
     def reconstruct_table(self) -> ReconstructedTable:
         """
         Merges multi-line transactions into single rows and filters out invalid entries.
@@ -276,19 +290,19 @@ class TableReconstructor(Reconstructor):
         structured_table = self.get_structured_table()
         amount_columns = structured_table.amount_columns
         all_amount_columns = amount_columns.all_list
-        
+
         if structured_table.empty:
             raise ValueError("The structured table is empty")
-        
+
         merged_rows: list[dict[str, Any]] = []
         current_row: dict[str, Any] | None = None
-        
+
         date_pattern = self.bank_properties.date_pattern
 
         # Merge rows that belong to the same transaction
         for _, row in enumerate(structured_table.records):
             try:
-                if row['date'] is not None:  # New transaction starts
+                if row["date"] is not None:  # New transaction starts
                     if current_row is not None:
                         merged_rows.append(current_row)
                     current_row = row.copy()
@@ -300,11 +314,13 @@ class TableReconstructor(Reconstructor):
                         continue
                     # Fill missing amounts from continuation rows
                     for col in all_amount_columns:
-                        if (row[col] != '' or row[col] is not None) and (current_row[col] == '' or current_row[col] is None):
+                        if (row[col] != "" or row[col] is not None) and (
+                            current_row[col] == "" or current_row[col] is None
+                        ):
                             current_row[col] = row[col]
                     # Append description fragments
                     try:
-                        current_row['description'] += " " + row['description'] + " "
+                        current_row["description"] += " " + row["description"] + " "
                     except Exception:
                         continue
             except TypeError:
@@ -317,15 +333,15 @@ class TableReconstructor(Reconstructor):
         df_merged = self.correct_date_errors(merged_rows)
         df_merged = df_merged[
             ~df_merged.apply(
-                lambda row: all(pd.isna(row[col]) or row[col] == '' for col in all_amount_columns),
+                lambda row: all(pd.isna(row[col]) or row[col] == "" for col in all_amount_columns),
                 axis=1,
             )
         ]
-        
+
         date_series = cast(pd.Series, df_merged["date"])
         mask = date_series.str.match(date_pattern, na=False)
-        
+
         df_mask = cast(pd.DataFrame, df_merged[mask])
         df_filtered = df_mask.reset_index(drop=True)
-        
-        return ReconstructedTable(df= df_filtered, amount_columns= amount_columns)
+
+        return ReconstructedTable(df=df_filtered, amount_columns=amount_columns)

@@ -1,10 +1,13 @@
-from pydantic import BaseModel, field_validator, model_validator
-from enum import Enum
-from decimal import Decimal
 from datetime import date
-from typing import Any  
+from decimal import Decimal
+from enum import Enum
+from typing import Any
+
+from pydantic import BaseModel, field_validator, model_validator
+
 from .amounts import TransactionType
 from .dates import Period
+
 
 class GoalType(str, Enum):
     """
@@ -16,12 +19,13 @@ class GoalType(str, Enum):
         INCOME
         INVESTMENT
     """
-    BUDGET = 'Presupuesto'
-    SAVINGS = 'Ahorro'
-    DEBT = 'Deuda'
-    INCOME = 'Ingreso'
-    INVESTMENT = 'Inversión'
-    
+
+    BUDGET = "Presupuesto"
+    SAVINGS = "Ahorro"
+    DEBT = "Deuda"
+    INCOME = "Ingreso"
+    INVESTMENT = "Inversión"
+
     @property
     def transaction_type(self) -> TransactionType:
         match self:
@@ -35,8 +39,8 @@ class GoalType(str, Enum):
                 return TransactionType.INCOME
             case GoalType.INVESTMENT:
                 return TransactionType.INCOME
-    
-    
+
+
 class GoalStatus(str, Enum):
     """
     Represents the status of a goal.
@@ -46,34 +50,35 @@ class GoalStatus(str, Enum):
         ACHIEVED
         FAILED
     """
-    ACTIVE = 'Activo'
-    INACTIVE = 'Inactivo'
-    ACHIEVED = 'Cumplido'
-    FAILED = 'Fallido'
-    
+
+    ACTIVE = "Activo"
+    INACTIVE = "Inactivo"
+    ACHIEVED = "Cumplido"
+    FAILED = "Fallido"
+
     @property
     def icon(self) -> str:
         match self:
             case GoalStatus.ACHIEVED:
-                return ':material/check_circle:'
+                return ":material/check_circle:"
             case GoalStatus.FAILED:
-                return ':material/cancel:'
+                return ":material/cancel:"
             case GoalStatus.ACTIVE:
-                return ':material/hourglass_bottom:'
+                return ":material/hourglass_bottom:"
             case GoalStatus.INACTIVE:
-                return ':material/hourglass_pause:'
-            
+                return ":material/hourglass_pause:"
+
     @property
     def color(self) -> str:
         match self:
             case GoalStatus.ACHIEVED:
-                return 'green'
+                return "green"
             case GoalStatus.FAILED:
-                return 'red'
+                return "red"
             case GoalStatus.ACTIVE:
-                return 'orange'
+                return "orange"
             case GoalStatus.INACTIVE:
-                return 'gray'
+                return "gray"
 
 
 class Goal(BaseModel):
@@ -86,38 +91,38 @@ class Goal(BaseModel):
     period: Period
     status: GoalStatus = GoalStatus.ACTIVE
     related_transaction_type: TransactionType | None = None
-    
-    @field_validator('amount')
+
+    @field_validator("amount")
     @classmethod
     def validate_amount(cls, amount: Decimal) -> Decimal:
         if amount <= 0:
-            raise ValueError('Amount must be greater than 0')
+            raise ValueError("Amount must be greater than 0")
         else:
-            return amount.quantize(Decimal('0.01'))
-        
-    @model_validator(mode= 'after')
-    def validate_related_transaction_type(self) -> 'Goal':
+            return amount.quantize(Decimal("0.01"))
+
+    @model_validator(mode="after")
+    def validate_related_transaction_type(self) -> "Goal":
         if self.related_transaction_type is None:
             self.related_transaction_type = self.type.transaction_type
-        
+
         return self
-    
+
     def to_record(self) -> dict[str, Any]:
         record = self.model_dump()
-        
-        record['type'] = self.type.value
-        
-        record['start_date'] = self.period.start_date
-        record['end_date'] = self.period.end_date
-        
-        del record['period']
-        
+
+        record["type"] = self.type.value
+
+        record["start_date"] = self.period.start_date
+        record["end_date"] = self.period.end_date
+
+        del record["period"]
+
         if not self.added_amount:
-            del record['added_amount']
-        
+            del record["added_amount"]
+
         return record
-    
-    
+
+
 class GoalInfo(BaseModel):
     goal_id: int
     name: str
@@ -132,41 +137,42 @@ class GoalInfo(BaseModel):
     current_amount: float
     remaining: float
     progress_porcentage: float
-    
-    @field_validator('progress_porcentage')
+
+    @field_validator("progress_porcentage")
     @classmethod
     def validate_progress_porcentage(cls, progress_porcentage: float) -> float:
         if progress_porcentage < 0:
-            raise ValueError('Progress porcentage must be greater than 0')
+            raise ValueError("Progress porcentage must be greater than 0")
         else:
             return progress_porcentage
-    
+
     @property
     def custom_current_amount_name(self) -> str:
         match self.type:
             case GoalType.BUDGET:
-                return 'Spent'
+                return "Spent"
             case GoalType.SAVINGS:
-                return 'Savings'
+                return "Savings"
             case GoalType.DEBT:
-                return 'Debt payments'
+                return "Debt payments"
             case GoalType.INCOME:
-                return 'Income'
+                return "Income"
             case GoalType.INVESTMENT:
-                return 'Invested'
-            
+                return "Invested"
+
+
 class GoalProgressScore(BaseModel):
     score: float
-    
+
     @property
     def label(self) -> str:
         if self.score == 1.0:
-            return 'Excellent'
+            return "Excellent"
         elif self.score >= 0.75:
-            return 'Good'
+            return "Good"
         elif self.score >= 0.50:
-            return 'Regular'
+            return "Regular"
         elif self.score >= 0.25:
-            return 'Poor'
+            return "Poor"
         else:
-            return 'Failed'
+            return "Failed"

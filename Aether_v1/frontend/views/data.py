@@ -1,8 +1,8 @@
-import streamlit as st
 from typing import cast
-from Aether_v1.services.database import categories
-from controllers import DataViewController
+
+import streamlit as st
 from constants.views_icons import TRANSACTIONS_ICON
+from controllers import DataViewController
 from models.amounts import TransactionType
 from models.bank_properties import BankName, StatementType
 from models.dates import Period
@@ -10,9 +10,7 @@ from models.dates import Period
 
 def show_data():
     # Page config
-    st.set_page_config(
-        page_title="Transactions", page_icon=TRANSACTIONS_ICON, layout="wide"
-    )
+    st.set_page_config(page_title="Transactions", page_icon=TRANSACTIONS_ICON, layout="wide")
     controller = DataViewController()
 
     st.title("Transactions")
@@ -43,17 +41,13 @@ def show_data():
             key="date_range",
         )
 
-        banks = col4.multiselect(
-            label="Select bank", options=banks_in_transactions, key="banks"
-        )
+        banks = col4.multiselect(label="Select bank", options=banks_in_transactions, key="banks")
 
         if statement_type:
             statement_type = StatementType(statement_type)
 
         if amount_types:
-            amount_types = [
-                TransactionType(amount_type) for amount_type in amount_types
-            ]
+            amount_types = [TransactionType(amount_type) for amount_type in amount_types]
 
         if date_range and isinstance(date_range, tuple) and len(date_range) == 2:
             period = Period(start_date=date_range[0], end_date=date_range[1])
@@ -65,14 +59,14 @@ def show_data():
             banks_enum: list[BankName] = [BankName(bank) for bank in banks]
         else:
             banks_enum = []
-            
+
         # Ensure strict typing for arguments passed to get_filtered_transactions
         # Assuming get_filtered_transactions expects optional lists
         filtered_statement_type = StatementType(statement_type) if statement_type else None
-        
+
         filtered_amount_types: list[TransactionType] | None = None
         if amount_types:
-             filtered_amount_types = [TransactionType(t) for t in amount_types]
+            filtered_amount_types = [TransactionType(t) for t in amount_types]
 
         try:
             filtered_transactions = controller.get_filtered_transactions(
@@ -80,20 +74,22 @@ def show_data():
             )
         except Exception:
             filtered_transactions = controller.get_filtered_transactions(
-                transactions_period, banks_enum, filtered_statement_type, filtered_amount_types # Fallback
+                transactions_period,
+                banks_enum,
+                filtered_statement_type,
+                filtered_amount_types,  # Fallback
             )
         finally:
             categories_list = cast(list[str | None], controller.get_categories())
             categories_list = categories_list.append(None)
-            
+
             edited_transactions = st.data_editor(
                 data=filtered_transactions.copy(),
                 column_config={
-                    "date": st.column_config.DateColumn(
-                        label="Date", format="YYYY/MM/DD"
-                    ),
+                    "date": st.column_config.DateColumn(label="Date", format="YYYY/MM/DD"),
                     "category": st.column_config.SelectboxColumn(
-                        label="Category", options= categories_list,
+                        label="Category",
+                        options=categories_list,
                     ),
                     "description": st.column_config.TextColumn(
                         label="Description",
@@ -114,8 +110,8 @@ def show_data():
                     ),
                     "card_name": st.column_config.SelectboxColumn(
                         label="Card",
-                        options= controller.get_cards(),
-                        required= False,
+                        options=controller.get_cards(),
+                        required=False,
                     ),
                     "statement_type": st.column_config.SelectboxColumn(
                         label="Statement Type",
@@ -154,15 +150,13 @@ def show_data():
                 st.rerun()
             else:
                 st.toast("No changes to save", icon=":material/info:")
-                
+
         if controller.user_have_potential_duplicates():
             potential_dupl_trans = controller.get_potential_duplicate_transactions()
-            
+
             potential_dupl_trans_df = controller.transactions_to_df(potential_dupl_trans)
-            
+
             st.dataframe(potential_dupl_trans_df)
 
     else:
-        st.info(
-            "No transactions available. Please upload files or input transactions manually."
-        )
+        st.info("No transactions available. Please upload files or input transactions manually.")

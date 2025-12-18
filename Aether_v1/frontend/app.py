@@ -1,7 +1,10 @@
-import streamlit as st
-import sys
-import os
+# Ignore E402 (module level import not at top of file) do to allow sys.path modification
+# ruff: noqa: E402
 import logging
+import os
+import sys
+
+import streamlit as st
 
 logging.basicConfig(
     level=logging.INFO,  # Set the logging level to INFO
@@ -15,36 +18,36 @@ logging.basicConfig(
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 # Import viewr
-from views.logs import show_login, logout
-from views.home import show_home
-from views.add_transaction import show_add_transaction
-from views.income_analysis import show_income_analysis
-from views.expenses_analysis import show_expenses_analysis
-from views.goals import show_goals
-from views.profile_config import show_profile
-from views.data import show_data
-from views.upload_files import show_upload_statements
-from views.cards import show_cards
+from components import new_category_popup
 from constants.views_icons import (
-    LOGIN_ICON,
-    LOGOUT_ICON,
-    HOME_ICON,
     ADD_TRANSACTION_ICON,
-    INCOME_ANALYSIS_ICON,
+    CARDS_ICON,
     EXPENSES_ANALYSIS_ICON,
     GOALS_ICON,
+    HOME_ICON,
+    INCOME_ANALYSIS_ICON,
+    LOGIN_ICON,
+    LOGOUT_ICON,
+    PROFILE_ICON,
     TRANSACTIONS_ICON,
     UPLOAD_STATEMENTS_ICON,
-    PROFILE_ICON,
-    CARDS_ICON,
 )
-from components import new_category_popup
+from views.add_transaction import show_add_transaction
+from views.cards import show_cards
+from views.data import show_data
+from views.expenses_analysis import show_expenses_analysis
+from views.goals import show_goals
+from views.home import show_home
+from views.income_analysis import show_income_analysis
+from views.logs import logout, show_login
+from views.profile_config import show_profile
+from views.upload_files import show_upload_statements
 
 # -- Page Configuration --
-if not "logged_in" in st.session_state:
+if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 
-if not "user_id" in st.session_state:
+if "user_id" not in st.session_state:
     st.session_state.user_id = None
 
 st.logo(
@@ -76,15 +79,11 @@ if st.session_state.logged_in:
                     default=st.session_state.logged_in,
                 ),
                 st.Page(
-                    show_cards, 
-                    title="Cards", 
+                    show_cards,
+                    title="Cards",
                     icon=CARDS_ICON,
                 ),
-                st.Page(
-                    show_goals, 
-                    title="Goals", 
-                    icon=GOALS_ICON
-                ),
+                st.Page(show_goals, title="Goals", icon=GOALS_ICON),
                 st.Page(
                     show_add_transaction,
                     title="Add Transaction",
@@ -129,7 +128,5 @@ if st.session_state.logged_in:
         ):
             new_category_popup()
 
-page = st.navigation(
-    PAGES, position="sidebar" if st.session_state.logged_in else "hidden"
-)
+page = st.navigation(PAGES, position="sidebar" if st.session_state.logged_in else "hidden")
 page.run()

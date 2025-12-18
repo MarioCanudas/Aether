@@ -1,28 +1,29 @@
-import pandas as pd
 from typing import Literal, cast
+
+import pandas as pd
 from models.tables import AllTransactionsTable, MonthlyResultsTable
+
 
 class DataProcessingService:
     """
-    The DataProcessingService class manages the main components required for processing bank statement PDFs. 
+    The DataProcessingService class manages the main components required for processing bank statement PDFs.
     The following objects are initialized in the constructor:
 
-    - doc_processor: An instance of DocumentProcessingFacade, responsible for reading the PDF file, extracting words, 
+    - doc_processor: An instance of DocumentProcessingFacade, responsible for reading the PDF file, extracting words,
       and analyzing document-level properties such as bank type and statement metadata.
 
-    - table_processor: An instance of TableProcessingFacade, which uses the corrected extracted words and statement 
+    - table_processor: An instance of TableProcessingFacade, which uses the corrected extracted words and statement
       properties to detect table boundaries, segment columns and rows, and reconstruct the transaction table structure.
 
-    - data_processor: An instance of DataProcessingFacade, which takes the reconstructed table, corrected words, and 
-      statement properties to extract metadata (such as period and initial balance) and normalize the transaction data 
+    - data_processor: An instance of DataProcessingFacade, which takes the reconstructed table, corrected words, and
+      statement properties to extract metadata (such as period and initial balance) and normalize the transaction data
       for further analysis.
 
     These objects work together to transform a raw PDF bank statement into a structured and normalized DataFrame of transactions.
     """
+
     @staticmethod
-    def get_monthly_results(
-            all_transactions: AllTransactionsTable
-        ) -> MonthlyResultsTable:
+    def get_monthly_results(all_transactions: AllTransactionsTable) -> MonthlyResultsTable:
         """
         Calculates monthly savings and validates balances by ensuring the running total matches the provided balances.
 
@@ -36,46 +37,54 @@ class DataProcessingService:
         # Copy the dataframe to avoid modifying the original one
         df = all_transactions.df.copy()
         # Ensure the 'Date' column is in datetime format
-        df['date'] = pd.to_datetime(df['date'], format='%Y-%m-%d')
+        df["date"] = pd.to_datetime(df["date"], format="%Y-%m-%d")
 
         # Add 'Year-Month' column for grouping
-        df['year_month'] = df['date'].dt.to_period('M')
+        df["year_month"] = df["date"].dt.to_period("M")
 
         # Initialize a list to store results
         results = []
 
         # Group data by 'Year-Month'
-        grouped = df.groupby('year_month')
+        grouped = df.groupby("year_month")
 
         for year_month, group in grouped:
             # Sort by date within the group for proper calculations
             year_month = cast(pd.Period, year_month)
-            group = group.sort_values(by='date')
+            group = group.sort_values(by="date")
 
             # Extract the initial balance from "Saldo inicial"
-            initial_balance_row = cast(pd.DataFrame, group[group['type'] == 'Saldo inicial'])
-            initial_balance = initial_balance_row['amount'].values[0] if not initial_balance_row.empty else None
+            initial_balance_row = cast(pd.DataFrame, group[group["type"] == "Saldo inicial"])
+            initial_balance = (
+                initial_balance_row["amount"].values[0] if not initial_balance_row.empty else None
+            )
 
             # Calculate total income and withdrawals
-            total_income = group[group['type'] == 'Abono']['amount'].sum()
-            total_withdrawal = group[group['type'] == 'Cargo']['amount'].sum()
+            total_income = group[group["type"] == "Abono"]["amount"].sum()
+            total_withdrawal = group[group["type"] == "Cargo"]["amount"].sum()
 
             # Calculate savings
-            savings = total_income + total_withdrawal  # Withdrawals are negative, so adding them works here
+            savings = (
+                total_income + total_withdrawal
+            )  # Withdrawals are negative, so adding them works here
 
             # Append results
-            results.append({
-                'year_month': year_month.to_timestamp(),
-                'initial_balance': initial_balance if initial_balance is not None else 0,
-                'total_income': total_income,
-                'total_withdrawal': total_withdrawal,
-                'savings': savings,
-            })
+            results.append(
+                {
+                    "year_month": year_month.to_timestamp(),
+                    "initial_balance": initial_balance if initial_balance is not None else 0,
+                    "total_income": total_income,
+                    "total_withdrawal": total_withdrawal,
+                    "savings": savings,
+                }
+            )
 
         return MonthlyResultsTable(df=pd.DataFrame(results))
-    
+
     @staticmethod
-    def process_avg_daily_data_by_category(data: pd.DataFrame, category: Literal['Abono', 'Cargo']) -> pd.DataFrame:
+    def process_avg_daily_data_by_category(
+        data: pd.DataFrame, category: Literal["Abono", "Cargo"]
+    ) -> pd.DataFrame:
         """
         Process daily data by calculating the average income and expenses per day.
 
@@ -85,14 +94,17 @@ class DataProcessingService:
         Returns:
             pd.DataFrame: A DataFrame with the average income and expenses per day.
         """
-        data['date'] = pd.to_datetime(data['date'])
-        
-        filtered_data = data[data['type'] == category]
-        
-        filtered_data_days = cast(pd.Series, filtered_data['date'])
-        filtered_data['day'] = filtered_data_days.dt.day
-        
+        data["date"] = pd.to_datetime(data["date"])
+
+        filtered_data = data[data["type"] == category]
+
+        filtered_data_days = cast(pd.Series, filtered_data["date"])
+        filtered_data["day"] = filtered_data_days.dt.day
+
         # Average income by day of the month
-        avg_per_day = cast(pd.DataFrame, filtered_data.groupby('day')['amount'].mean().reindex(range(1, 32), fill_value=0))
-        
+        avg_per_day = cast(
+            pd.DataFrame,
+            filtered_data.groupby("day")["amount"].mean().reindex(range(1, 32), fill_value=0),
+        )
+
         return avg_per_day
