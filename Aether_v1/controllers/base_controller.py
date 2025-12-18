@@ -1,4 +1,3 @@
-from abc import ABC
 from collections.abc import Generator
 from contextlib import contextmanager
 from typing import Any
@@ -13,16 +12,13 @@ from services import (
     TransactionsDBService,
     UserSessionService,
 )
+from streamlit import session_state
 
 
-class BaseController(ABC):
+class BaseController:
     """
     Base controller that provides centralized access to DatabaseService and UserSessionService
-    Base controller that provides centralized access to DatabaseService and UserSessionService
     with different scopes depending on the type of operation.
-
-    Provides general methods for user session management and database access, commonly used in
-    all the child controllers.
 
     Provides general methods for user session management and database access, commonly used in
     all the child controllers.
@@ -64,10 +60,10 @@ class BaseController(ABC):
 
     @property
     def user_id(self) -> int:
-        if not self.user_session_service.current_user_id:
-            raise ValueError("User ID is not set")
+        if "user_id" not in session_state or not session_state.user_id:
+            raise ValueError("User ID is not set in session state")
 
-        return self.user_session_service.current_user_id
+        return session_state.user_id
 
     def user_have_transactions(self) -> bool:
         with self.quick_read_conn() as conn:

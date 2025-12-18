@@ -19,7 +19,7 @@ class UserSessionService:
     _initialized: bool = False
     _local: threading.local
     connection_manager: ConnectionManagementService
-    current_user_id: int | None
+    current_user_id: int
 
     def __new__(cls) -> "UserSessionService":
         """Singleton pattern for application-wide session management."""
@@ -37,7 +37,7 @@ class UserSessionService:
         self._local = threading.local()  # Thread-local storage for Streamlit sessions
         self.connection_manager = ConnectionManagementService()
         self._initialized = True
-        self.current_user_id = None
+        self.current_user_id = 0
         logger.info("UserSessionService initialized")
 
     def get_available_users(self) -> list[str]:
@@ -87,7 +87,7 @@ class UserSessionService:
         """
         Clear the current user.
         """
-        self.current_user_id = None
+        self.current_user_id = 0
         self._local.current_user = None
 
     def get_user_id_by_username(self, username: str) -> int | None:

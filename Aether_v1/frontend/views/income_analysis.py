@@ -7,9 +7,8 @@ from constants.views_icons import INCOME_ANALYSIS_ICON
 from controllers import AnalysisController
 from models.dates import Period
 from models.views_data import PeriodsOptions
+from models.views_data.analysis_data import AnalysisAmounts
 from utils import give_amount_format
-
-from Aether_v1.models.views_data.analysis_data import AnalysisAmounts
 
 
 def show_income_analysis():
