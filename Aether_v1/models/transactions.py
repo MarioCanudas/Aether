@@ -16,7 +16,7 @@ class TransactionKey(BaseModel):
     bank: BankName
     statement_type: StatementType
 
-    def __eq__(self, other: "TransactionKey") -> bool:
+    def __eq__(self, other: "TransactionKey") -> bool:  # ty: ignore[invalid-method-override]
         if not isinstance(other, TransactionKey):
             return False
         else:
@@ -37,7 +37,7 @@ class Transaction(BaseModel):
     filename: str | None = None
     duplicate_potential_state: bool = False
 
-    def __eq__(self, other: "Transaction") -> bool:
+    def __eq__(self, other: "Transaction") -> bool:  # ty: ignore[invalid-method-override]
         if not isinstance(other, Transaction):
             return False
         else:

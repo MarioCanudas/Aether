@@ -3,7 +3,7 @@ name = "aether-statement-processor"
 version = "0.1.0"
 description = "An application to process and analyze bank statements from PDF files."
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.12"
 license = { text = "MIT" }
 authors = [
     { name = "Mario", email = "mario.cz24@outlook.com" },
