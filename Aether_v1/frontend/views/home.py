@@ -1,14 +1,16 @@
-import streamlit as st
-import altair as alt
 import asyncio
 from datetime import datetime, timedelta
-from controllers import HomeController
+
+import altair as alt
+import streamlit as st
 from components import period_select_box
 from constants.dates import MonthLabels
 from constants.views_icons import HOME_ICON
+from controllers import HomeController
 from models.dates import Period
 from models.financial import FinancialAmountsSums
 from models.views_data import HomeViewData, PeriodsOptions
+
 
 def _financial_sums(financial_sums: FinancialAmountsSums):
     income = float(financial_sums.income)
@@ -18,80 +20,82 @@ def _financial_sums(financial_sums: FinancialAmountsSums):
     left, center, right = st.columns(3)
     with left:
         st.metric(
-            label="Income", 
-            value=f"${income:,.2f}", 
-            border= False,
-            help= "Income by the selected period."
+            label="Income",
+            value=f"${income:,.2f}",
+            border=False,
+            help="Income by the selected period.",
         )
     with center:
         st.metric(
-            label="Withdrawal", 
-            value=f"${withdrawal:,.2f}", 
-            border= False,
-            help= "Withdrawal by the selected period."
+            label="Withdrawal",
+            value=f"${withdrawal:,.2f}",
+            border=False,
+            help="Withdrawal by the selected period.",
         )
     with right:
         st.metric(
-            label="Savings", 
-            value=f"${savings:,.2f}", 
-            border= False,
-            help= "Savings by the selected period."
+            label="Savings",
+            value=f"${savings:,.2f}",
+            border=False,
+            help="Savings by the selected period.",
         )
-    
+
+
 def _last_transactions(view_data: HomeViewData):
     last_transactions = view_data.last_transactions
-    
+
     st.subheader("Last Transactions")
-    
-    st.dataframe(last_transactions, hide_index= True)
-        
+
+    st.dataframe(last_transactions, hide_index=True)
+
+
 def _tips(view_data: HomeViewData):
     tips = view_data.tips
-    
-    st.write("<h2 style='text-align: center;'>Tips</h2>", unsafe_allow_html= True)
+
+    st.write("<h2 style='text-align: center;'>Tips</h2>", unsafe_allow_html=True)
     for tip in tips:
         st.write(f"- {tip}")
 
+
 def show_home():
     # Page config
-    st.set_page_config(
-        page_title='Home', 
-        page_icon=HOME_ICON, 
-        layout='wide'
-    )
+    st.set_page_config(page_title="Home", page_icon=HOME_ICON, layout="wide")
     controller = HomeController()
-    
-    st.title('Home')
-    
+
+    st.title("Home")
+
     if controller.user_have_potential_duplicates():
-        st.toast('Potential duplicates found. Please review them in the Transactions view.', icon= ':material/info:')
- 
+        st.toast(
+            "Potential duplicates found. Please review them in the Transactions view.",
+            icon=":material/info:",
+        )
+
     if controller.user_have_transactions():
         home_view_data = asyncio.run(controller.get_home_view_data())
         left, right = st.columns([3, 1.5])
-        
+
         with left:
             balance = float(home_view_data.all_time_sums.balance)
-            with st.container(border= True):
+            with st.container(border=True):
                 st.metric(
-                    label="Balance", 
-                    value=f"${balance:,.2f}", 
-                    border= False,
-                    help= "General balance of the user. Total of income minus total of withdrawal."
+                    label="Balance",
+                    value=f"${balance:,.2f}",
+                    border=False,
+                    help="General balance of the user. Total of income minus total of withdrawal.",
                 )
-                
-            with st.container(border= True):
-                metrics_period = period_select_box(key= "period_selectbox_home")
+
+            with st.container(border=True):
+                metrics_period = period_select_box(key="period_selectbox_home")
 
                 if metrics_period == PeriodsOptions.SPECIFIC_PERIOD:
                     today = datetime.now().date()
-                    
+
                     specific_period = st.date_input(
-                        label= "Specific Period",
-                        value= (today - timedelta(days= 30), today),
-                        key= "specific_period_date_input"
+                        label="Specific Period",
+                        value=(today - timedelta(days=30), today),
+                        key="specific_period_date_input",
                     )
-                    
+
                 if metrics_period == PeriodsOptions.ALL_TIME:
                     financial_sums = home_view_data.all_time_sums
                 elif metrics_period == PeriodsOptions.CURRENT_MONTH:
@@ -104,38 +108,46 @@ def show_home():
                     try:
                         if len(specific_period) != 2:
                             raise ValueError("Specific period must have a start and end date.")
-                            
-                        period = Period(start_date= specific_period[0], end_date= specific_period[1])
+
+                        period = Period(start_date=specific_period[0], end_date=specific_period[1])
                         financial_sums = controller.get_specific_period_sums(period)
                     except:
                         today = datetime.now().date()
-                        financial_sums = controller.get_specific_period_sums(Period(start_date= today - timedelta(days= 30), end_date= today))
-                    
-                
+                        financial_sums = controller.get_specific_period_sums(
+                            Period(start_date=today - timedelta(days=30), end_date=today)
+                        )
+
                 _financial_sums(financial_sums)
-            
-            with st.container(border= True):
-                final_chart = alt.layer(home_view_data.income_vs_expenses_bar_chart, home_view_data.balance_line_chart).encode(
-                    x= alt.X('month_label:O', sort= MonthLabels.get_values())
-                ).properties(
-                    title='Income vs Expenses (last 6 months)'
+
+            with st.container(border=True):
+                final_chart = (
+                    alt.layer(
+                        home_view_data.income_vs_expenses_bar_chart,
+                        home_view_data.balance_line_chart,
+                    )
+                    .encode(x=alt.X("month_label:O", sort=MonthLabels.get_values()))
+                    .properties(title="Income vs Expenses (last 6 months)")
                 )
-                st.altair_chart(final_chart, use_container_width= True)
-            
-        with right: 
+                st.altair_chart(final_chart, use_container_width=True)
+
+        with right:
             label = home_view_data.label
-            
-            with st.container(border= True):
-                st.write(f"<h2 style='text-align: center;'>Financial Health</h2>", unsafe_allow_html= True)
+
+            with st.container(border=True):
+                st.write(
+                    "<h2 style='text-align: center;'>Financial Health</h2>", unsafe_allow_html=True
+                )
                 st.pyplot(home_view_data.donut_score_chart)
-                st.write(f"<h4 style='text-align: center;'>{label.value}</h4>", unsafe_allow_html= True)
-            
+                st.write(
+                    f"<h4 style='text-align: center;'>{label.value}</h4>", unsafe_allow_html=True
+                )
+
                 st.divider()
-                
-                _tips(home_view_data) 
-        
-        with st.container(border= True):
+
+                _tips(home_view_data)
+
+        with st.container(border=True):
             _last_transactions(home_view_data)
-        
+
     else:
         st.info("No transactions available. Please upload files in the Upload Statements view.")

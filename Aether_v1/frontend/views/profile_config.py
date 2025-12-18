@@ -1,8 +1,10 @@
-import streamlit as st
 import asyncio
-from constants.views_icons import PROFILE_ICON
+
+import streamlit as st
 from components import modify_profile_popup
+from constants.views_icons import PROFILE_ICON
 from controllers import ProfileConfigController
+
 
 def show_profile() -> None:
     """
@@ -10,17 +12,13 @@ def show_profile() -> None:
     Shows a clean, organized view of user data including account age, activity stats, and timestamps.
     """
     # Page config
-    st.set_page_config(
-        page_title='Profile',
-        page_icon=PROFILE_ICON,
-        layout='centered'
-    )
+    st.set_page_config(page_title="Profile", page_icon=PROFILE_ICON, layout="centered")
 
     controller = ProfileConfigController()
     view_data = asyncio.run(controller.get_profile_view_data())
 
     # Header section
-    st.title('👤 Profile')
+    st.title("👤 Profile")
 
     # User info card
     with st.container(border=True):
@@ -28,9 +26,7 @@ def show_profile() -> None:
 
         with col1:
             st.metric(
-                label="Username",
-                value=view_data.profile.username,
-                help="Username of the user"
+                label="Username", value=view_data.profile.username, help="Username of the user"
             )
 
         with col2:
@@ -38,12 +34,11 @@ def show_profile() -> None:
             st.metric(
                 label="Account Age",
                 value=view_data.account_age_formatted,
-                help="Time since account creation"
+                help="Time since account creation",
             )
 
-
     # Account statistics section
-    st.header('📊 Account Statistics')
+    st.header("📊 Account Statistics")
 
     with st.container(border=True):
         col1, col2, col3 = st.columns(3)
@@ -52,14 +47,14 @@ def show_profile() -> None:
             st.metric(
                 label="Total Transactions",
                 value=f"{view_data.transaction_count:,}",
-                help="Total number of transactions recorded"
+                help="Total number of transactions recorded",
             )
 
         with col2:
             st.metric(
                 label="Active Goals",
                 value=f"{view_data.goal_count:,}",
-                help="Total number of goals created"
+                help="Total number of goals created",
             )
 
         with col3:
@@ -101,11 +96,11 @@ def show_profile() -> None:
                 value=activity_status,
                 delta=delta_value,
                 delta_color=delta_color,
-                help=help_text
+                help=help_text,
             )
 
     # Account details section
-    st.header('📅 Account Details')
+    st.header("📅 Account Details")
 
     with st.container(border=True):
         col1, col2 = st.columns(2)
@@ -125,5 +120,7 @@ def show_profile() -> None:
                 st.write("✏️ Not updated yet")
                 st.caption("Profile has not been modified since creation")
 
-    if st.button('Modify Profile', icon= ':material/edit:', type= 'primary', key= 'modify_profile_button'):
+    if st.button(
+        "Modify Profile", icon=":material/edit:", type="primary", key="modify_profile_button"
+    ):
         modify_profile_popup(view_data.profile)
