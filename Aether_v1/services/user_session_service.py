@@ -11,10 +11,14 @@ class UserSessionService:
     """
     Service for managing user sessions.
     """
-    _instance = None
+    _instance: 'UserSessionService | None' = None
     _lock = threading.Lock()
+    _initialized: bool = False
+    _local: threading.local
+    connection_manager: ConnectionManagementService
+    current_user_id: int | None
     
-    def __new__(cls):
+    def __new__(cls) -> 'UserSessionService':
         """Singleton pattern for application-wide session management."""
         if cls._instance is None:
             with cls._lock:
@@ -23,17 +27,17 @@ class UserSessionService:
                     cls._instance._initialized = False
         return cls._instance
     
-    def __init__(self):
+    def __init__(self) -> None:
         if getattr(self, '_initialized', False):
             return
             
         self._local = threading.local()  # Thread-local storage for Streamlit sessions
         self.connection_manager = ConnectionManagementService()
         self._initialized = True
-        self.current_user_id: Optional[int] = None
+        self.current_user_id = None
         logger.info("UserSessionService initialized")
         
-    def get_available_users(self) -> List[str]:
+    def get_available_users(self) -> list[str]:
         """Return all available usernames as a flat list of strings.
 
         Some database drivers return rows as tuples or dicts; this method
@@ -52,7 +56,7 @@ class UserSessionService:
             logger.error(f"Error fetching available users: {e}")
             return []
         
-    def set_current_user_by_id(self, user_id: Optional[int]) -> None:
+    def set_current_user_by_id(self, user_id: int | None) -> None:
         """
         Set the current user by their ID.
         
@@ -67,7 +71,7 @@ class UserSessionService:
 
         with self.connection_manager.get_quick_read_connection() as conn:
             users_table = UserDBService(conn)
-            user: Optional[UserProfile] = users_table.get_user(user_id=user_id)
+            user: UserProfile | None = users_table.get_user(user_id=user_id)
 
             if user is None:
                 raise ValueError(f"User with ID {user_id} not found")
@@ -83,7 +87,7 @@ class UserSessionService:
         self.current_user_id = None
         self._local.current_user = None
         
-    def get_user_id_by_username(self, username: str) -> Optional[int]:
+    def get_user_id_by_username(self, username: str) -> int | None:
         """Return the user ID for the given username or raise if not found."""
         if not isinstance(username, str) or not username:
             raise ValueError("Username must be a non-empty string")
@@ -95,21 +99,21 @@ class UserSessionService:
                 raise ValueError(f"User with username {username} not found")
             return user_id
         
-    def get_current_user(self) -> Optional[UserProfile]:
+    def get_current_user(self) -> UserProfile | None:
         """Return the current user model for this session if set."""
         return getattr(self._local, 'current_user', None)
     
-    def get_current_user_id(self) -> Optional[int]:
+    def get_current_user_id(self) -> int | None:
         """Return the current user's ID if a user is set for this session."""
         user = self.get_current_user()
         return user.user_id if user else None
     
-    def get_current_username(self) -> Optional[str]:
+    def get_current_username(self) -> str | None:
         """Return the current user's username if a user is set for this session."""
         user = self.get_current_user()
         return user.username if user else None
     
-    def add_user(self, username: str, password: Optional[str] = None) -> None:
+    def add_user(self, username: str, password: str | None = None) -> None:
         try:
             with self.connection_manager.get_session_connection() as conn:
                 users_table = UserDBService(conn)

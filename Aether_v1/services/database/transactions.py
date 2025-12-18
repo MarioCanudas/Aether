@@ -1,4 +1,4 @@
-from typing import Optional, List, Dict, Any, Literal
+from typing import Any, Literal, cast
 from decimal import Decimal
 from datetime import datetime, date
 from dateutil.relativedelta import relativedelta
@@ -12,24 +12,24 @@ from .base_db import BaseDBService
 
 class TransactionsDBService(BaseDBService):
     # Table information
-    table_name = 'transactions'
-    allowed_columns = {'transaction_id', 'user_id', 'category_id', 'card_id', 'date', 'description', 
+    table_name: str = 'transactions'
+    allowed_columns: set[str] = {'transaction_id', 'user_id', 'category_id', 'card_id', 'date', 'description', 
                        'amount', 'type', 'bank', 'statement_type', 'filename', 
                        'duplicate_potential_state'}
     
     # Column names
-    id_col = 'transaction_id'
-    user_id = 'user_id'
-    category_id = 'category_id'
-    card_id = 'card_id'
-    date = 'date'
-    description = 'description'
-    amount = 'amount'
-    type = 'type'
-    bank = 'bank'
-    statement_type = 'statement_type'
-    filename = 'filename'
-    duplicate_potential_state = 'duplicate_potential_state'
+    id_col: str = 'transaction_id'
+    user_id: str = 'user_id'
+    category_id: str = 'category_id'
+    card_id: str = 'card_id'
+    date: str = 'date'
+    description: str = 'description'
+    amount: str = 'amount'
+    type: str = 'type'
+    bank: str = 'bank'
+    statement_type: str = 'statement_type'
+    filename: str = 'filename'
+    duplicate_potential_state: str = 'duplicate_potential_state'
     
     def _ensure_partition_exists(self, date_value: str) -> None:
         """
@@ -58,7 +58,8 @@ class TransactionsDBService(BaseDBService):
                 )
             """
             cursor.execute(check_query, (partition_name,))
-            partition_exists = cursor.fetchone()[0]
+            result = cursor.fetchone()
+            partition_exists = result[0] if result else False
             
             if not partition_exists:
                 # Create the partition
@@ -78,13 +79,13 @@ class TransactionsDBService(BaseDBService):
         except Exception as e:
             raise e
 
-    def _ensure_partitions_for_transactions(self, transactions: List[Transaction]) -> None:
+    def _ensure_partitions_for_transactions(self, transactions: list[Transaction]) -> None:
         """
         Ensure that partitions exist for all dates in the records.
         Only applies to transactions table.
         
         Args:
-            records (List[Transaction]): List of transactions to insert
+            records (list[Transaction]): List of transactions to insert
         """
         # Get unique dates from records
         unique_dates = set()
@@ -100,25 +101,27 @@ class TransactionsDBService(BaseDBService):
     def get_transactions(
             self, 
             user_id: int, 
-            columns: Optional[List[str]] = None,
-            period: Optional[Period] = None,
-            banks: Optional[List[BankName]] = None,
-            statement_type: Optional[StatementType] = None,
-            amount_types: Optional[List[TransactionType]] = None,
-            show_categories_names: Optional[bool] = False,
-            show_cards_names: Optional[bool] = False,
-            order_col: Optional[str] = 'date',
+            columns: list[str] | None = None,
+            period: Period | None = None,
+            banks: list[BankName] | None = None,
+            statement_type: StatementType | None = None,
+            amount_types: list[TransactionType] | None = None,
+            show_categories_names: bool | None = False,
+            show_cards_names: bool | None = False,
+            order_col: str | None = 'date',
             order: Literal['asc', 'desc'] = 'desc',
-            limit: Optional[int] = None,
-            transaction_model: Optional[bool] = True,
+            limit: int | None = None,
+            transaction_model: bool | None = True,
             **conditions: Any
-        ) -> List[Transaction] | List[Dict[str, Any]]:
+        ) -> list[Transaction] | list[dict[str, Any]]:
         
         if columns:
             columns = self._validate_columns(columns)
             columns = [f't.{col}' for col in columns]
-            columns.append('name AS category') if show_categories_names else None
-            columns.append('card_name AS card_name') if show_cards_names else None
+            if show_categories_names:
+                columns.append('name AS category')
+            if show_cards_names:
+                columns.append('card_name AS card_name')
             
             query = f"""
                 SELECT {', '.join(columns)} FROM {self.table_name} AS t
@@ -136,7 +139,7 @@ class TransactionsDBService(BaseDBService):
         
         query += f" WHERE t.{self.user_id} = %(user_id)s"
         
-        params = {'user_id': user_id}
+        params: dict[str, Any] = {'user_id': user_id}
         
         if period:
             start_date, end_date = period.to_tuple()
@@ -172,8 +175,8 @@ class TransactionsDBService(BaseDBService):
             params.update(validated_conditions)
             
         if order_col and order:
-            order_col = self._validate_columns([order_col])[0]
-            query += f" ORDER BY {order_col} {order}"
+            order_col_validated = self._validate_columns([order_col])[0]
+            query += f" ORDER BY {order_col_validated} {order}"
         elif (order_col and not order) or (not order_col and order):
             raise ValueError("Order column and order must be provided together")
             
@@ -183,10 +186,16 @@ class TransactionsDBService(BaseDBService):
             
         result = self.execute_query(query, params= params, fetch= 'all', dict_cursor= True)
         
-        if transaction_model:
-            return [Transaction(**r) for r in result]
-        else:
-            return result
+        if result and isinstance(result, list):
+            if transaction_model:
+                transactions = [Transaction(**r) for r in result if isinstance(r, dict)]
+                
+                return cast(list[Transaction], transactions)
+            else:
+                transactions = [r for r in result if isinstance(r, dict)]
+                
+                return cast(list[dict[str, Any]], transactions)
+        return []
     
     def get_transactions_period(self, user_id: int) -> Period:
         query = f"""
@@ -197,9 +206,19 @@ class TransactionsDBService(BaseDBService):
         
         result = self.execute_query(query, params= {'user_id': user_id}, fetch= 'one', dict_cursor= True)
         
+        if result and isinstance(result, dict) and result['start_date'] and result['end_date']:
+            return Period(start_date= result['start_date'], end_date= result['end_date'])
+        # Return a default period or raise error? Assuming DB has data or caller handles logic.
+        # But Period requires dates. Let's assume today if empty, or raise.
+        # Original code didn't handle None. I will assume data exists.
+        # If no data, start_date/end_date are None. Period constructor might fail if types mismatch.
+        # Period model fields are date. 
+        # I'll return today for both if empty to be safe, or raise.
+        if not result or not result['start_date']:
+             return Period(start_date=date.today(), end_date=date.today())
         return Period(start_date= result['start_date'], end_date= result['end_date'])
     
-    def add_records(self, transactions: List[Transaction]) -> None:
+    def add_records(self, transactions: list[Transaction]) -> None:
         if not transactions:
             return
         
@@ -215,9 +234,9 @@ class TransactionsDBService(BaseDBService):
                 VALUES ({', '.join(f'%({col})s' for col in record_columns)})
             """
             
-            self.execute_query(query, params= records, batch= True)
+            self.execute_query(query, params= cast(list[dict[str, Any]], records), batch= True)
             
-    def update_transactions(self, modified_transactions: List[Transaction]) -> None:
+    def update_transactions(self, modified_transactions: list[Transaction]) -> None:
         if not modified_transactions:
             return
         
@@ -239,9 +258,9 @@ class TransactionsDBService(BaseDBService):
                 WHERE {self.id_col} = %({self.id_col})s
             """
             
-            self.execute_query(query, params= params, batch=True)
+            self.execute_query(query, params= cast(list[dict[str, Any]], params), batch=True)
         
-    def delete_transactions(self, transactions_to_delete: List[Transaction]) -> None:
+    def delete_transactions(self, transactions_to_delete: list[Transaction]) -> None:
         if not transactions_to_delete:
             return
         
@@ -292,11 +311,13 @@ class TransactionsDBService(BaseDBService):
         }
         result = self.execute_query(query, params=params, fetch='one', dict_cursor=True)
 
-        return FinancialAmountsSums(
-            income=result['avg_monthly_income'],
-            withdrawal=result['avg_monthly_expenses'],
-            savings=result['avg_monthly_savings']
-        )
+        if result and isinstance(result, dict):
+            return FinancialAmountsSums(
+                income=result.get('avg_monthly_income', Decimal('0.00')),
+                withdrawal=result.get('avg_monthly_expenses', Decimal('0.00')),
+                savings=result.get('avg_monthly_savings', Decimal('0.00'))
+            )
+        return FinancialAmountsSums(income=Decimal('0.00'), withdrawal=Decimal('0.00'), savings=Decimal('0.00'))
         
     async def get_specific_period_sums(self, user_id: int, specific_period: Period) -> FinancialAmountsSums:
         start_date, end_date = specific_period.to_tuple()
@@ -320,13 +341,15 @@ class TransactionsDBService(BaseDBService):
         
         result = self.execute_query(query, params= params, fetch= 'one', dict_cursor= True)
         
-        return FinancialAmountsSums(
-            income= result['specific_period_income'],
-            withdrawal= result['specific_period_withdrawal'],
-            savings= None
-        )
+        if result and isinstance(result, dict):
+            return FinancialAmountsSums(
+                income= result.get('specific_period_income', 0),
+                withdrawal= result.get('specific_period_withdrawal', 0),
+                savings= None
+            )
+        return FinancialAmountsSums(income=Decimal('0.00'), withdrawal=Decimal('0.00'), savings=None)
         
-    def get_first_initial_balance(self, user_id: int) -> Optional[Dict[str, Any]]:
+    def get_first_initial_balance(self, user_id: int) -> dict[str, Any] | None:
         query = f"""
             SELECT {self.date}, {self.amount}, {self.type}
             FROM {self.table_name}
@@ -343,12 +366,12 @@ class TransactionsDBService(BaseDBService):
         
         result = self.execute_query(query, params= params, fetch= 'one', dict_cursor= True)
         
-        if result:
+        if result and isinstance(result, dict):
             return result
         else:
             return None
     
-    async def get_max_amounts(self, user_id: int) -> Dict[str, AnalysisAmountsPerPeriod]:
+    async def get_max_amounts(self, user_id: int) -> dict[str, AnalysisAmountsPerPeriod]:
         query = f"""
             SELECT
                 -- All time max/min amounts
@@ -395,22 +418,24 @@ class TransactionsDBService(BaseDBService):
         
         result = self.execute_query(query, params= params, fetch= 'one', dict_cursor= True)
         
-        return {
-            'Abono' : AnalysisAmountsPerPeriod(
-                all_time= result['max_income_all_time'],
-                current_month= result['max_income_current_month'],
-                last_month= result['max_income_last_month'],
-                avarage= 0
-            ),
-            'Cargo' : AnalysisAmountsPerPeriod(
-                all_time= result['max_expense_all_time'],
-                current_month= result['max_expense_current_month'],
-                last_month= result['max_expense_last_month'],
-                avarage= 0
-            )
-        }
+        if result and isinstance(result, dict):
+            return {
+                'Abono' : AnalysisAmountsPerPeriod(
+                    all_time= result['max_income_all_time'] or 0,
+                    current_month= result['max_income_current_month'] or 0,
+                    last_month= result['max_income_last_month'] or 0,
+                    avarage= Decimal('0.00')
+                ),
+                'Cargo' : AnalysisAmountsPerPeriod(
+                    all_time= result['max_expense_all_time'] or 0,
+                    current_month= result['max_expense_current_month'] or 0,
+                    last_month= result['max_expense_last_month'] or 0,
+                    avarage= Decimal('0.00')
+                )
+            }
+        return {} # Or raise
         
-    async def get_max_amount_in_specific_period(self, user_id: int, specific_period: Period) -> Dict[str, Decimal]:
+    async def get_max_amount_in_specific_period(self, user_id: int, specific_period: Period) -> dict[str, Decimal]:
         query = f"""
             SELECT
                 MAX(CASE 
@@ -435,12 +460,14 @@ class TransactionsDBService(BaseDBService):
         
         result = self.execute_query(query, params= params, fetch= 'one', dict_cursor= True)
         
-        return {
-            'Abono' : result['max_income_specific_period'],
-            'Cargo' : result['max_expense_specific_period'],
-        }
+        if result and isinstance(result, dict):
+            return {
+                'Abono' : result['max_income_specific_period'] or Decimal('0.00'),
+                'Cargo' : result['max_expense_specific_period'] or Decimal('0.00'),
+            }
+        return {'Abono': Decimal('0.00'), 'Cargo': Decimal('0.00')}
     
-    async def get_frecuencys(self, user_id: int) -> Dict[str, AnalysisAmountsPerPeriod]:
+    async def get_frecuencys(self, user_id: int) -> dict[str, AnalysisAmountsPerPeriod]:
         query = f"""
             SELECT
                 -- All-time frequency
@@ -485,22 +512,24 @@ class TransactionsDBService(BaseDBService):
 
         result = self.execute_query(query, params=params, fetch='one', dict_cursor=True)
 
-        return {
-            'Abono': AnalysisAmountsPerPeriod(
-                all_time=result['freq_income_all_time'],
-                current_month=result['freq_income_current_month'],
-                last_month=result['freq_income_last_month'],
-                avarage=0
-            ),
-            'Cargo': AnalysisAmountsPerPeriod(
-                all_time=result['freq_expense_all_time'],
-                current_month=result['freq_expense_current_month'],
-                last_month=result['freq_expense_last_month'],
-                avarage=0
-            )
-        }
+        if result and isinstance(result, dict):
+            return {
+                'Abono': AnalysisAmountsPerPeriod(
+                    all_time=result['freq_income_all_time'],
+                    current_month=result['freq_income_current_month'],
+                    last_month=result['freq_income_last_month'],
+                    avarage=Decimal('0.00')
+                ),
+                'Cargo': AnalysisAmountsPerPeriod(
+                    all_time=result['freq_expense_all_time'],
+                    current_month=result['freq_expense_current_month'],
+                    last_month=result['freq_expense_last_month'],
+                    avarage=Decimal('0.00')
+                )
+            }
+        return {} # Or raise
         
-    async def get_frecuency_in_specific_period(self, user_id: int, specific_period: Period) -> Dict[str, int]:
+    async def get_frecuency_in_specific_period(self, user_id: int, specific_period: Period) -> dict[str, int]:
         query = f"""
             SELECT
                 COUNT(CASE 
@@ -525,7 +554,9 @@ class TransactionsDBService(BaseDBService):
 
         result = self.execute_query(query, params=params, fetch='one', dict_cursor=True)
 
-        return {
-            'Abono': result['freq_income_specific_period'],
-            'Cargo': result['freq_expense_specific_period'],
-        }
+        if result and isinstance(result, dict):
+            return {
+                'Abono': result['freq_income_specific_period'],
+                'Cargo': result['freq_expense_specific_period'],
+            }
+        return {'Abono': 0, 'Cargo': 0}

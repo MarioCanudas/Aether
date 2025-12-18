@@ -1,6 +1,7 @@
 import streamlit as st
 import asyncio
 from datetime import date, timedelta
+from Aether_v1.models.views_data.analysis_data import AnalysisAmounts
 from utils import give_amount_format
 from controllers import AnalysisController
 from components import period_select_box
@@ -37,12 +38,14 @@ def show_income_analysis():
                     key= "specific_period_date_input"
                 )
                 
-                if len(specific_period) == 2:
+                if isinstance(specific_period, tuple) and len(specific_period) == 2:
                     period = Period(start_date= specific_period[0], end_date= specific_period[1])
                 else:
                     period = default_period
                             
             left_1, center_1, right_1 = st.columns(3)
+            
+            analysis_amounts: AnalysisAmounts
             
             if selected_period == PeriodsOptions.SPECIFIC_PERIOD:
                 analysis_amounts = asyncio.run(controller.get_amounts_in_specific_period('Abono', period))
@@ -51,19 +54,19 @@ def show_income_analysis():
             
             left_1.metric(
                 'Accumulated Income', 
-                value= give_amount_format(analysis_amounts.accumulated_amount),
+                value= give_amount_format(analysis_amounts.accumulated_amount), # type: ignore
                 help= 'Accumulated income by the selected period.',
             )
             
             center_1.metric(
                 'Max Income',
-                value= give_amount_format(analysis_amounts.max_amount),
+                value= give_amount_format(analysis_amounts.max_amount), # type: ignore
                 help= 'Max income by the selected period.'
             )
             
             right_1.metric(
                 'Income frecuency',
-                value= analysis_amounts.frecuency,
+                value= analysis_amounts.frecuency, # type: ignore
                 help= 'Income frecuency by the selected period.'
             )
                 
@@ -79,27 +82,23 @@ def show_income_analysis():
             
             if income_chart_type == 'Daily':
                 with right_2:
-                    left_3, right_3 = st.columns(2)
-                    
-                    year = left_3.selectbox(
+                    year = st.selectbox(
                         label= 'Select year',
                         options= controller.get_years(),
                         key= 'income_year_selectbox',
                         index= 0,
                     )
-                    month = right_3.selectbox(
-                        label= 'Select month',
-                        options= MonthLabels.get_values(),
-                        key= 'income_month_selectbox',
-                    )
                 
                 st.subheader('Income per Day')
-                daily_bar_chart = controller.get_daily_bar_chart('Abono', year)
-                
-                if daily_bar_chart:
-                    st.altair_chart(daily_bar_chart)
+                if year:
+                    daily_bar_chart = controller.get_daily_bar_chart('Abono', year)
+                    
+                    if daily_bar_chart:
+                        st.altair_chart(daily_bar_chart)
+                    else:
+                        st.info("No transactions available. Please upload files in the Home view.")
                 else:
-                    st.info("No transactions available. Please upload files in the Home view.")
+                    st.info("Select year and month")
             else:
                 year = right_2.selectbox(
                     label= 'Select year',

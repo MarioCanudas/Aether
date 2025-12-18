@@ -1,8 +1,8 @@
 import psycopg2
-from psycopg2 import pool
+from psycopg2 import pool, extensions
 import logging
 import threading
-from typing import Dict, Any, Generator
+from typing import Any, Generator
 from contextlib import contextmanager
 from dotenv import load_dotenv
 import os
@@ -21,10 +21,15 @@ class ConnectionManagementService:
     """
     Enhanced connection manager with connection pooling for better performance.
     """
-    _instance = None
+    _instance: 'ConnectionManagementService | None' = None
     _lock = threading.Lock()
+    _initialized: bool = False
+    _connection_stats: dict[str, int]
+    _quick_read_pool: pool.SimpleConnectionPool
+    _session_pool: pool.SimpleConnectionPool
+    _batch_pool: pool.SimpleConnectionPool
 
-    def __new__(cls):
+    def __new__(cls) -> 'ConnectionManagementService':
         if cls._instance is None:
             with cls._lock:
                 if cls._instance is None:
@@ -32,7 +37,7 @@ class ConnectionManagementService:
                     cls._instance._initialized = False
         return cls._instance
 
-    def __init__(self):
+    def __init__(self) -> None:
         if getattr(self, '_initialized', False):
             return
         
@@ -41,7 +46,7 @@ class ConnectionManagementService:
         self._connection_stats = {'created': 0, 'active': 0, 'closed': 0}
         self._initialized = True
         
-    def _init_connection_pools(self):
+    def _init_connection_pools(self) -> None:
         """Initialize connection pools for different operation types."""
         connection_params = {
             'host': os.getenv('DB_HOST'),
@@ -73,13 +78,13 @@ class ConnectionManagementService:
             **connection_params
         )
 
-    def _configure_for_session(self, connection: psycopg2.extensions.connection) -> None:
+    def _configure_for_session(self, connection: extensions.connection) -> None:
         """Configure connection for session-scoped operations."""
         with connection.cursor() as cur:
             cur.execute("SET statement_timeout = 10000;")
         logger.debug("Configured connection for session scope")
 
-    def _configure_for_batch(self, connection: psycopg2.extensions.connection) -> None:
+    def _configure_for_batch(self, connection: extensions.connection) -> None:
         """Configure connection for batch processing operations."""
         with connection.cursor() as cur:
             cur.execute("SET work_mem = '128MB';")
@@ -87,7 +92,7 @@ class ConnectionManagementService:
             cur.execute("SET statement_timeout = 60000;")
         logger.debug("Configured connection for batch scope")
 
-    def _configure_for_quick_read(self, connection: psycopg2.extensions.connection) -> None:
+    def _configure_for_quick_read(self, connection: extensions.connection) -> None:
         """Configure connection for quick, read-only operations."""
         with connection.cursor() as cur:
             cur.execute("SET default_transaction_read_only = ON;")
@@ -95,7 +100,7 @@ class ConnectionManagementService:
         logger.debug("Configured connection for quick-read scope")
 
     @contextmanager
-    def get_session_connection(self) -> Generator[psycopg2.extensions.connection, None, None]:
+    def get_session_connection(self) -> Generator[extensions.connection, None, None]:
         """Get session-scoped connection from pool."""
         connection = self._session_pool.getconn()
         self._configure_for_session(connection)
@@ -109,7 +114,7 @@ class ConnectionManagementService:
                 self._connection_stats['active'] -= 1
 
     @contextmanager
-    def get_batch_connection(self) -> Generator[psycopg2.extensions.connection, None, None]:
+    def get_batch_connection(self) -> Generator[extensions.connection, None, None]:
         """Get batch processing connection from pool."""
         connection = self._batch_pool.getconn()
         self._configure_for_batch(connection)
@@ -123,7 +128,7 @@ class ConnectionManagementService:
                 self._connection_stats['active'] -= 1
 
     @contextmanager
-    def get_quick_read_connection(self) -> Generator[psycopg2.extensions.connection, None, None]:
+    def get_quick_read_connection(self) -> Generator[extensions.connection, None, None]:
         """Get quick read connection from pool."""
         connection = self._quick_read_pool.getconn()
         self._configure_for_quick_read(connection)
@@ -136,7 +141,7 @@ class ConnectionManagementService:
             with self._lock:
                 self._connection_stats['active'] -= 1
 
-    def get_connection_stats(self) -> Dict[str, Any]:
+    def get_connection_stats(self) -> dict[str, Any]:
         """Get current connection statistics."""
         with self._lock:
             return {
@@ -148,7 +153,7 @@ class ConnectionManagementService:
                 'database_name': os.getenv('DB_NAME'),
             }
 
-    def close_all_pools(self):
+    def close_all_pools(self) -> None:
         """Close all connection pools (for cleanup)."""
         if hasattr(self, '_quick_read_pool'):
             self._quick_read_pool.closeall()

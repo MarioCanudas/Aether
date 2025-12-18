@@ -1,5 +1,4 @@
 from enum import Enum
-from typing import List
 from models.dates import MonthPatterns
 
 class MonthLabels(str, Enum):
@@ -17,10 +16,10 @@ class MonthLabels(str, Enum):
     DEC = 'Dec'
     
     @classmethod
-    def get_values(cls) -> List[str]:
+    def get_values(cls) -> list[str]:
         return [option.value for option in cls]
 
-MONTH_PATTERNS = MonthPatterns(
+MONTH_PATTERNS: MonthPatterns = MonthPatterns(
     num_to_abbr = {
         '01': 'ENE',
         '02': 'FEB',

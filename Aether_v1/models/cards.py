@@ -1,16 +1,15 @@
 from pydantic import BaseModel
-from typing import Optional, List
 from decimal import Decimal
 from datetime import date
 from .bank_properties import BankName, StatementType
 
 class Card(BaseModel):
-    card_id: Optional[int] = None
+    card_id: int | None = None
     user_id: int
     card_name: str
     card_bank: BankName
     statement_type: StatementType
-    expiration_date: Optional[date] = None
+    expiration_date: date | None = None
     
 
 class CardMetrics(BaseModel):

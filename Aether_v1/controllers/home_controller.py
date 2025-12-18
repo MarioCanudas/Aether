@@ -1,5 +1,6 @@
 import asyncio
 import pandas as pd
+from typing import Any, cast
 from datetime import date, timedelta
 from dateutil.relativedelta import relativedelta
 from psycopg2.extensions import connection
@@ -23,7 +24,14 @@ class HomeController(BaseController):
         
         transactions = transactions_db.get_transactions(self.user_id)
         
-        all_transactions = AllTransactionsTable(df = pd.DataFrame([t.model_dump() for t in transactions]))
+        # Ensure validation if get_transactions returns mix of dict/module
+        dicts_list = []
+        for t in transactions:
+            if isinstance(t, dict):
+                dicts_list.append(t)
+            else:
+                dicts_list.append(t.model_dump())
+        all_transactions = AllTransactionsTable(df = pd.DataFrame(dicts_list))
         monthly_results: MonthlyResultsTable = self.data_processing_service.get_monthly_results(all_transactions)
         
         monthly_results.year_months = monthly_results.year_months.astype(str)
@@ -60,11 +68,30 @@ class HomeController(BaseController):
             transaction_model= False,
         )
         
+
+        if not last_six_months:
+            return pd.DataFrame(
+                {
+                    'month-year': [],
+                    'type': [],
+                    'amount': [],
+                    'month_label': [],
+                    'month': [],
+                }
+            )
+            
         last_six_months = pd.DataFrame(last_six_months)
         last_six_months['date'] = pd.to_datetime(last_six_months['date'])
-        last_six_months['month'] = last_six_months['date'].dt.month
-        last_six_months['month-year'] = last_six_months['date'].dt.strftime('%Y-%m')
-        last_six_months['month_label'] = last_six_months['month'].apply(lambda x: months_map(x))
+        
+        # Accessors like .dt can be tricky for static analysis in implicit pandas types
+        date_series: Any = last_six_months['date']
+        date_dt: Any = date_series.dt
+        
+        last_six_months['month'] = date_dt.month
+        last_six_months['month-year'] = date_dt.strftime('%Y-%m')
+        
+        month_series: Any = last_six_months['month']
+        last_six_months['month_label'] = month_series.apply(lambda x: months_map(x))
         
         grouped = last_six_months.groupby(['month-year', 'type'], as_index=False).agg(
             amount= ('amount', 'sum'),  
@@ -72,8 +99,9 @@ class HomeController(BaseController):
             month= ('month', 'first'),
         )
         
+        grouped = cast(pd.DataFrame, grouped)
         grouped['amount'] = grouped['amount'].apply(lambda x: abs(x))
-        grouped['amount'] = grouped['amount'].astype('float64')
+        grouped['amount'] = cast(pd.Series, grouped['amount']).astype('float64')
         
         return grouped
         
@@ -214,7 +242,7 @@ class HomeController(BaseController):
         return HomeViewData(
             label= label,
             tips= tips,
-            last_transactions= last_transactions[['Date', 'Category', 'Description', 'Amount', 'Type', 'Bank']],
+            last_transactions= cast(pd.DataFrame, last_transactions[['Date', 'Category', 'Description', 'Amount', 'Type', 'Bank']]),
             donut_score_chart= donut_score_chart.result(),
             income_vs_expenses_bar_chart= income_vs_expenses_bar_chart.result(),
             balance_line_chart= balance_line_chart.result(),

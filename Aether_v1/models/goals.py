@@ -2,7 +2,7 @@ from pydantic import BaseModel, field_validator, model_validator
 from enum import Enum
 from decimal import Decimal
 from datetime import date
-from typing import Optional, Dict, Any  
+from typing import Any  
 from .amounts import TransactionType
 from .dates import Period
 
@@ -81,11 +81,11 @@ class Goal(BaseModel):
     type: GoalType
     category_id: int
     amount: Decimal
-    added_amount: Optional[Decimal] = None
+    added_amount: Decimal | None = None
     name: str
     period: Period
     status: GoalStatus = GoalStatus.ACTIVE
-    related_transaction_type: Optional[TransactionType] = None
+    related_transaction_type: TransactionType | None = None
     
     @field_validator('amount')
     @classmethod
@@ -102,7 +102,7 @@ class Goal(BaseModel):
         
         return self
     
-    def to_record(self) -> Dict[str, Any]:
+    def to_record(self) -> dict[str, Any]:
         record = self.model_dump()
         
         record['type'] = self.type.value

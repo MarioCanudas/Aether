@@ -1,22 +1,22 @@
-from typing import Dict
+from typing import Any, cast
 from models.templates import Template, TemplateType, TransactionDefaultValues, GoalDefaultValues
 from .base_db import BaseDBService
 
 class TemplatesDBService(BaseDBService):
     # Table information
-    table_name = 'templates'
-    allowed_columns = {'template_id', 'user_id', 'card_id', 'template_name', 'template_description', 'template_type', 'default_values'}
+    table_name: str = 'templates'
+    allowed_columns: set[str] = {'template_id', 'user_id', 'card_id', 'template_name', 'template_description', 'template_type', 'default_values'}
     
     # Column names
-    id_col = 'template_id'
-    user_id = 'user_id'
-    card_id = 'card_id'
-    template_name = 'template_name'
-    template_description = 'template_description'
-    template_type = 'template_type'
-    default_values = 'default_values'
+    id_col: str = 'template_id'
+    user_id: str = 'user_id'
+    card_id: str = 'card_id'
+    template_name: str = 'template_name'
+    template_description: str = 'template_description'
+    template_type: str = 'template_type'
+    default_values: str = 'default_values'
     
-    def get_templates_names(self, user_id: int, template_type: TemplateType) -> Dict[str, int]:
+    def get_templates_names(self, user_id: int, template_type: TemplateType) -> dict[str, int]:
         """
         Get the mapped names of the templates.
         
@@ -25,7 +25,7 @@ class TemplatesDBService(BaseDBService):
         template_type: TemplateType
         
         >>> Returns:
-        Dict[str, int] - The mapped names of the templates with their ids.
+        dict[str, int] - The mapped names of the templates with their ids.
         """
         query = f"""
             SELECT * FROM {self.table_name} 
@@ -35,10 +35,10 @@ class TemplatesDBService(BaseDBService):
         
         result = self.execute_query(query, params={'user_id': user_id, 'template_type': template_type}, fetch= 'all', dict_cursor= True)
         
-        if not result:
+        if not result or not isinstance(result, list):
             return {}
         else:
-            return {r[self.template_name]: r[self.id_col] for r in result}
+            return {r[self.template_name]: r[self.id_col] for r in result if isinstance(r, dict)}
         
     def get_template(self, template_id: int) -> Template | None:
         query = f"""
@@ -47,12 +47,12 @@ class TemplatesDBService(BaseDBService):
         
         result = self.execute_query(query, params= {'template_id': template_id}, fetch= 'one', dict_cursor= True)
         
-        if not result:
+        if not result or not isinstance(result, dict):
             return None
         else:
             del result[self.id_col]
             
-            default_values: dict = result[self.default_values]
+            default_values: dict[str, Any] = result[self.default_values]
 
             if result[self.template_type] == TemplateType.TRANSACTION:
                 result[self.default_values] = TransactionDefaultValues.from_dict(default_values)
@@ -78,7 +78,7 @@ class TemplatesDBService(BaseDBService):
                 WHERE {self.id_col} = %(template_id)s
             """
             
-            params = {**updated_template.to_record(), 'template_id': template_id}
+            params: dict[str, Any] = {**cast(dict[str, Any], updated_template.to_record()), 'template_id': template_id}
             
             self.execute_query(query, params= params)
             
@@ -90,5 +90,3 @@ class TemplatesDBService(BaseDBService):
             """
             
             self.execute_query(query, params= {'template_id': template_id})
-            
-        

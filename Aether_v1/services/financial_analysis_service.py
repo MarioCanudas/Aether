@@ -1,6 +1,5 @@
 from decimal import Decimal
 from datetime import date
-from typing import List
 from models.amounts import TransactionType
 from models.financial import FinancialStatus, FinancialAmountsSums
 from models.goals import GoalInfo, GoalProgressScore
@@ -8,6 +7,9 @@ from models.goals import GoalInfo, GoalProgressScore
 class FinancialAnalysisService:   
     @staticmethod
     def get_financial_status_label(avg_financial_sums: FinancialAmountsSums) -> FinancialStatus:
+        if avg_financial_sums.savings is None:
+            return FinancialStatus.POOR
+        
         if avg_financial_sums.savings >= Decimal(0.10) * avg_financial_sums.income:
             return FinancialStatus.EXCELLENT
         elif 0 <= avg_financial_sums.savings < Decimal(0.10) * avg_financial_sums.income:
@@ -18,7 +20,7 @@ class FinancialAnalysisService:
             return FinancialStatus.POOR
     
     @staticmethod
-    def get_financial_tips(label: FinancialStatus) -> List[str]:
+    def get_financial_tips(label: FinancialStatus) -> list[str]:
         """
         Returns financial tips based on the given financial health label.
 
@@ -53,7 +55,7 @@ class FinancialAnalysisService:
             return ["No specific tips available for this financial health situation."]
 
     @staticmethod
-    def get_goal_progress_score(goal_info: GoalInfo) -> float:
+    def get_goal_progress_score(goal_info: GoalInfo) -> GoalProgressScore:
         total_amount = goal_info.amount + goal_info.added_amount
         total_days = (goal_info.end_date - goal_info.start_date).days
         days_elapsed = (date.today() - goal_info.start_date).days

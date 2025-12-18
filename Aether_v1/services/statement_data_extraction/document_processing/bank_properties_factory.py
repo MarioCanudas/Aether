@@ -1,4 +1,3 @@
-from typing import Optional, Dict, Tuple
 from models.amounts import AmountSignType, AmountColumns, AmountSigns
 from models.bank_properties import BankProperties, BankName, StatementType
 from models.dates import DateGroups
@@ -11,7 +10,7 @@ class BankPropertiesFactory:
     Uses lazy loading to register only the properties that are actually needed.
     """
     
-    _registry: Dict[Tuple[BankName, StatementType, Optional[bool]], BankProperties] = {}
+    _registry: dict[tuple[BankName, StatementType, bool | None], BankProperties] = {}
 
     @classmethod
     def _register_banorte_debit(cls):
@@ -456,7 +455,7 @@ class BankPropertiesFactory:
             cls, 
             bank: BankName, 
             statement_type: StatementType, 
-            new_format: Optional[bool] = None
+            new_format: bool | None = None
         ) -> BankProperties:
         """
         Get bank properties for the specified bank and statement type.

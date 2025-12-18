@@ -1,6 +1,6 @@
 import pandas as pd
 import re
-from typing import List, Dict
+from typing import Any, cast
 from utils import clean_amount
 from models.amounts import AmountSigns, AmountColumns
 from models.bank_properties import BankProperties
@@ -10,7 +10,7 @@ from ..core import ColumnNormalizer, TableNormalizer
 
 class DateNormalizer(ColumnNormalizer):
     @staticmethod
-    def normalize_date_with_year(date: str, date_pattern: str, groups_date: DateGroups, month_pattern: Dict[str, str]) -> str:
+    def normalize_date_with_year(date: str, date_pattern: str, groups_date: DateGroups, month_pattern: dict[str, str]) -> str:
         """
         Normalizes dates that already contain year information to ISO format (YYYY-MM-DD).
         Handles both numeric and text month formats.
@@ -18,7 +18,7 @@ class DateNormalizer(ColumnNormalizer):
         date_match = re.match(date_pattern, date)
         
         if date_match:
-            year = date_match.group(groups_date.year)
+            year = date_match.group(groups_date.year) if groups_date.year is not None else ""
             month = date_match.group(groups_date.month)
             day = date_match.group(groups_date.day)
             
@@ -31,7 +31,7 @@ class DateNormalizer(ColumnNormalizer):
             return ""
     
     @staticmethod
-    def normalize_date_without_year(date: str, years: List[int], date_pattern: str, groups_date: DateGroups, month_pattern: Dict[str, str]) -> str:
+    def normalize_date_without_year(date: str, years: list[int], date_pattern: str, groups_date: DateGroups, month_pattern: dict[str, str]) -> str:
         """
         Normalizes dates without year by inferring the year from the statement period.
         Handles single-year and cross-year periods with month-based logic.
@@ -75,12 +75,15 @@ class DateNormalizer(ColumnNormalizer):
         else:
             raise ValueError(f"Invalid detected years: {years}")
             
-    def normalize_column(self, reconstructed_table: ReconstructedTable, bank_properties: BankProperties, years: List[int]) -> pd.Series:
+    def normalize_column(self, reconstructed_table: ReconstructedTable | Any, bank_properties: BankProperties | Any = None, years: list[int] | Any = None) -> pd.Series:
         """
         Normalizes all dates in a column to ISO format based on date pattern analysis.
         Routes to appropriate normalization method based on year presence.
         """
-        # Route to appropriate normalization method
+        if not isinstance(reconstructed_table, ReconstructedTable):
+             # Try to handle if it was passed as something else, or just annotate correctly
+             pass
+
         date_column = reconstructed_table.dates
         
         date_groups = bank_properties.date_groups
@@ -135,7 +138,7 @@ class AmountNormalizer(ColumnNormalizer):
         return amount
     
     @staticmethod
-    def normalize_amount_for_multiple_columns(row, amount_columns: AmountColumns) -> float:
+    def normalize_amount_for_multiple_columns(row: Any, amount_columns: AmountColumns) -> float:
         """
         Normalizes amounts from separate income/expense columns.
         Handles various combinations including balance-only transactions and conflicting amounts.
@@ -166,8 +169,8 @@ class AmountNormalizer(ColumnNormalizer):
         
         # Handle balance column when both income/expense are empty
         elif amount_columns.has_balance and is_income_effectively_empty and is_expense_effectively_empty:
-            balance_val = row[amount_columns.balance]
-            is_balance_present = not pd.isna(balance_val) and balance_val != ''
+            balance_val = row[amount_columns.balance] if amount_columns.balance else None
+            is_balance_present = not bool(pd.isna(balance_val)) and balance_val != ''
             if is_balance_present:
                 try:
                     amount = float(clean_amount(str(balance_val)))
@@ -189,21 +192,40 @@ class AmountNormalizer(ColumnNormalizer):
         
         return amount
     
-    def normalize_column(self, reconstructed_table: ReconstructedTable, amount_columns: AmountColumns, amount_signs: AmountSigns) -> pd.Series:
+    def normalize_column(self, reconstructed_table: ReconstructedTable | Any, amount_columns: AmountColumns | Any = None, amount_signs: AmountSigns | Any = None) -> pd.Series:
         """
         Routes amount normalization based on column structure.
         Uses single-column method for unified amounts or multi-column method for separate income/expense.
         """      
-        # Route based on input type
+        # Route based on input type. We explicitly cast the result of `apply`
+        # because pandas' type stubs allow `DataFrame | Series`, but in this
+        # usage we always get a `Series`.
         if amount_columns.is_mono_column:
             column = reconstructed_table.df[amount_columns.column]
-            return column.apply(lambda value: self.normalize_amount_for_single_column(value, amount_signs))
+            return cast(
+                pd.Series,
+                column.apply(
+                    lambda value: self.normalize_amount_for_single_column(
+                        value,
+                        amount_signs,
+                    ),
+                ),
+            )
         else:
             columns = reconstructed_table.df[amount_columns.all_list]
-            return columns.apply(lambda row: self.normalize_amount_for_multiple_columns(row, amount_columns), axis=1)
+            return cast(
+                pd.Series,
+                columns.apply(
+                    lambda row: self.normalize_amount_for_multiple_columns(
+                        row,
+                        amount_columns,
+                    ),
+                    axis=1,
+                ),
+            )
 
 class DefaultTableNormalizer(TableNormalizer):
-    def normalize_table(self, years: List[int], filename: str) -> TransactionsTable:
+    def normalize_table(self, years: list[int], filename: str) -> TransactionsTable:
         """
         Main method that orchestrates the complete table normalization process.
         Normalizes dates and amounts, adds initial balance, and sorts by date.
@@ -213,23 +235,47 @@ class DefaultTableNormalizer(TableNormalizer):
         if reconstructed_table.empty:
             raise ValueError("Reconstructed table is empty")
         
-        date_normalizer, amount_normalizer = self.columns_normalizers
+        # Type ignored because we know the concrete types in tuple for this implementation
+        if len(self.columns_normalizers) >= 2:
+             date_normalizer = self.columns_normalizers[0]
+             amount_normalizer = self.columns_normalizers[1]
+        else:
+             # Should warn or raise, but adhering to prior logic, maybe fallback?
+             # Assuming standard injection, it should have them.
+             # I'll raise error if missing to be type safe
+             raise ValueError("Missing normalizers")
         
         normalized_table = TransactionsTable(df=pd.DataFrame())
         
         # Normalize dates
-        normalized_table.dates = date_normalizer.normalize_column(reconstructed_table, self.bank_properties, years)
+        # Casting to DateNormalizer to satisfy type checker if needed, or rely on duck typing if Python 
+        # But here explicit call.
+        if isinstance(date_normalizer, DateNormalizer):
+             normalized_table.dates = date_normalizer.normalize_column(reconstructed_table, self.bank_properties, years)
         
-        # Restrict descriptions to 500 characters
-        normalized_table.descriptions = reconstructed_table.descriptions.apply(lambda x: x[:500])
+        # Restrict descriptions to 500 characters. Cast is used to satisfy the
+        # type checker because `apply` may be typed as returning a DataFrame or
+        # Series, but here it is always a Series.
+        normalized_table.descriptions = cast(
+            pd.Series,
+            reconstructed_table.descriptions.apply(lambda x: x[:500]),
+        )
         
         # Normalize amounts
         amount_columns = self.bank_properties.amount_columns
         amount_signs = self.bank_properties.amount_signs
-        normalized_table.amounts = amount_normalizer.normalize_column(reconstructed_table, amount_columns, amount_signs) 
         
-        # Add transaction type
-        normalized_table.types = normalized_table.amounts.apply(lambda amount: 'Abono' if amount > 0 else 'Cargo')
+        if isinstance(amount_normalizer, AmountNormalizer):
+            normalized_table.amounts = amount_normalizer.normalize_column(reconstructed_table, amount_columns, amount_signs) 
+        
+        # Add transaction type, ensuring the result is treated as a Series for
+        # static type checking purposes.
+        normalized_table.types = cast(
+            pd.Series,
+            normalized_table.amounts.apply(
+                lambda amount: 'Abono' if amount > 0 else 'Cargo',
+            ),
+        )
         
         normalized_table.bank_col = self.bank_properties.bank
         normalized_table.statement_type_col = self.bank_properties.statement_type

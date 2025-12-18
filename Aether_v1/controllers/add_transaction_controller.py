@@ -1,5 +1,5 @@
-from typing import List, Optional, Dict
 import asyncio
+from typing import cast
 from services import (
     CategoryDBService, 
     TransactionsDBService, 
@@ -16,7 +16,7 @@ from .base_controller import BaseController
 class AddTransactionController(BaseController):
     TEMPLATE_TYPE = TemplateType.TRANSACTION
     
-    def get_cards(self, bank: Optional[BankName] = None) -> List[str]:
+    def get_cards(self, bank: BankName | None = None) -> list[str]:
         with self.quick_read_conn() as conn:
             cards_db = CardsDBService(conn)
             
@@ -27,13 +27,13 @@ class AddTransactionController(BaseController):
             else:
                 return [card.card_name for card in cards]
             
-    def get_card_by_id(self, card_id: int) -> Optional[Card]:
+    def get_card_by_id(self, card_id: int) -> Card | None:
         with self.quick_read_conn() as conn:
             cards_db = CardsDBService(conn)
             
             return cards_db.get_card_by_id(self.user_id, card_id)
                 
-    def get_card_by_name(self, card_name: str) -> Optional[Card]:
+    def get_card_by_name(self, card_name: str) -> Card | None:
         with self.quick_read_conn() as conn:
             cards_db = CardsDBService(conn)
             
@@ -44,25 +44,25 @@ class AddTransactionController(BaseController):
             else:
                 return None
      
-    def get_categories(self) -> List[str]:
+    def get_categories(self) -> list[str]:
         with self.quick_read_conn() as conn:
             category_db = CategoryDBService(conn)
             
             return category_db.get_categories_by_user(self.user_id)
         
-    def get_category_id(self, category: str) -> Optional[int]:
+    def get_category_id(self, category: str) -> int | None:
         with self.quick_read_conn() as conn:
             category_db = CategoryDBService(conn)
             
             return category_db.find_id(name= category)
         
-    def get_category_name(self, category_id: int) -> str:
+    def get_category_name(self, category_id: int) -> str | None:
         with self.quick_read_conn() as conn:
             category_db = CategoryDBService(conn)
             
             result = category_db.find_by_id(category_id, columns= ['name'])
             
-            return result['name']
+            return result['name'] if result else None
         
     def get_duplicate_result(self, transaction: Transaction) -> DuplicateResult:
         dt_service = DuplicateTreatmentService()
@@ -70,9 +70,9 @@ class AddTransactionController(BaseController):
         with self.quick_read_conn() as conn:
             duplicate_result = asyncio.run(dt_service.detect_duplicates(conn, self.user_id, transaction))
             
-            return duplicate_result
+            return cast(DuplicateResult, duplicate_result)
         
-    def modify_potential_duplicate_transactions(self, transactions: List[Transaction]) -> None:
+    def modify_potential_duplicate_transactions(self, transactions: list[Transaction]) -> None:
         transactions_to_modify = []
         
         for t in transactions:
@@ -97,7 +97,7 @@ class AddTransactionController(BaseController):
             
             transactions_templates_db.add_template(template)
             
-    def get_templates_names(self) -> Dict[str, int]:
+    def get_templates_names(self) -> dict[str, int]:
         with self.quick_read_conn() as conn:
             transactions_templates_db = TemplatesDBService(conn)
             

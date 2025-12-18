@@ -2,15 +2,15 @@ import pandas as pd
 import asyncio
 import altair as alt
 from datetime import date
-from typing import Literal, List, Optional
+from typing import Literal, Any, cast
 import logging
 from utils import modify_period
 from services import PlottingService, DataProcessingService, TransactionsDBService
-from constants.dates import MonthLabels
 from models.dates import Period
 from models.tables import AllTransactionsTable, MonthlyResultsTable
 from models.views_data import AnalysisViewData, PeriodsOptions, AnalysisAmountsPerPeriod, AnalysisAmounts
 from models.amounts import TransactionType
+from models.transactions import Transaction
 from .base_controller import BaseController
 
 logger = logging.getLogger(__name__)
@@ -21,7 +21,7 @@ class AnalysisController(BaseController):
         self.data_processing_service = DataProcessingService()
         self.plotting_service = PlottingService()
         
-    def get_years(self) -> List[int]:
+    def get_years(self) -> list[int]:
         with self.quick_read_conn() as conn:
             transactions_db = TransactionsDBService(conn)
             
@@ -29,7 +29,7 @@ class AnalysisController(BaseController):
             
             return sorted(period.get_available_years(), reverse= True)
     
-    async def get_category_amount_bar_chart(self, transactions_db: TransactionsDBService, category: Literal['Abono', 'Cargo']) -> alt.Chart:
+    async def get_category_amount_bar_chart(self, transactions_db: TransactionsDBService, category: Literal['Abono', 'Cargo']) -> alt.Chart | alt.LayerChart | None:
         transactions = transactions_db.get_transactions(
             self.user_id,
             columns=['amount'],
@@ -37,7 +37,9 @@ class AnalysisController(BaseController):
             amount_types=[TransactionType(category)],
             transaction_model= False,
         )
-
+        
+        transactions = cast(list[dict[str, Any]], transactions)
+        
         if not transactions:
             return None
         
@@ -66,6 +68,7 @@ class AnalysisController(BaseController):
     
     async def get_monthly_bar_chart_avg_amount(self, transactions_db: TransactionsDBService, category: Literal['Abono', 'Cargo']) -> alt.Chart:        
         transactions = transactions_db.get_transactions(self.user_id)
+        transactions = cast(list[Transaction], transactions)
         
         all_transactions = AllTransactionsTable(df = pd.DataFrame([t.model_dump() for t in transactions]))
         monthly_results: MonthlyResultsTable = self.data_processing_service.get_monthly_results(all_transactions)
@@ -79,8 +82,9 @@ class AnalysisController(BaseController):
         
         return self.plotting_service.monthly_bar_chart(df, category).properties(title='Per Month')
 
-    async def get_daily_bar_chart_avg_amount(self, transactions_db: TransactionsDBService, category: Literal['Abono', 'Cargo']) -> Optional[alt.Chart]:
+    async def get_daily_bar_chart_avg_amount(self, transactions_db: TransactionsDBService, category: Literal['Abono', 'Cargo']) -> alt.Chart | None:
         transactions = transactions_db.get_transactions(self.user_id)
+        transactions =cast(list[Transaction], transactions)
             
         if not transactions:
             return None
@@ -97,7 +101,7 @@ class AnalysisController(BaseController):
         
         return self.plotting_service.daily_bar_chart(avg_per_day, category).properties(title='Per Day')
         
-    def get_daily_bar_chart(self, category: Literal['Abono', 'Cargo'], year: int) -> Optional[alt.Chart]:
+    def get_daily_bar_chart(self, category: Literal['Abono', 'Cargo'], year: int) ->alt.Chart | None:
         with self.quick_read_conn() as conn:
             transactions_db = TransactionsDBService(conn)
             
@@ -111,17 +115,16 @@ class AnalysisController(BaseController):
                 period= period,
                 amount_types= [TransactionType(category)]
             )
+            transactions = cast(list[Transaction], transactions)
             
             if not transactions:
                 return None
-            
-            print(transactions)
             
             transactions = pd.DataFrame([t.model_dump() for t in transactions])
             
             transactions['date'] = pd.to_datetime(transactions['date'])
             
-            month_transactions = pd.DataFrame(columns= ['day', 'amount'])
+            month_transactions = pd.DataFrame({'day': [], 'amount': []})
             
             month_transactions['day'] = transactions['date'].dt.day
             month_transactions['amount'] = transactions['amount'].astype('float64').apply(lambda x: abs(x))
@@ -137,7 +140,7 @@ class AnalysisController(BaseController):
             end_date= date(year, 12, 31)
         )
         
-    def get_monthly_bar_chart(self, category: Literal['Abono', 'Cargo'], year: int) -> Optional[alt.Chart]:
+    def get_monthly_bar_chart(self, category: Literal['Abono', 'Cargo'], year: int) -> alt.Chart | None:
         with self.quick_read_conn() as conn:
             transactions_db = TransactionsDBService(conn)
             
@@ -146,6 +149,7 @@ class AnalysisController(BaseController):
                 period= self._get_year_period(year),
                 type= category
             )
+            transactions = cast(list[Transaction], transactions)
             
             if not transactions:
                 return None

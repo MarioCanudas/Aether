@@ -3,6 +3,7 @@ from utils import give_amount_format
 from controllers import GoalsController
 from components import new_goal_popup, add_amount_popup, config_goals_templates_popup
 from constants.views_icons import GOALS_ICON
+from typing import cast, Any
 
 def show_goals():
     # Page config
@@ -39,7 +40,8 @@ def show_goals():
     goal_info = controller.get_goal_info(goal_to_view) if goal_to_view else None
     
     if right.button('Modify', type= 'primary', key= 'modify_goal_button', disabled= not goal_to_view):
-        add_amount_popup(goal_info.goal_id)
+        if goal_info:
+            add_amount_popup(goal_info.goal_id)
     
     if goal_info:        
         left, right = st.columns(2)
@@ -56,7 +58,7 @@ def show_goals():
             **Period:** {goal_info.start_date} - {goal_info.end_date} \n
             """
         )
-        right.badge(goal_info.status.value, icon= goal_info.status.icon, color= goal_info.status.color)
+        cast(Any, right).badge(goal_info.status.value, icon= goal_info.status.icon, color= goal_info.status.color)
         
         left, center, right = st.columns(3)
         

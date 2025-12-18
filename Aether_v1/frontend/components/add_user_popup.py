@@ -10,7 +10,9 @@ def add_user_popup(controller: LogsController):
         confirm_password = st.text_input('Confirm Password', value= None, type= 'password', key= 'add_user_confirm_password')
         
         if st.form_submit_button('Add User', type= 'primary'):
-            if password != confirm_password:
+            if not username or not password or not confirm_password:
+                st.warning('All fields are required', icon= ':material/warning:')
+            elif password != confirm_password:
                 st.warning('Passwords do not match', icon= ':material/warning:')
             else:
                 password_hash = controller.hash_password(password)

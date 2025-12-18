@@ -1,5 +1,5 @@
 import pandas as pd
-from typing import Literal
+from typing import Literal, cast
 from models.tables import AllTransactionsTable, MonthlyResultsTable
 
 class DataProcessingService:
@@ -49,10 +49,11 @@ class DataProcessingService:
 
         for year_month, group in grouped:
             # Sort by date within the group for proper calculations
+            year_month = cast(pd.Period, year_month)
             group = group.sort_values(by='date')
 
             # Extract the initial balance from "Saldo inicial"
-            initial_balance_row = group[group['type'] == 'Saldo inicial']
+            initial_balance_row = cast(pd.DataFrame, group[group['type'] == 'Saldo inicial'])
             initial_balance = initial_balance_row['amount'].values[0] if not initial_balance_row.empty else None
 
             # Calculate total income and withdrawals
@@ -74,7 +75,7 @@ class DataProcessingService:
         return MonthlyResultsTable(df=pd.DataFrame(results))
     
     @staticmethod
-    def process_avg_daily_data_by_category(data: pd.DataFrame, category: Literal['Abono', 'Cargo']) -> pd.Series:
+    def process_avg_daily_data_by_category(data: pd.DataFrame, category: Literal['Abono', 'Cargo']) -> pd.DataFrame:
         """
         Process daily data by calculating the average income and expenses per day.
 
@@ -88,9 +89,10 @@ class DataProcessingService:
         
         filtered_data = data[data['type'] == category]
         
-        filtered_data['day'] = filtered_data['date'].dt.day
+        filtered_data_days = cast(pd.Series, filtered_data['date'])
+        filtered_data['day'] = filtered_data_days.dt.day
         
         # Average income by day of the month
-        avg_per_day = filtered_data.groupby('day')['amount'].mean().reindex(range(1, 32), fill_value=0)
+        avg_per_day = cast(pd.DataFrame, filtered_data.groupby('day')['amount'].mean().reindex(range(1, 32), fill_value=0))
         
-        return avg_per_day    
+        return avg_per_day

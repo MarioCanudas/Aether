@@ -1,13 +1,13 @@
 import pandas as pd
 import altair as alt
 import matplotlib.pyplot as plt
-import altair as alt
+
 from decimal import Decimal
 from datetime import date, datetime
-from typing import List, Optional, Dict, Any
+from typing import Any, cast
 from services import (CategoryDBService, GoalsDBService, TransactionsDBService, PlottingService, 
                       FinancialAnalysisService, TemplatesDBService)
-from models.dates import PeriodRange
+from models.dates import PeriodRange, Period
 from models.goals import Goal, GoalInfo, GoalStatus, GoalType, GoalProgressScore
 from models.templates import Template, TemplateType
 from .base_controller import BaseController
@@ -15,7 +15,7 @@ from .base_controller import BaseController
 class GoalsController(BaseController):
     TEMPLATE_TYPE = TemplateType.GOAL
     
-    def get_categories(self) -> List[str]:
+    def get_categories(self) -> list[str]:
         with self.quick_read_conn() as conn:
             categories_db = CategoryDBService(conn)
             
@@ -25,7 +25,10 @@ class GoalsController(BaseController):
         with self.quick_read_conn() as conn:
             categories_db = CategoryDBService(conn)
             
-            return categories_db.find_id(name= category)
+            cat_id = categories_db.find_id(name= category)
+            if cat_id is None:
+                raise ValueError(f"Category {category} not found")
+            return cat_id
         
     def get_category_by_id(self, category_id: int) -> str | None:
         with self.quick_read_conn() as conn:
@@ -36,15 +39,15 @@ class GoalsController(BaseController):
             return result['name'] if result else None
         
     @staticmethod
-    def get_goal_types() -> List[str]:
+    def get_goal_types() -> list[str]:
         return [goal_type.value for goal_type in GoalType]
     
     @staticmethod
-    def get_period_ranges() -> List[str]:
+    def get_period_ranges() -> list[str]:
         return [period_range.value for period_range in PeriodRange]
     
     @staticmethod   
-    def get_end_date(start_date: date, period_range: PeriodRange) -> Optional[date]:
+    def get_end_date(start_date: date, period_range: PeriodRange) -> date | None:
         return start_date + period_range.days_to_add if period_range.days_to_add else None
     
     def add_goal(self, new_goal: Goal) -> None:
@@ -53,7 +56,7 @@ class GoalsController(BaseController):
             
             goals_db.add_goal(new_goal)
     
-    def get_current_goals_names(self) -> List[str]:
+    def get_current_goals_names(self) -> list[str]:
         with self.quick_read_conn() as conn:
             goals_db = GoalsDBService(conn)
             
@@ -89,7 +92,7 @@ class GoalsController(BaseController):
             
             return pd.DataFrame(goals) if goals else pd.DataFrame()
         
-    def update_goal_status(self, goal_dict: Dict[str, Any], remaining: Decimal) -> GoalStatus:
+    def update_goal_status(self, goal_dict: dict[str, Any], remaining: Decimal) -> GoalStatus:
         today = datetime.today()
         current_status = goal_dict['status']
         
@@ -140,11 +143,17 @@ class GoalsController(BaseController):
             goals_db = GoalsDBService(conn)
             
             goal_id = goals_db.find_id(name= goal_name, user_id= self.user_id)
+            if goal_id is None:
+                raise ValueError(f"Goal {goal_name} not found")
+                
             goal_dict = goals_db.find_by_id(
                 goal_id, 
                 columns= ['goal_id', 'name', 'type', 'category_id', 'amount', 'added_amount', 'start_date', 
                           'end_date', 'status', 'related_transaction_type']
             )
+            
+            if goal_dict is None:
+                raise ValueError(f"Goal with id {goal_id} not found")
             
             transactions_db = TransactionsDBService(conn)
             
@@ -159,22 +168,29 @@ class GoalsController(BaseController):
             
             remaining = (goal_dict['amount'] + goal_dict['added_amount']) - abs(current_amount) 
             
-            status = self.update_goal_status(goal_dict, remaining)
+            self.update_goal_status(goal_dict, remaining)
+            
+            category_name = self.get_category_by_id(goal_dict['category_id'])
+            if category_name is None:
+                category_name = "Unknown"
+
+            current_amount_float = float(current_amount)
+            remaining_float = float(remaining)
             
             return GoalInfo(
                 goal_id= goal_dict['goal_id'],
                 name= goal_dict['name'],
                 type= GoalType(goal_dict['type']),
                 category_id= goal_dict['category_id'],
-                category= self.get_category_by_id(goal_dict['category_id']),
+                category= category_name,
                 amount= goal_dict['amount'],
                 added_amount= goal_dict['added_amount'],
                 start_date= goal_dict['start_date'],
                 end_date= goal_dict['end_date'],
-                status= status,    
-                current_amount= current_amount,
-                remaining= remaining,
-                progress_porcentage= abs(current_amount) / (goal_dict['amount'] + goal_dict['added_amount'])
+                status= GoalStatus(goal_dict['status']),    
+                current_amount= current_amount_float,
+                remaining= remaining_float,
+                progress_porcentage= abs(current_amount_float) / float(goal_dict['amount'] + goal_dict['added_amount'])
             )
         
     def add_amount(self, goal_id: int, amount: Decimal) -> None:
@@ -183,7 +199,7 @@ class GoalsController(BaseController):
             
             goals_db.add_value('added_amount', amount, goal_id= goal_id)
             
-    def get_donut_chart_goal_progress(self, goal_info: GoalInfo) -> plt.figure:
+    def get_donut_chart_goal_progress(self, goal_info: GoalInfo) -> Any:
         return PlottingService().donut_chart_goal_progress(goal_info)
     
     def get_goal_progress_score(self, goal_info: GoalInfo) -> GoalProgressScore:
@@ -194,27 +210,34 @@ class GoalsController(BaseController):
         else:
             return FinancialAnalysisService.get_goal_progress_score(goal_info)
     
-    def get_line_chart_goal_progress(self, goal_info: GoalInfo) -> alt.Chart:
+    def get_line_chart_goal_progress(self, goal_info: GoalInfo) -> alt.Chart | alt.LayerChart:
         with self.quick_read_conn() as conn:
             transactions_db = TransactionsDBService(conn)
             
             transactions = transactions_db.get_transactions(
                 user_id= self.user_id,
-                period= (goal_info.start_date, goal_info.end_date),
+                period= Period(start_date=goal_info.start_date, end_date=goal_info.end_date),
                 columns= ['date', 'amount'],
                 category_id= goal_info.category_id,
                 type= goal_info.type.transaction_type
             )
             
             if transactions:
-                df = pd.DataFrame([t.model_dump() for t in transactions])
+                dicts_list = []
+                for t in transactions:
+                    if isinstance(t, dict):
+                        dicts_list.append(t)
+                    else:
+                        dicts_list.append(t.model_dump())
+                        
+                df = pd.DataFrame(dicts_list)
                 df['amount'] = df['amount'].abs()
                 df['date'] = pd.to_datetime(df['date'])
                 df.sort_values(by= 'date')
 
                 df = df.groupby('date').agg({'amount': 'sum'}).reset_index()
             else:
-                df = pd.DataFrame(columns= ['date', 'amount'])
+                df = pd.DataFrame({'date': [], 'amount': []})
                 
         plotting_service = PlottingService()
             
@@ -224,7 +247,7 @@ class GoalsController(BaseController):
         
         return alt.layer(trnsactions_line_chart, target_progress_line_chart, target_amount_rule_chart)
     
-    def get_goals_templates_names(self) -> Dict[str, int]:
+    def get_goals_templates_names(self) -> dict[str, int]:
         with self.quick_read_conn() as conn:
             goals_templates_db = TemplatesDBService(conn)
             

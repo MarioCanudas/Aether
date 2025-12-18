@@ -1,5 +1,7 @@
 import streamlit as st
 import asyncio
+from typing import cast
+from decimal import Decimal
 from datetime import date, timedelta
 from utils import give_amount_format
 from controllers import AnalysisController
@@ -7,7 +9,7 @@ from components import period_select_box
 from constants.dates import MonthLabels
 from constants.views_icons import EXPENSES_ANALYSIS_ICON
 from models.dates import Period
-from models.views_data import PeriodsOptions
+from models.views_data import AnalysisAmounts, PeriodsOptions
 
 def show_expenses_analysis():
     # Page config
@@ -37,12 +39,14 @@ def show_expenses_analysis():
                     key= "specific_period_date_input"
                 )
                 
-                if len(specific_period) == 2:
+                if isinstance(specific_period, tuple) and len(specific_period) == 2:
                     period = Period(start_date= specific_period[0], end_date= specific_period[1])
                 else:
                     period = default_period
                             
             left_1, center_1, right_1 = st.columns(3)
+            
+            analysis_amounts: AnalysisAmounts
             
             if selected_period == PeriodsOptions.SPECIFIC_PERIOD:
                 analysis_amounts = asyncio.run(controller.get_amounts_in_specific_period('Cargo', period))
@@ -51,19 +55,19 @@ def show_expenses_analysis():
             
             left_1.metric(
                 'Accumulated Expenses', 
-                value= give_amount_format(analysis_amounts.accumulated_amount),
+                value= give_amount_format(analysis_amounts.accumulated_amount), # type: ignore
                 help= 'Accumulated expenses by the selected period.',
             )
             
             center_1.metric(
                 'Max Expenses',
-                value= give_amount_format(analysis_amounts.max_amount),
+                value= give_amount_format(analysis_amounts.max_amount), # type: ignore
                 help= 'Max expenses by the selected period.'
             )
             
             right_1.metric(
                 'Expenses frecuency',
-                value= analysis_amounts.frecuency,
+                value= analysis_amounts.frecuency, # type: ignore
                 help= 'Expenses frecuency by the selected period.'
             )
                 
@@ -79,26 +83,23 @@ def show_expenses_analysis():
             
             if expenses_chart_type == 'Daily':
                 with right_2:
-                    left_3, right_3 = st.columns(2)
-                    
-                    year = left_3.selectbox(
+                    year = st.selectbox(
                         label= 'Select year',
                         options= controller.get_years(),
                         key= 'expenses_year_selectbox',
                         index= 0,
                     )
-                    month = right_3.selectbox(
-                        label= 'Select month',
-                        options= MonthLabels.get_values(),
-                        key= 'expenses_month_selectbox',
-                    )
                 
                 st.subheader('Expenses per Day')
-                daily_bar_chart = controller.get_daily_bar_chart('Cargo', year)
-                if daily_bar_chart:
-                    st.altair_chart(daily_bar_chart)
+                st.subheader('Expenses per Day')
+                if year:
+                     daily_bar_chart = controller.get_daily_bar_chart('Cargo', year)
+                     if daily_bar_chart:
+                        st.altair_chart(daily_bar_chart)
+                     else:
+                        st.info("No transactions available. Please upload files in the Home view.")
                 else:
-                    st.info("No transactions available. Please upload files in the Home view.")
+                     st.info("Select year and month")
             else:
                 year = right_2.selectbox(
                     label= 'Select year',

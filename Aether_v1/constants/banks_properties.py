@@ -1,6 +1,6 @@
 from models.bank_properties import BankName
 
-BANKS_CODES = {
+BANKS_CODES: dict[str, str | BankName] = {
     '002': BankName.BANAMEX,
     '006': 'bancomext',
     '009': 'banobras',

@@ -1,4 +1,5 @@
 import streamlit as st
+from typing import cast
 from utils import to_decimal
 from controllers import AddTransactionController
 from models.amounts import TransactionType
@@ -11,7 +12,8 @@ controller = AddTransactionController()
 def modify_template_popup(template_id: int) -> None:
     with st.form(key= 'modify_template_form', border= False):
         template = controller.get_template(template_id)
-        default_values = template.default_values
+        template = cast(Template, template)
+        default_values = cast(TransactionDefaultValues, template.default_values)
         
         if template is None:
             st.error('Template not found')
@@ -52,7 +54,9 @@ def modify_template_popup(template_id: int) -> None:
             )
             transaction_bank = BankName(transaction_bank) if transaction_bank else None 
             
-            default_card_name = controller.get_card_by_id(default_values.card_id).card_name if default_values.card_id else None
+            default_card = controller.get_card_by_id(default_values.card_id) if default_values.card_id else None
+            default_card_name = default_card.card_name if default_card else None
+
             all_cards = controller.get_cards()
             transaction_card = right.selectbox(
                 label= 'Card',
@@ -80,10 +84,16 @@ def modify_template_popup(template_id: int) -> None:
             
             categories = controller.get_categories()
             
+            if default_values.category_id is not None:
+                category_name = controller.get_category_name(default_values.category_id)
+                category_index = categories.index(category_name) if category_name in categories else 0
+            else:
+                category_index = None
+                
             transaction_category = left.selectbox(
                 label= 'Category',
                 options= categories,
-                index= categories.index(controller.get_category_name(default_values.category_id)),
+                index= category_index,
                 key= 'update_transaction_template_category'
             )
             

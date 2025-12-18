@@ -102,6 +102,9 @@ def show_home():
                     financial_sums = home_view_data.avarage_sums
                 elif metrics_period == PeriodsOptions.SPECIFIC_PERIOD:
                     try:
+                        if len(specific_period) != 2:
+                            raise ValueError("Specific period must have a start and end date.")
+                            
                         period = Period(start_date= specific_period[0], end_date= specific_period[1])
                         financial_sums = controller.get_specific_period_sums(period)
                     except:

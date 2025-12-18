@@ -22,8 +22,13 @@ def show_cards():
     card_to_view = st.selectbox('Choose a card', controller.get_cards(only_name= True))
     
     if card_to_view:
-        card = controller.get_card_by_name(card_to_view)
-        view_data = asyncio.run(controller.get_card_view_data(card.card_id))
+        card = controller.get_card_by_name(str(card_to_view))
+        
+        view_data = asyncio.run(controller.get_card_view_data(card.card_id)) if card.card_id else None
+        
+        if view_data is None:
+            st.warning('No data available for the selected card', icon= ':material/warning:')
+            st.stop()
         
         left1, center1, right1 = st.columns(3)
         

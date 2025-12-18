@@ -1,5 +1,6 @@
 import streamlit as st
 from datetime import date
+from typing import cast
 from utils import to_decimal
 from controllers import AddTransactionController
 from constants.views_icons import ADD_TRANSACTION_ICON
@@ -7,6 +8,7 @@ from components import new_transaction_template_popup, modify_template_popup
 from models.amounts import TransactionType
 from models.bank_properties import BankName, StatementType
 from models.transactions import Transaction, DuplicateResult
+from models.templates import TransactionDefaultValues
 
 @st.dialog('Potential Duplicate transactions')
 def _confirm_potential_duplicate_upload(duplicate_result: DuplicateResult) -> None:
@@ -67,12 +69,12 @@ def show_add_transaction():
                 new_transaction_template_popup()
             
             if _right.button('', type= 'secondary', icon= ':material/edit:', help= 'Modify a template', key= 'modify_template_button', disabled= not template_name):
-                template_id = templates_names[template_name]
-                modify_template_popup(template_id)
+                template_id = templates_names[template_name] if template_name else None
+                modify_template_popup(template_id) if template_id else None
                 
         with st.form(key= 'add_transaction_form', border= False, clear_on_submit= True):
             if template:
-                default_values = template.default_values
+                default_values = cast(TransactionDefaultValues, template.default_values)
                 
                 transaction_date = st.date_input(
                     label= 'Date',
@@ -109,7 +111,8 @@ def show_add_transaction():
                 
                 transaction_bank = BankName(transaction_bank) if transaction_bank else None
                 
-                default_card_name = controller.get_card_by_id(default_values.card_id).card_name if default_values.card_id else None
+                default_card = controller.get_card_by_id(default_values.card_id) if default_values.card_id else None
+                default_card_name = default_card.card_name if default_card else None
                 all_cards = controller.get_cards()
                 
                 transaction_card = right.selectbox(
@@ -141,10 +144,16 @@ def show_add_transaction():
                 
                 categories = controller.get_categories()
                 
+                if default_values.category_id is not None:
+                    category_name = controller.get_category_name(default_values.category_id)
+                    category_index = categories.index(category_name) if category_name in categories else None
+                else:
+                    category_index = None
+                
                 category = left.selectbox(
                     label= 'Category',
                     options= categories,
-                    index= categories.index(controller.get_category_name(default_values.category_id)),
+                    index= category_index,
                     key= 'transaction_category_template'
                 ) 
                 
@@ -229,29 +238,40 @@ def show_add_transaction():
                 )  
                 
             if st.form_submit_button(label= 'Sumbit', type= 'primary'):
-                transaction_record = None
+                ready_to_submit = True
                 
-                try:
+                if not isinstance(transaction_date, date):
+                    st.warning('Please, verify the given date to can update the transaction', icon= ':material/warning:')
+                    ready_to_submit = False
+                
+                if not isinstance(transaction_bank, BankName):
+                    st.warning('Please, select a valid bank to can update the transaction', icon= ':material/warning:')
+                    ready_to_submit = False
+                    
+                if not isinstance(transaction_amount, float):
+                    st.warning('Please, enter a valid amount to can update the transaction', icon= ':material/warning:')
+                    ready_to_submit = False
+                    
+                if not isinstance(transaction_statement_type, StatementType):
+                    st.warning('Please, select a valid statement type to can update the transaction', icon= ':material/warning:')
+                    ready_to_submit = False
+                    
+                if ready_to_submit:
+                    transaction_amount = cast(float, transaction_amount) # The verification is done above
+                    
                     transaction_record = Transaction(
                         user_id= controller.user_id,
                         category_id= controller.get_category_id(category) if category else None,
-                        date= transaction_date,
-                        description= description if description else '',
-                        amount= to_decimal(transaction_amount if transaction_type == 'Abono' else -1 * transaction_amount),
+                        date= cast(date, transaction_date), # The verification is done above
+                        description= description,
+                        amount= to_decimal(transaction_amount) if transaction_type == 'Abono' else to_decimal(-1 * transaction_amount), 
                         type= TransactionType(transaction_type),
-                        bank= transaction_bank,
+                        bank= cast(BankName, transaction_bank), # The verification is done above
                         card_id= transaction_card.card_id if transaction_card else None,
-                        statement_type= transaction_statement_type,
+                        statement_type= cast(StatementType, transaction_statement_type), # The verification is done above
                         filename= None,
                         duplicate_potential_state= False
                     )
-                    
-                except TypeError:
-                    st.warning('Please, fill all the fields')
-                except ValueError as e:
-                    st.warning('Please, check the given values and try again')
-                except Exception as e:
-                    raise e
                 
                 if transaction_record:
                     duplicate_result = controller.get_duplicate_result(transaction_record)

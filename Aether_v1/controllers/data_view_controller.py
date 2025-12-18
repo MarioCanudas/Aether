@@ -1,5 +1,5 @@
 import pandas as pd
-from typing import Optional, List, Dict, Any
+from typing import Any, cast, get_args
 import logging
 from services import TransactionsDBService, CategoryDBService, CardsDBService
 from models.amounts import TransactionType
@@ -11,11 +11,11 @@ from .base_controller import BaseController
 logger = logging.getLogger(__name__)
 
 class DataViewController(BaseController):
-    def _to_transactions(self, transactions_dicts: List[Dict[str, Any]]) -> List[Transaction]:
+    def _to_transactions(self, transactions_dicts: list[dict[str, Any]]) -> list[Transaction]:
         categories = self.get_categories(mapped= True)
         cards = self.get_cards(mapped= True)
         
-        transactions: List[Transaction] = []
+        transactions: list[Transaction] = []
         
         for t in transactions_dicts:
             if not 'user_id' in t:
@@ -39,7 +39,7 @@ class DataViewController(BaseController):
         return transactions
     
     def get_transactions_date_range(self) -> Period:
-        user_id = self.user_session_service.current_user_id
+        user_id = self.user_id
         
         with self.quick_read_conn() as conn:
             transactions_db = TransactionsDBService(conn)
@@ -48,16 +48,16 @@ class DataViewController(BaseController):
             
             return period
         
-    def get_banks_in_transactions(self) -> List[str]:
-        user_id = self.user_session_service.current_user_id
+    def get_banks_in_transactions(self) -> list[str]:
+        user_id = self.user_id
         
         with self.quick_read_conn() as conn:
             transactions_db = TransactionsDBService(conn)
             
             return transactions_db.get_unique_values(column= 'bank', user_id= user_id)
         
-    def get_cards(self, mapped: bool = False) -> List[str]:
-        user_id = self.user_session_service.current_user_id
+    def get_cards(self, mapped: bool = False) -> list[str] | dict[str, int]:
+        user_id = self.user_id
         
         with self.quick_read_conn() as conn:
             cards_db = CardsDBService(conn)
@@ -65,18 +65,18 @@ class DataViewController(BaseController):
             cards = cards_db.get_cards(user_id)
             
             if mapped:
-                return {card.card_name: card.card_id for card in cards}
+                return {card.card_name: card.card_id for card in cards if card.card_id is not None}
             else:
                 return [card.card_name for card in cards]
         
     def get_filtered_transactions(
             self, 
             period: Period, 
-            banks: Optional[list[BankName]],
-            statement_type: Optional[StatementType],
-            amount_types: Optional[List[TransactionType]]
+            banks: list[BankName] | None,
+            statement_type: StatementType | None,
+            amount_types: list[TransactionType] | None
         ) -> pd.DataFrame:
-        user_id = self.user_session_service.current_user_id
+        user_id = self.user_id
         
         with self.quick_read_conn() as conn:
             transactions_db = TransactionsDBService(conn)
@@ -95,7 +95,7 @@ class DataViewController(BaseController):
             
             return pd.DataFrame(transactions).sort_values(by= 'date', ascending= False)
         
-    def get_categories(self, mapped: bool = False) -> List[str] | Dict[str, int]:        
+    def get_categories(self, mapped: bool = False) -> list[str] | dict[str, int]:        
         with self.quick_read_conn() as conn:
             categories_db = CategoryDBService(conn)
             
@@ -108,7 +108,7 @@ class DataViewController(BaseController):
             self,
             original_transactions: pd.DataFrame, 
             edited_transactions: pd.DataFrame
-        ) -> Dict[str, List[Transaction]]:
+        ) -> dict[str, list[Transaction]]:
         """
         Extract modified, new, and deleted transactions.
         Returns a dictionary with 'new', 'modified', and 'deleted' keys.
@@ -122,11 +122,13 @@ class DataViewController(BaseController):
         
         # Find deleted transactions (in original but not in edited)
         deleted_ids = original_ids - edited_ids
-        deleted_transactions = df_og[df_og['transaction_id'].isin(deleted_ids)].to_dict(orient='records')
+        df_to_delete = cast(pd.DataFrame, df_og[df_og['transaction_id'].isin(list(deleted_ids))])
+        deleted_transactions = df_to_delete.to_dict(orient='records')
         
         # Find new transactions (in edited but not in original)
         new_ids = edited_ids - original_ids
-        new_transactions = df_ed[df_ed['transaction_id'].isin(new_ids)].to_dict(orient='records')
+        df_new = cast(pd.DataFrame, df_ed[df_ed['transaction_id'].isin(list(new_ids))])
+        new_transactions = df_new.to_dict(orient='records')
         
         # Find modified transactions (in both but with different content)
         common_ids = original_ids & edited_ids
@@ -138,7 +140,7 @@ class DataViewController(BaseController):
             
             # Compare all columns except transaction_id
             comparison_cols = [col for col in original_row.index if col != 'transaction_id']
-            if not original_row[comparison_cols].equals(edited_row[comparison_cols]):
+            if not cast(pd.Series, original_row[comparison_cols]).equals(cast(pd.Series, edited_row[comparison_cols])):
                 modified_transactions.append(edited_row.to_dict())
         
         return {
@@ -165,8 +167,8 @@ class DataViewController(BaseController):
             if modified_transactions['deleted']:
                 transactions_db.delete_transactions(modified_transactions['deleted'])
 
-    def get_potential_duplicate_transactions(self) -> List[Transaction]:
+    def get_potential_duplicate_transactions(self) -> list[Transaction]:
         with self.quick_read_conn() as conn:
             transactions_db = TransactionsDBService(conn)
             
-            return transactions_db.get_transactions(user_id= self.user_id, duplicate_potential_state= True)
+            return cast(list[Transaction], transactions_db.get_transactions(user_id= self.user_id, duplicate_potential_state= True))

@@ -1,7 +1,7 @@
 import pandas as pd
 from pydantic import BaseModel,ConfigDict, field_validator, model_validator
 from decimal import Decimal
-from typing import List, Literal, Dict, Any
+from typing import Literal, Any, cast
 from utils import to_decimal
 from .amounts import AmountColumns
 from .records import MonthlyResultRecord
@@ -21,7 +21,7 @@ class ExtractedWords(BaseModel):
             raise ValueError(f"ExtractedWords dataframe must be a pandas DataFrame, got {type(v).__name__}")
         
         if v.empty:
-            v = pd.DataFrame(columns= ['page', 'text', 'x0', 'top', 'x1', 'bottom'])
+            v = pd.DataFrame({'page': [], 'text': [], 'x0': [], 'top': [], 'x1': [], 'bottom': []})
         
         if not all(col in v.columns for col in ['page', 'text', 'x0', 'top', 'x1', 'bottom']):
             missing_cols = [col for col in ['page', 'text', 'x0', 'top', 'x1', 'bottom'] if col not in v.columns]
@@ -34,12 +34,12 @@ class ExtractedWords(BaseModel):
         return len(self.df)
     
     @property
-    def records(self) -> List[dict]:
-        return self.df.to_dict(orient='records')
+    def records(self) -> list[dict[str, Any]]:
+        return cast(list[dict[str, Any]], self.df.to_dict(orient='records'))
     
     @property
     def pages(self) -> pd.Series:
-        return self.df['page']
+        return cast(pd.Series, self.df['page'])
     
     @pages.setter
     def pages(self, pages: pd.Series) -> None:
@@ -50,7 +50,7 @@ class ExtractedWords(BaseModel):
     
     @property
     def texts(self) -> pd.Series:
-        return self.df['text']
+        return cast(pd.Series, self.df['text'])
     
     @texts.setter
     def texts(self, texts: pd.Series) -> None:
@@ -61,7 +61,7 @@ class ExtractedWords(BaseModel):
         
     @property
     def x0(self) -> pd.Series:
-        return self.df['x0']
+        return cast(pd.Series, self.df['x0'])
     
     @x0.setter
     def x0(self, x0: pd.Series) -> None:
@@ -72,7 +72,7 @@ class ExtractedWords(BaseModel):
         
     @property
     def top(self) -> pd.Series:
-        return self.df['top']
+        return cast(pd.Series, self.df['top'])
     
     @top.setter 
     def top(self, top: pd.Series) -> None:
@@ -83,7 +83,7 @@ class ExtractedWords(BaseModel):
         
     @property
     def x1(self) -> pd.Series:
-        return self.df['x1']
+        return cast(pd.Series, self.df['x1'])
     
     @x1.setter
     def x1(self, x1: pd.Series) -> None:
@@ -94,7 +94,7 @@ class ExtractedWords(BaseModel):
         
     @property
     def bottom(self) -> pd.Series:
-        return self.df['bottom']
+        return cast(pd.Series, self.df['bottom'])
     
     @bottom.setter
     def bottom(self, bottom: pd.Series) -> None:
@@ -103,7 +103,7 @@ class ExtractedWords(BaseModel):
         
         self.df['bottom'] = bottom
         
-    def search_phrase(self, phrase: List[str], type_return: Literal['idx', 'bool'] = 'idx') -> int | bool | None:
+    def search_phrase(self, phrase: list[str], type_return: Literal['idx', 'bool'] = 'idx') -> int | bool | None:
         texts = self.texts
         
         for i in range(len(self.df) - len(phrase)):
@@ -125,11 +125,11 @@ class ExtractedWords(BaseModel):
         elif type_return == 'bool':
             return False  # Return False when phrase is not found
         
-    def filter_table_by_phrases(self, start_phrase: List[str], end_phrase: List[str]) -> 'ExtractedWords':
+    def filter_table_by_phrases(self, start_phrase: list[str], end_phrase: list[str]) -> 'ExtractedWords':
         start_idx = self.search_phrase(start_phrase, type_return='idx')
         end_idx = self.search_phrase(end_phrase, type_return='idx')
         
-        if start_idx and end_idx and start_idx < end_idx:
+        if isinstance(start_idx, int) and isinstance(end_idx, int) and start_idx < end_idx:
             return ExtractedWords(df= self.df.iloc[start_idx : end_idx].sort_values(by=["page", "top"]).reset_index(drop=True))
         else:
             raise ValueError(f"The start_idx: {start_idx} and end_idx: {end_idx} are not valid")
@@ -147,7 +147,7 @@ class GroupedRows(BaseModel):
             raise ValueError(f"GroupedRows dataframe must be a pandas DataFrame, got {type(v).__name__}")
         
         if v.empty:
-            v = pd.DataFrame(columns= ['row_group', 'text', 'words', 'top', 'bottom', 'page'])
+            v = pd.DataFrame({'row_group': [], 'text': [], 'words': [], 'top': [], 'bottom': [], 'page': []})
         
         if not all(col in v.columns for col in ['row_group', 'text', 'words', 'top', 'bottom', 'page']):
             missing_cols = [col for col in ['row_group', 'text', 'words', 'top', 'bottom', 'page'] if col not in v.columns]
@@ -157,7 +157,7 @@ class GroupedRows(BaseModel):
     
     @property
     def row_groups(self) -> pd.Series:
-        return self.df['row_group']
+        return cast(pd.Series, self.df['row_group'])
     
     @row_groups.setter
     def row_groups(self, row_groups: pd.Series) -> None:
@@ -168,7 +168,7 @@ class GroupedRows(BaseModel):
             
     @property
     def texts(self) -> pd.Series:
-        return self.df['text']
+        return cast(pd.Series, self.df['text'])
     
     @texts.setter
     def texts(self, texts: pd.Series) -> None:
@@ -179,7 +179,7 @@ class GroupedRows(BaseModel):
             
     @property
     def words(self) -> pd.Series:
-        return self.df['words']
+        return cast(pd.Series, self.df['words'])
     
     @words.setter
     def words(self, words: pd.Series) -> None:
@@ -190,7 +190,7 @@ class GroupedRows(BaseModel):
             
     @property
     def top_column(self) -> pd.Series:
-        return self.df['top']
+        return cast(pd.Series, self.df['top'])
     
     @top_column.setter
     def top_column(self, top_column: pd.Series) -> None:
@@ -201,7 +201,7 @@ class GroupedRows(BaseModel):
             
     @property
     def bottom_column(self) -> pd.Series:
-        return self.df['bottom']
+        return cast(pd.Series, self.df['bottom'])
     
     @bottom_column.setter
     def bottom_column(self, bottom_column: pd.Series) -> None:
@@ -212,7 +212,7 @@ class GroupedRows(BaseModel):
             
     @property
     def pages(self) -> pd.Series:
-        return self.df['page']
+        return cast(pd.Series, self.df['page'])
     
     @pages.setter
     def pages(self, pages: pd.Series) -> None:
@@ -244,7 +244,7 @@ class ReconstructedTable(BaseModel):
         
         if v.empty:
             # For empty dataframes, we'll create a basic structure and let the amount_columns validation handle the rest
-            v = pd.DataFrame(columns=['date', 'description'])
+            v = pd.DataFrame({'date': [], 'description': []})
             
         # Check for required base columns
         required_base_cols = ['date', 'description']
@@ -264,7 +264,7 @@ class ReconstructedTable(BaseModel):
                 raise ValueError(f"ReconstructedTable amount_columns.income '{self.amount_columns.income}' not found in dataframe columns: {list(self.df.columns)}")
             if self.amount_columns.expense not in self.df.columns:
                 raise ValueError(f"ReconstructedTable amount_columns.expense '{self.amount_columns.expense}' not found in dataframe columns: {list(self.df.columns)}")
-            if self.amount_columns.has_balance and self.amount_columns.balance not in self.df.columns:
+            if self.amount_columns.has_balance and self.amount_columns.balance is not None and self.amount_columns.balance not in self.df.columns:
                 raise ValueError(f"ReconstructedTable amount_columns.balance '{self.amount_columns.balance}' not found in dataframe columns: {list(self.df.columns)}")
 
         return self
@@ -274,12 +274,12 @@ class ReconstructedTable(BaseModel):
         return self.df.empty
     
     @property
-    def records(self) -> List[dict]:
-        return self.df.to_dict(orient='records')
+    def records(self) -> list[dict[str, Any]]:
+        return cast(list[dict[str, Any]], self.df.to_dict(orient='records'))
     
     @property
     def dates(self) -> pd.Series:
-        return self.df['date']
+        return cast(pd.Series, self.df['date'])
     
     @dates.setter
     def dates(self, dates: pd.Series) -> None:
@@ -290,7 +290,7 @@ class ReconstructedTable(BaseModel):
             
     @property
     def descriptions(self) -> pd.Series:
-        return self.df['description']
+        return cast(pd.Series, self.df['description'])
     
     @descriptions.setter
     def descriptions(self, descriptions: pd.Series) -> None:
@@ -302,7 +302,7 @@ class ReconstructedTable(BaseModel):
     @property
     def amount_column(self) -> pd.Series:
         if self.amount_columns.is_mono_column:
-            return self.df[self.amount_columns.income]
+            return cast(pd.Series, self.df[self.amount_columns.income])
         else:
             raise ValueError("The amount column is not defined")
         
@@ -317,7 +317,7 @@ class ReconstructedTable(BaseModel):
             
     @property
     def income_column(self) -> pd.Series:
-        return self.df[self.amount_columns.income]
+        return cast(pd.Series, self.df[self.amount_columns.income])
     
     @income_column.setter
     def income_column(self, income_column: pd.Series) -> None:
@@ -328,7 +328,7 @@ class ReconstructedTable(BaseModel):
     
     @property
     def expense_column(self) -> pd.Series:
-        return self.df[self.amount_columns.expense]
+        return cast(pd.Series, self.df[self.amount_columns.expense])
     
     @expense_column.setter
     def expense_column(self, expense_column: pd.Series) -> None:
@@ -339,8 +339,8 @@ class ReconstructedTable(BaseModel):
             
     @property
     def balance_column(self) -> pd.Series | None:
-        if self.amount_columns.has_balance:
-            return self.df[self.amount_columns.balance]
+        if self.amount_columns.has_balance and self.amount_columns.balance is not None:
+            return cast(pd.Series, self.df[self.amount_columns.balance])
         else:
             return None
     
@@ -348,7 +348,7 @@ class ReconstructedTable(BaseModel):
     def balance_column(self, balance_column: pd.Series) -> None:
         if not isinstance(balance_column, pd.Series):
             raise ValueError("The balance column must be a pandas series")
-        elif self.amount_columns.has_balance:
+        elif self.amount_columns.has_balance and self.amount_columns.balance is not None:
             self.df[self.amount_columns.balance] = balance_column
         else:
             raise ValueError("The balance column is not defined")
@@ -370,7 +370,7 @@ class TransactionsTable(BaseModel):
     @classmethod
     def _validate_df_structure(cls, v: pd.DataFrame) -> pd.DataFrame:
         if v.empty:
-            v = pd.DataFrame(columns= ['date', 'description', 'amount', 'type', 'bank', 'statement_type', 'filename'])
+            v = pd.DataFrame({'date': [], 'description': [], 'amount': [], 'type': [], 'bank': [], 'statement_type': [], 'filename': []})
         
         if not all(col in v.columns for col in ['date', 'description', 'amount', 'type', 'bank', 'statement_type', 'filename']):
             missing_cols = [col for col in ['date', 'description', 'amount', 'type', 'bank', 'statement_type', 'filename'] if col not in v.columns]
@@ -380,7 +380,7 @@ class TransactionsTable(BaseModel):
     
     @property
     def dates(self) -> pd.Series:
-        return self.df['date']
+        return cast(pd.Series, self.df['date'])
     
     @dates.setter
     def dates(self, dates: pd.Series) -> None:
@@ -391,7 +391,7 @@ class TransactionsTable(BaseModel):
     
     @property
     def descriptions(self) -> pd.Series:
-        return self.df['description']
+        return cast(pd.Series, self.df['description'])
     
     @descriptions.setter
     def descriptions(self, descriptions: pd.Series) -> None:
@@ -402,7 +402,7 @@ class TransactionsTable(BaseModel):
     
     @property
     def amounts(self) -> pd.Series:
-        return self.df['amount']
+        return cast(pd.Series, self.df['amount'])
     
     @amounts.setter
     def amounts(self, amounts: pd.Series) -> None:
@@ -413,7 +413,7 @@ class TransactionsTable(BaseModel):
     
     @property
     def types(self) -> pd.Series:
-        return self.df['type']
+        return cast(pd.Series, self.df['type'])
     
     @types.setter
     def types(self, types: pd.Series) -> None:
@@ -424,7 +424,7 @@ class TransactionsTable(BaseModel):
     
     @property
     def bank_col(self) -> pd.Series:
-        return self.df['bank']
+        return cast(pd.Series, self.df['bank'])
     
     @bank_col.setter
     def bank_col(self, bank: str) -> None:
@@ -434,12 +434,12 @@ class TransactionsTable(BaseModel):
         self.df['bank'] = bank
     
     @property
-    def bank(self) -> str | List[str]:
+    def bank(self) -> str | list[str]:
         return self.df['bank'].iloc[0]
     
     @property
     def statement_type_col(self) -> pd.Series:
-        return self.df['statement_type']
+        return cast(pd.Series, self.df['statement_type'])
     
     @statement_type_col.setter
     def statement_type_col(self, statement_type: str) -> None:
@@ -454,7 +454,7 @@ class TransactionsTable(BaseModel):
     
     @property
     def filename_col(self) -> pd.Series:
-        return self.df['filename']
+        return cast(pd.Series, self.df['filename'])
     
     @filename_col.setter
     def filename_col(self, filename: str) -> None:
@@ -468,8 +468,8 @@ class TransactionsTable(BaseModel):
         return self.df['filename'].iloc[0]
         
     @property
-    def transactions(self) -> List[Transaction]:
-        return [Transaction(**transaction) for transaction in self.df.to_dict(orient='records')]
+    def transactions(self) -> list[Transaction]:
+        return [Transaction(**transaction) for transaction in cast(list[dict[str, Any]], self.df.to_dict(orient='records'))]
     
     def add_transaction(self, transaction: Transaction) -> None:
         record = transaction.model_dump()
@@ -509,11 +509,11 @@ class AllTransactionsTable(TransactionsTable):
         return v
     
     @property
-    def banks(self) -> List[str]:
+    def banks(self) -> list[str]:
         return self.df['bank'].unique().tolist()
     
     @property
-    def files(self) -> List[str]:
+    def files(self) -> list[str]:
         return self.df['filename'].unique().tolist()
     
     @property
@@ -522,7 +522,7 @@ class AllTransactionsTable(TransactionsTable):
     
     @property
     def category_id(self) -> pd.Series:
-        return self.df['category_id']
+        return cast(pd.Series, self.df['category_id'])
     
     @category_id.setter
     def category_id(self, category_id: pd.Series) -> None:
@@ -531,8 +531,8 @@ class AllTransactionsTable(TransactionsTable):
         
         self.df['category_id'] = category_id
         
-    def get_transactions_dicts(self) -> List[Dict[str, Any]]:   
-        return self.df.to_dict(orient='records')
+    def get_transactions_dicts(self) -> list[dict[str, Any]]:   
+        return cast(list[dict[str, Any]], self.df.to_dict(orient='records'))
     
 class MonthlyResultsTable(BaseModel):
     """Represents a table of monthly results with the following columns:
@@ -541,7 +541,7 @@ class MonthlyResultsTable(BaseModel):
     """
     model_config = TABLE_CONFIG
     
-    df: pd.DataFrame = pd.DataFrame(columns= ['year_month', 'initial_balance', 'total_income', 'total_withdrawal', 'savings', 'user_id'])
+    df: pd.DataFrame = pd.DataFrame({'year_month': [], 'initial_balance': [], 'total_income': [], 'total_withdrawal': [], 'savings': [], 'user_id': []})
     
     @field_validator('df', mode='before')
     @classmethod
@@ -550,7 +550,7 @@ class MonthlyResultsTable(BaseModel):
             raise ValueError(f"MonthlyResultsTable dataframe must be a pandas DataFrame, got {type(v).__name__}")
         
         if v.empty:
-            v = pd.DataFrame(columns= ['year_month', 'initial_balance', 'total_income', 'total_withdrawal', 'savings', 'user_id'])
+            v = pd.DataFrame({'year_month': [], 'initial_balance': [], 'total_income': [], 'total_withdrawal': [], 'savings': [], 'user_id': []})
             
         if 'user_id' not in v.columns:
             v['user_id'] = None
@@ -563,7 +563,7 @@ class MonthlyResultsTable(BaseModel):
     
     @property
     def year_months(self) -> pd.Series:
-        return self.df['year_month']
+        return cast(pd.Series, self.df['year_month'])
     
     @year_months.setter
     def year_months(self, year_months: pd.Series) -> None:
@@ -574,7 +574,7 @@ class MonthlyResultsTable(BaseModel):
         
     @property
     def initial_balances(self) -> pd.Series:
-        return self.df['initial_balance']
+        return cast(pd.Series, self.df['initial_balance'])
     
     @initial_balances.setter
     def initial_balances(self, initial_balances: pd.Series) -> None:
@@ -585,7 +585,7 @@ class MonthlyResultsTable(BaseModel):
         
     @property
     def total_incomes(self) -> pd.Series:
-        return self.df['total_income']
+        return cast(pd.Series, self.df['total_income'])
     
     @total_incomes.setter
     def total_incomes(self, total_incomes: pd.Series) -> None:
@@ -596,7 +596,7 @@ class MonthlyResultsTable(BaseModel):
         
     @property
     def total_withdrawals(self) -> pd.Series:
-        return self.df['total_withdrawal']
+        return cast(pd.Series, self.df['total_withdrawal'])
     
     @total_withdrawals.setter
     def total_withdrawals(self, total_withdrawals: pd.Series) -> None:
@@ -607,7 +607,7 @@ class MonthlyResultsTable(BaseModel):
         
     @property
     def savings(self) -> pd.Series:
-        return self.df['savings']
+        return cast(pd.Series, self.df['savings'])
     
     @savings.setter
     def savings(self, savings: pd.Series) -> None:
@@ -628,23 +628,23 @@ class MonthlyResultsTable(BaseModel):
         self.df['user_id'] = user_id
         
     @property
-    def records(self) -> List[MonthlyResultRecord]:
-        return self.df.to_dict(orient='records') if not self.df.empty else []	
+    def records(self) -> list[MonthlyResultRecord]:
+        return cast(list[MonthlyResultRecord], self.df.to_dict(orient='records')) if not self.df.empty else []
     
     async def get_avg_savings_per_month(self) -> Decimal:
-        return to_decimal(self.savings.mean())
+        return to_decimal(cast(float, self.savings.mean()))
     
     async def get_avg_income_per_month(self) -> Decimal:
-        return to_decimal(self.total_incomes.mean())
+        return to_decimal(cast(float, self.total_incomes.mean()))
     
     async def get_avg_withdrawal_per_month(self) -> Decimal:
-        return to_decimal(self.total_withdrawals.mean())
+        return to_decimal(cast(float, self.total_withdrawals.mean()))
     
 
 class BudgetsTable(BaseModel):
     model_config = TABLE_CONFIG
     
-    columns: List[str] = ['id', 'user_id', 'category_id', 'amount', 'name', 'created_at', 'start_date', 'end_date']
+    columns: list[str] = ['id', 'user_id', 'category_id', 'amount', 'name', 'created_at', 'start_date', 'end_date']
     df: pd.DataFrame
     
     @field_validator('df', mode='before')
@@ -664,26 +664,27 @@ class BudgetsTable(BaseModel):
         return self.df['user_id'].iloc[0]
     
     @property
-    def categories_id(self) -> pd.Series:
+    def categories_id(self) -> pd.Series | None:
         if 'category_id' in self.df.columns:
-            return self.df['category_id']
+            return cast(pd.Series, self.df['category_id'])
+        return None
         
     @property
     def amounts(self) -> pd.Series:
-        return self.df['amount']
+        return cast(pd.Series, self.df['amount'])
     
     @property
     def names(self) -> pd.Series:
-        return self.df['name']
+        return cast(pd.Series, self.df['name'])
     
     @property
     def created_at(self) -> pd.Series:
-        return self.df['created_at']
+        return cast(pd.Series, self.df['created_at'])
     
     @property
     def start_dates(self) -> pd.Series:
-        return self.df['start_date']
+        return cast(pd.Series, self.df['start_date'])
     
     @property
     def end_dates(self) -> pd.Series:
-        return self.df['end_date']
+        return cast(pd.Series, self.df['end_date'])

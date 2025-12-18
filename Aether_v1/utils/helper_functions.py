@@ -1,4 +1,4 @@
-from typing import List, Literal
+from typing import Literal
 import re
 import pandas as pd
 from decimal import Decimal
@@ -7,12 +7,12 @@ from dateutil.relativedelta import relativedelta
 from models.dates import Period
 from models.views_data import PeriodsOptions
 
-def get_min_month(months: List[str]) -> str:
+def get_min_month(months: list[str]) -> str:
     """
     Finds the earliest month from a list of month abbreviations.
 
     Parameters:
-    - months (List[str]): A list of month abbreviations (e.g., ['NOV', 'OCT']).
+    - months (list[str]): A list of month abbreviations (e.g., ['NOV', 'OCT']).
 
     Returns:
     - str: The earliest month abbreviation.
@@ -58,14 +58,14 @@ def eliminate_ocr_errors_for_amounts(value: str) -> str:
 
     return value
 
-def search_phrase_in_df(df: pd.DataFrame, phrase: List[str], type_return: Literal['idx', 'bool'] = 'idx') -> int | bool | None:
+def search_phrase_in_df(df: pd.DataFrame | pd.Series, phrase: list[str], type_return: Literal['idx', 'bool'] = 'idx') -> int | bool | None:
     """
     Search for a phrase in a DataFrame.
     The phrase must be in lower case.
 
     Args:
-        df (pd.DataFrame): The DataFrame to search in.
-        phrase (List[str]): The phrase to search for.
+        df (pd.DataFrame | pd.Series): The DataFrame to search in.
+        phrase (list[str]): The phrase to search for.
         type_return (Literal['idx', 'bool']): The type of return.
 
     Returns:
@@ -141,7 +141,7 @@ def clean_amount(amount: str) -> str:
     """
     return amount.replace(',', '').replace('$', '').replace('+', '').replace('-','')
 
-def identify_date_separator(date_pattern: re.Pattern | str) -> str:
+def identify_date_separator(date_pattern: re.Pattern[str] | str) -> str:
     """
     Identifies the separator used in a date pattern.
     """
@@ -170,19 +170,27 @@ def to_decimal(value: float | str) -> Decimal:
         
     return Decimal(value).quantize(Decimal('0.01'))
 
-def give_amount_format(amount: Decimal | float | int | str) -> str | None:
-    if isinstance(amount, str):
-        if amount.isnumeric():
-            amount = float(amount)
-            
-            # If the amount is very close to 0, set it to 0
-            if abs(amount) < 5e-3:
-                return 'N/A'
-    
-    return f'${amount:,.2f}' if amount >= 0 else f'-${abs(amount):,.2f}'
+def give_amount_format(amount: Decimal | float | int | str) -> str:
+    # Convert amount to a number if possible
+    numeric_amount: Decimal | float | int
+    try:
+        if isinstance(amount, str):
+            cleaned = amount.replace(',', '').replace('$', '').replace(' ', '')
+            numeric_amount = float(cleaned)
+        else:
+            numeric_amount = amount
+        # If the amount is very close to 0, set it to 'N/A'
+        if abs(float(numeric_amount)) < 5e-3:
+            return 'N/A'
+        if float(numeric_amount) >= 0:
+            return f'${float(numeric_amount):,.2f}'
+        else:
+            return f'-${abs(float(numeric_amount)):,.2f}'
+    except Exception:
+        return str(amount)
 
 def months_map(month_num: int) -> Literal['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']:
-    months_map = {
+    months_map: dict[int, Literal['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']] = {
         1: 'Jan',
         2: 'Feb',
         3: 'Mar',

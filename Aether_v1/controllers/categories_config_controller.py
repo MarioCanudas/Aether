@@ -1,10 +1,10 @@
-from typing import List
+
 from services import CategoryDBService
 from models.categories import NewCategory
 from .base_controller import BaseController
 
 class CategoriesConfigController(BaseController):
-    def get_categories(self) -> List[str]:
+    def get_categories(self) -> list[str]:
         with self.quick_read_conn() as conn:
             categories_db = CategoryDBService(conn)
             

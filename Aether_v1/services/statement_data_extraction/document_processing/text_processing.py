@@ -1,4 +1,6 @@
 import re
+import pandas as pd
+from typing import cast
 from models.tables import ExtractedWords
 from ..core import TextProcessor
 
@@ -12,7 +14,7 @@ class DefaultTextProcessor(TextProcessor):
         2. Currency amounts with separated signs (+ or -) 
         
         Returns:
-            ExtractedWordsTable: Corrected ExtractedWordsTable with properly separated text elements
+            ExtractedWords: Corrected ExtractedWordsTable with properly separated text elements
         """
         # Get a copy of the extracted words to avoid modifying the original
         extracted_words = self.extracted_words.df
@@ -26,6 +28,8 @@ class DefaultTextProcessor(TextProcessor):
         
         # Iterate through each row to identify and correct parsing issues
         for i, row in extracted_words.iterrows():
+            i = cast(int, i)
+            
             text = str(row['text']).strip()
             next_text = str(extracted_words.loc[i + 1, 'text']).strip() if i + 1 < len(extracted_words) else None
             next_next_text = str(extracted_words.loc[i + 2, 'text']).strip() if i + 2 < len(extracted_words) else None
@@ -51,7 +55,7 @@ class DefaultTextProcessor(TextProcessor):
                     
                     # Prepend the extra word to the next row's text
                     if i + 1 < len(extracted_words):
-                        corrected_extracted_words.loc[i + 1, 'text'] = word + ' ' + next_text
+                        corrected_extracted_words.loc[i + 1, 'text'] = word + ' ' + next_text if next_text else word
                 except: 
                     continue  # Skip if there's an error (e.g., word is empty)
                 
@@ -87,6 +91,7 @@ class DefaultTextProcessor(TextProcessor):
         # Drop rows with $ sign
         corrected_extracted_words = corrected_extracted_words[corrected_extracted_words['text'] != '$']
         
-        return ExtractedWords(df= corrected_extracted_words)
+        
+        return ExtractedWords(df= cast(pd.DataFrame, corrected_extracted_words))
     
     

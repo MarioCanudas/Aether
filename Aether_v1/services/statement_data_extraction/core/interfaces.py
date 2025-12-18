@@ -2,15 +2,14 @@ from abc import ABC, abstractmethod
 import pandas as pd
 from io import BytesIO
 import re
-from typing import Literal, List, Tuple
+from typing import Literal
 from models.bank_properties import BankProperties
-from models.amounts import Balances
 from models.delimitations import ColumnDelimitations
 from models.tables import ExtractedWords, GroupedRows, ReconstructedTable, TransactionsTable
 
 class Reader(ABC):
     """Reads and extracts information from documents."""
-    def __init__(self, file: str | BytesIO):
+    def __init__(self, file: str | BytesIO) -> None:
         self.file = file
         
     def _is_bytes_io(self) -> bool:
@@ -72,7 +71,7 @@ class Reader(ABC):
 class DocumentAnalyzer(ABC):
     """Analyzes document content to identify bank and statement characteristics."""
 
-    def __init__(self, reader: Reader):
+    def __init__(self, reader: Reader) -> None:
         self.reader = reader
 
     @abstractmethod
@@ -92,7 +91,7 @@ class DocumentAnalyzer(ABC):
     
 class TextProcessor(ABC):
     """Processes text data to extract relevant information."""
-    def __init__(self, extracted_words: ExtractedWords, bank_properties: BankProperties):
+    def __init__(self, extracted_words: ExtractedWords, bank_properties: BankProperties) -> None:
         self.extracted_words = extracted_words
         self.bank_properties = bank_properties
     
@@ -103,7 +102,7 @@ class TextProcessor(ABC):
     
 class TableBoundaryDetector(ABC):
     """Detects the boundaries of the table in the document."""
-    def __init__(self, corrected_extracted_words: ExtractedWords, bank_properties: BankProperties):
+    def __init__(self, corrected_extracted_words: ExtractedWords, bank_properties: BankProperties) -> None:
         self.corrected_extracted_words = corrected_extracted_words
         self.bank_properties = bank_properties
     
@@ -124,7 +123,7 @@ class TableBoundaryDetector(ABC):
     
 class ColumnSegmenter(ABC):
     """Segments the columns of the table."""
-    def __init__(self, filtered_table_words: ExtractedWords, bank_properties: BankProperties):
+    def __init__(self, filtered_table_words: ExtractedWords, bank_properties: BankProperties) -> None:
         self.filtered_table_words = filtered_table_words
         self.bank_properties = bank_properties
     
@@ -135,7 +134,7 @@ class ColumnSegmenter(ABC):
     
 class RowSegmenter(ABC):
     """Segments the rows of the table."""
-    def __init__(self, filtered_table_words: ExtractedWords):
+    def __init__(self, filtered_table_words: ExtractedWords) -> None:
         self.filtered_table_words = filtered_table_words
     
     @abstractmethod
@@ -150,7 +149,7 @@ class RowSegmenter(ABC):
     
 class Reconstructor(ABC):
     """Reconstructs the table from the segmented rows and columns."""
-    def __init__(self, grouped_rows: GroupedRows, column_delimitation: ColumnDelimitations, bank_properties: BankProperties):
+    def __init__(self, grouped_rows: GroupedRows, column_delimitation: ColumnDelimitations, bank_properties: BankProperties) -> None:
         self.grouped_rows = grouped_rows
         self.column_delimitation = column_delimitation
         self.bank_properties = bank_properties
@@ -173,7 +172,7 @@ class Reconstructor(ABC):
 
 class MetadataExtractor(ABC):
     """Extracts metadata from a given document, like the initial balance, the date of the statement, etc."""
-    def __init__(self, corrected_extracted_words: ExtractedWords, bank_properties: BankProperties):
+    def __init__(self, corrected_extracted_words: ExtractedWords, bank_properties: BankProperties) -> None:
         self.corrected_extracted_words = corrected_extracted_words
         self.bank_properties = bank_properties
     
@@ -188,12 +187,12 @@ class MetadataExtractor(ABC):
         pass
     
     @abstractmethod
-    def get_years(self) -> List[int]:
+    def get_years(self) -> list[int]:
         """Gets the years of the statement."""
         pass
     
     @abstractmethod
-    def get_months(self) -> List[str]:
+    def get_months(self) -> list[str]:
         """Gets the months of the statement."""
         pass
     
@@ -205,13 +204,13 @@ class ColumnNormalizer(ABC):
     
 class TableNormalizer(ABC):
     """Normalizes the obtained table into a consistent format."""
-    def __init__(self, reconstructed_table: ReconstructedTable, bank_properties: BankProperties, columns_normalizers: Tuple[ColumnNormalizer, ColumnNormalizer]):
+    def __init__(self, reconstructed_table: ReconstructedTable, bank_properties: BankProperties, columns_normalizers: tuple[ColumnNormalizer, ColumnNormalizer]) -> None:
         self.reconstructed_table = reconstructed_table
         self.bank_properties = bank_properties
         self.columns_normalizers = columns_normalizers
     
     @abstractmethod
-    def normalize_table(self, years: List[int]) -> TransactionsTable:
+    def normalize_table(self, years: list[int], filename: str) -> TransactionsTable:
         """Normalizes the table into a consistent format."""
         pass
     

@@ -5,7 +5,7 @@ import logging
 import psycopg2
 import psycopg2.extras
 from contextlib import contextmanager
-from typing import Optional, Generator, Literal, List, Set, Dict, Tuple, Any 
+from typing import Generator, Literal, Any 
 
 logger = logging.getLogger(__name__)
 
@@ -14,11 +14,11 @@ class BaseDBService(ABC):
     Abstract base class for all table services.
     Provides common database operations, validation, and connection management.
     """
-    def __init__(self, connection: psycopg2.extensions.connection):
+    def __init__(self, connection: psycopg2.extensions.connection) -> None:
         self.connection = connection
-        self.cursor: Optional[psycopg2.extensions.cursor] = None
+        self.cursor: psycopg2.extensions.cursor | None = None
         self._transaction_level = 0
-        self._savepoints = []
+        self._savepoints: list[str] = []
         
     @property
     @abstractmethod
@@ -28,7 +28,7 @@ class BaseDBService(ABC):
     
     @property
     @abstractmethod
-    def allowed_columns(self) -> Set[str]:
+    def allowed_columns(self) -> set[str]:
         """Return the set of allowed columns for this table."""
         pass
     
@@ -114,7 +114,7 @@ class BaseDBService(ABC):
         """Check if there is an active transaction."""
         return self._transaction_level > 0
     
-    def _validate_columns(self, columns: List[str]) -> List[str]:
+    def _validate_columns(self, columns: list[str]) -> list[str]:
         """Validate columns for this table."""
         if not columns or not isinstance(columns, list):
             raise ValueError("Columns must be a list of strings")
@@ -131,7 +131,7 @@ class BaseDBService(ABC):
         
         return validated_columns
     
-    def _validate_conditions(self, conditions: Dict[str, Any]) -> Dict[str, Any]:
+    def _validate_conditions(self, conditions: dict[str, Any]) -> dict[str, Any]:
         """Validate conditions for the query, based on the allowed columns for the table."""
         validated_conditions = {}
         
@@ -149,18 +149,18 @@ class BaseDBService(ABC):
     def execute_query(
         self,
         query: str,
-        params: Optional[Dict[str, Any] | List[Dict[str, Any]]] = None,
-        fetch: Optional[Literal['all', 'one']] = None,
+        params: dict[str, Any] | list[dict[str, Any]] | None = None,
+        fetch: Literal['all', 'one'] | None = None,
         dict_cursor: bool = False,
-        batch: Optional[bool] = False,
-    ) -> List[Tuple[Any, ...] | Dict[str, Any]] | Tuple[Any, ...] | Dict[str, Any] | None:
+        batch: bool | None = False,
+    ) -> Any | None:
         """Execute a custom SQL query."""
         cursor = self._get_cursor(dict_cursor=dict_cursor)
         
         try:
             if batch:
                 psycopg2.extras.execute_batch(cursor, query, params or {})
-                return
+                return None
             else:
                 cursor.execute(query, params or {})
             
@@ -173,7 +173,7 @@ class BaseDBService(ABC):
         finally:
             cursor.close()
     
-    def find_by_id(self, id: int, columns: Optional[List[str]] = None) -> Optional[Dict[str, Any]]:
+    def find_by_id(self, id: int, columns: list[str] | None = None) -> dict[str, Any] | None:
         """Find a record by its ID."""
 
         if columns:
@@ -184,7 +184,10 @@ class BaseDBService(ABC):
         
         result = self.execute_query(query, params={'id': id}, fetch='one', dict_cursor=True)
         
-        return result if result else None
+        # Explicitly cast or check, but since execute_query returns dict | None when dict_cursor=True and fetch='one'
+        if result and isinstance(result, dict):
+             return result
+        return None
         
     def count(self, **conditions: Any) -> int:
         """Count the number of records in the table."""
@@ -199,7 +202,10 @@ class BaseDBService(ABC):
             params = {}
 
         result = self.execute_query(query, params= params, fetch= 'one')
-        return result[0] if result else 0
+        # result is tuple or dict or None. Here regular cursor so tuple.
+        if result and isinstance(result, tuple):
+            return result[0]
+        return 0
     
     def find_id(self, **conditions: Any) -> int | None:
         """Find the ID of a record by its conditions."""
@@ -219,7 +225,9 @@ class BaseDBService(ABC):
             
         result = self.execute_query(query, params= params, fetch= 'one')
         
-        return result[0] if result else None
+        if result and isinstance(result, tuple):
+            return result[0]
+        return None
     
     def exists(self, **conditions: Any) -> bool:
         """Check if a record exists in the table."""
@@ -230,12 +238,17 @@ class BaseDBService(ABC):
             
             query += " WHERE "
             query += " AND ".join([f"{col} = %({col})s" for col in params.keys()])
+        else:
+            params = {}
         
         query += ")"
         
-        return self.execute_query(query, params= params, fetch= 'one')[0]
+        result = self.execute_query(query, params= params, fetch= 'one')
+        if result and isinstance(result, tuple):
+            return result[0]
+        return False
     
-    def get_unique_values(self, column: str, **conditions: Any) -> List[Any]:
+    def get_unique_values(self, column: str, **conditions: Any) -> list[Any]:
         """Get unique values for a column."""
         if column not in self.allowed_columns:
             raise ValueError(f"Column '{column}' not allowed for table '{self.table_name}'")
@@ -252,9 +265,11 @@ class BaseDBService(ABC):
         
         result = self.execute_query(query, params= params, fetch= 'all')
         
-        return [value[0] for value in result] if result else []
+        if result and isinstance(result, list):
+             return [value[0] for value in result if isinstance(value, tuple)]
+        return []
     
-    def get_sum(self, column: str, start_date: Optional[date] = None, end_date: Optional[date] = None, **conditions: Any) -> Decimal:
+    def get_sum(self, column: str, start_date: date | None = None, end_date: date | None = None, **conditions: Any) -> Decimal:
         """Get the sum of a column."""
         query = f"SELECT SUM({column}) FROM {self.table_name}"
         params = {}
@@ -278,7 +293,9 @@ class BaseDBService(ABC):
             
         result = self.execute_query(query, params= params, fetch= 'one')
         
-        return result[0] if result[0] is not None else Decimal(0)
+        if result and isinstance(result, tuple) and result[0] is not None:
+            return result[0]
+        return Decimal(0)
     
     def update(self, id: int, **updates: Any) -> None:
         """Update a record by its ID."""
