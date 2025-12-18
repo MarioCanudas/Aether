@@ -1,13 +1,15 @@
-from pydantic import BaseModel
+from decimal import Decimal
 from enum import Enum
-from decimal import Decimal     
+
+from pydantic import BaseModel
+
 
 class FinancialStatus(str, Enum):
     EXCELLENT = "Excellent!"
     GOOD = "Good"
     REGULAR = "Regular"
     POOR = "Poor"
-    
+
     @property
     def score(self) -> int:
         if self == FinancialStatus.EXCELLENT:
@@ -18,46 +20,47 @@ class FinancialStatus(str, Enum):
             return 50
         else:
             return 25
-        
+
     @property
     def icon(self) -> str:
         if self == FinancialStatus.EXCELLENT:
-            return '🏆'
+            return "🏆"
         elif self == FinancialStatus.GOOD:
-            return '👍'
+            return "👍"
         elif self == FinancialStatus.REGULAR:
-            return '👌'
+            return "👌"
         else:
-            return '👎'
-        
+            return "👎"
+
     @property
     def color(self) -> str:
         if self == FinancialStatus.EXCELLENT:
-            return 'green'
+            return "green"
         elif self == FinancialStatus.GOOD:
-            return 'yellow'
+            return "yellow"
         elif self == FinancialStatus.REGULAR:
-            return 'orange'
+            return "orange"
         else:
-            return 'red'
-    
-    
+            return "red"
+
+
 class FinancialAmountsSums(BaseModel):
     """
-    This model is used to sum the financial amounts of the user, such as income, 
-    withdrawal and savings. 
-    
-    It allows to calculate the balance of the user. 
-    
+    This model is used to sum the financial amounts of the user, such as income,
+    withdrawal and savings.
+
+    It allows to calculate the balance of the user.
+
     It not depends on the period of the sums, so can be used for all periods and avarage sums.
     """
+
     income: Decimal
     withdrawal: Decimal
     savings: Decimal | None
-    
+
     @property
     def balance(self) -> Decimal:
         return self.income + self.withdrawal
-    
+
     def add_to_income(self, amount: Decimal) -> None:
         self.income += amount

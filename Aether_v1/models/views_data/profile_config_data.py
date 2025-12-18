@@ -1,12 +1,16 @@
-from pydantic import BaseModel
 from datetime import date
+
+from pydantic import BaseModel
+
 from ..users import UserProfile
+
 
 class ProfileConfigViewData(BaseModel):
     """
     Data model for profile configuration view.
     Contains all the information needed to display the user profile page.
     """
+
     profile: UserProfile
     account_age_days: int
     account_age_formatted: str
