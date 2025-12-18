@@ -1,34 +1,37 @@
 from abc import ABC
-from typing import Any, Generator
-import pandas as pd
-from psycopg2.extensions import connection
+from collections.abc import Generator
 from contextlib import contextmanager
-from services import (
-    ConnectionManagementService, 
-    UserSessionService,
-    TransactionsDBService,
-    CategoryDBService,
-    CardsDBService
-)
+from typing import Any
+
+import pandas as pd
 from models.transactions import Transaction
+from psycopg2.extensions import connection
+from services import (
+    CardsDBService,
+    CategoryDBService,
+    ConnectionManagementService,
+    TransactionsDBService,
+    UserSessionService,
+)
+
 
 class BaseController(ABC):
     """
     Base controller that provides centralized access to DatabaseService and UserSessionService
     Base controller that provides centralized access to DatabaseService and UserSessionService
     with different scopes depending on the type of operation.
-    
-    Provides general methods for user session management and database access, commonly used in 
+
+    Provides general methods for user session management and database access, commonly used in
     all the child controllers.
-    
-    Provides general methods for user session management and database access, commonly used in 
+
+    Provides general methods for user session management and database access, commonly used in
     all the child controllers.
     """
-    
+
     def __init__(self):
         self.connection_manager = ConnectionManagementService()
         self.user_session_service = UserSessionService()
-    
+
     @contextmanager
     def session_conn(self) -> Generator[connection, None, None]:
         """
@@ -38,8 +41,8 @@ class BaseController(ABC):
         """
         with self.connection_manager.get_session_connection() as conn:
             yield conn
-    
-    @contextmanager 
+
+    @contextmanager
     def batch_conn(self) -> Generator[connection, None, None]:
         """
         Context manager for batch processing operations.
@@ -58,60 +61,64 @@ class BaseController(ABC):
         """
         with self.connection_manager.get_quick_read_connection() as conn:
             yield conn
-            
+
     @property
     def user_id(self) -> int:
         if not self.user_session_service.current_user_id:
-            raise ValueError('User ID is not set')
-        
+            raise ValueError("User ID is not set")
+
         return self.user_session_service.current_user_id
-            
+
     def user_have_transactions(self) -> bool:
         with self.quick_read_conn() as conn:
             transactions_db = TransactionsDBService(conn)
-            
-            return transactions_db.exists(user_id= self.user_id)
-        
+
+            return transactions_db.exists(user_id=self.user_id)
+
     def user_have_potential_duplicates(self) -> bool:
         with self.quick_read_conn() as conn:
             transactions_db = TransactionsDBService(conn)
-            
-            return transactions_db.exists(user_id= self.user_id, duplicate_potential_state= True)
-    
+
+            return transactions_db.exists(user_id=self.user_id, duplicate_potential_state=True)
+
     def get_category_name(self, category_id: int) -> str | None:
         if not category_id:
-            raise ValueError('Category ID is required')
-        
+            raise ValueError("Category ID is required")
+
         with self.quick_read_conn() as conn:
             category_db = CategoryDBService(conn)
-            
+
             return category_db.get_category_name(category_id)
-        
+
     def get_card_name(self, card_id: int) -> str | None:
         if not card_id:
-            raise ValueError('Card ID is required')
-        
+            raise ValueError("Card ID is required")
+
         with self.quick_read_conn() as conn:
             cards_db = CardsDBService(conn)
-            
+
             return cards_db.get_card_name(card_id)
 
-    def transactions_to_df(self, transactions: list[Transaction], to_view: bool = False) -> pd.DataFrame:
+    def transactions_to_df(
+        self, transactions: list[Transaction], to_view: bool = False
+    ) -> pd.DataFrame:
         dicts_to_df: list[dict[str, Any]] = []
-        
+
         for t in transactions:
             dict_to_df = t.model_dump()
-            
+
             if to_view:
-                dict_to_df['category'] = self.get_category_name(t.category_id) if t.category_id else None
-                dict_to_df['card'] = self.get_card_name(t.card_id) if t.card_id else None
-                
-                del dict_to_df['category_id']
-                del dict_to_df['card_id']
-                del dict_to_df['duplicate_potential_state']
-                del dict_to_df['user_id']
-                del dict_to_df['transaction_id']
-            
+                dict_to_df["category"] = (
+                    self.get_category_name(t.category_id) if t.category_id else None
+                )
+                dict_to_df["card"] = self.get_card_name(t.card_id) if t.card_id else None
+
+                del dict_to_df["category_id"]
+                del dict_to_df["card_id"]
+                del dict_to_df["duplicate_potential_state"]
+                del dict_to_df["user_id"]
+                del dict_to_df["transaction_id"]
+
             dicts_to_df.append(dict_to_df)
-            
+
         return pd.DataFrame(dicts_to_df)
