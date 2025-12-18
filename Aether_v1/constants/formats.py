@@ -1,1 +1,1 @@
-AMOUNT_FORMAT: str = '$,.2f'
+AMOUNT_FORMAT: str = "$,.2f"
