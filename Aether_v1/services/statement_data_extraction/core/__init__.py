@@ -1,15 +1,15 @@
 from .interfaces import (
-    Reader, 
-    DocumentAnalyzer, 
-    TextProcessor, 
-    TableBoundaryDetector, 
-    ColumnSegmenter, 
-    RowSegmenter, 
-    Reconstructor,
-    MetadataExtractor,
     ColumnNormalizer,
+    ColumnSegmenter,
+    DocumentAnalyzer,
+    MetadataExtractor,
+    Reader,
+    Reconstructor,
+    RowSegmenter,
+    SpecialDataFiltering,
+    TableBoundaryDetector,
     TableNormalizer,
-    SpecialDataFiltering
+    TextProcessor,
 )
 
 __all__ = [
@@ -23,5 +23,5 @@ __all__ = [
     "MetadataExtractor",
     "ColumnNormalizer",
     "TableNormalizer",
-    "SpecialDataFiltering"
+    "SpecialDataFiltering",
 ]

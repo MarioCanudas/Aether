@@ -1,12 +1,6 @@
-
-from .document_reading import PDFReader
-from .document_analysis import DefaultDocumentAnalyzer
-from .text_processing import DefaultTextProcessor
 from .bank_properties_factory import BankPropertiesFactory
+from .document_analysis import DefaultDocumentAnalyzer
+from .document_reading import PDFReader
+from .text_processing import DefaultTextProcessor
 
-__all__ = [
-    "PDFReader",
-    "DefaultDocumentAnalyzer",
-    "DefaultTextProcessor",
-    "BankPropertiesFactory"
-]
+__all__ = ["PDFReader", "DefaultDocumentAnalyzer", "DefaultTextProcessor", "BankPropertiesFactory"]

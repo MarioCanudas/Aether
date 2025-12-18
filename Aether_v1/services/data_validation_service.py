@@ -1,18 +1,23 @@
-import pandas as pd
-import numpy as np
 from logging import getLogger
-from models.bank_properties import Metadata, StatementType
-from models.tables import TransactionsTable
 from typing import cast
 
+import numpy as np
+import pandas as pd
+from models.bank_properties import Metadata, StatementType
+from models.tables import TransactionsTable
+
 logger = getLogger(__name__)
+
 
 class DataValidationService:
     """
     This class is used to validate the transactions data to prevent duplicates and other errors.
     """
+
     @staticmethod
-    def validate_transactions(transactions: TransactionsTable, metadata: Metadata) -> TransactionsTable:
+    def validate_transactions(
+        transactions: TransactionsTable, metadata: Metadata
+    ) -> TransactionsTable:
         """
         Validate the transactions based on the provided metadata.
 
@@ -34,15 +39,15 @@ class DataValidationService:
             ValueError: If the final balance does not match the expected value based on the initial balance, incomes, and expenses.
         """
         transactions_df = transactions.df.copy()
-        
-        transactions_df['date'] = pd.to_datetime(transactions_df['date'])
 
-        initial_date= pd.to_datetime(metadata.period.start_date)
+        transactions_df["date"] = pd.to_datetime(transactions_df["date"])
+
+        initial_date = pd.to_datetime(metadata.period.start_date)
         final_date = pd.to_datetime(metadata.period.end_date)
 
         # Filter the transactions by the period
         # Filter the transactions by the period
-        mask = (transactions_df['date'] >= initial_date) & (transactions_df['date'] <= final_date)
+        mask = (transactions_df["date"] >= initial_date) & (transactions_df["date"] <= final_date)
         transactions_df = cast(pd.DataFrame, transactions_df[mask])
 
         if metadata.statement_type == StatementType.DEBIT:
