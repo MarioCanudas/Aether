@@ -52,6 +52,9 @@ class Period(BaseModel):
     start_date: date
     end_date: date
     
+    def __str__(self) -> str:
+        return f"{self.start_date} - {self.end_date}"
+    
     @field_validator('end_date')
     @classmethod
     def validate_dates_not_greater(cls, v, info):

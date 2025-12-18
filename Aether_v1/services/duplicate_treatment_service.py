@@ -67,7 +67,7 @@ class DuplicateTreatmentService:
         
         existing_transactions = transactions_db.get_transactions(
             user_id= user_id, 
-            columns= ['transaction_id', 'date', 'amount', 'type', 'bank', 'statement_type'],
+            columns= ['user_id', 'transaction_id', 'category_id', 'date', 'amount', 'type', 'bank', 'card_id', 'statement_type'],
             period= period,
         )
         
@@ -105,7 +105,7 @@ class DuplicateTreatmentService:
                 - 'date': The date of the transaction.
 
         Returns:
-            Tuple[List[Transaction], List[Transaction]]: A tuple containing the duplicated and not duplicated transactions.
+            Tuple[List[Transaction], List[Transaction]]: A tuple containing the not duplicated and duplicated transactions.
         """
         transactions_cleaned = [t.model_dump() for t in transactions]
         df = pd.DataFrame(transactions_cleaned)
@@ -131,6 +131,6 @@ class DuplicateTreatmentService:
         not_duplicated = df.drop(indices_to_remove)
         
         return (
-            [Transaction(**t) for t in duplicated.to_dict(orient='records')], 
-            [Transaction(**t) for t in not_duplicated.to_dict(orient='records')]
+            [Transaction(**t) for t in not_duplicated.to_dict(orient='records')],
+            [Transaction(**t) for t in duplicated.to_dict(orient='records')]
         )

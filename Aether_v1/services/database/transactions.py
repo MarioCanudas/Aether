@@ -326,7 +326,7 @@ class TransactionsDBService(BaseDBService):
             savings= None
         )
         
-    def get_first_initial_balance(self, user_id: int) -> Dict[str, Any]:
+    def get_first_initial_balance(self, user_id: int) -> Optional[Dict[str, Any]]:
         query = f"""
             SELECT {self.date}, {self.amount}, {self.type}
             FROM {self.table_name}
@@ -341,7 +341,12 @@ class TransactionsDBService(BaseDBService):
             'initial_type': TransactionType.INITIAL_BALANCE.value,
         }
         
-        return self.execute_query(query, params= params, fetch= 'one', dict_cursor= True)
+        result = self.execute_query(query, params= params, fetch= 'one', dict_cursor= True)
+        
+        if result:
+            return result
+        else:
+            return None
     
     async def get_max_amounts(self, user_id: int) -> Dict[str, AnalysisAmountsPerPeriod]:
         query = f"""

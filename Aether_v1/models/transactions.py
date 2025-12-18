@@ -2,7 +2,6 @@ from pydantic import BaseModel
 import pandas as pd
 from typing import Optional, List, Any, Dict
 from datetime import date
-from dateutil.relativedelta import relativedelta
 from decimal import Decimal
 from .amounts import TransactionType
 from .bank_properties import BankName, StatementType
@@ -19,12 +18,6 @@ class TransactionKey(BaseModel):
             return False
         else:
             return self.model_dump() == other.model_dump()
-        
-    def __ne__(self, other: 'TransactionKey') -> bool:
-        if not isinstance(other, TransactionKey):
-            return True
-        else:
-            return self.model_dump() != other.model_dump()
     
 
 class Transaction(BaseModel):
@@ -47,14 +40,19 @@ class Transaction(BaseModel):
         else:
             return self.model_dump() == other.model_dump()
         
-    def __ne__(self, other: 'Transaction') -> bool:
-        if not isinstance(other, Transaction):
-            return True
-        else:
-            return self.model_dump() != other.model_dump()
-        
     def __hash__(self) -> int:
-        return hash(tuple(self.model_dump().items()))
+        def _to_hashable(value: Any):
+            if isinstance(value, (list, tuple)):
+                return tuple(_to_hashable(v) for v in value)
+            
+            try:
+                hash(value)
+                return value
+            except TypeError:
+                return repr(value)
+            
+        items = tuple(sorted((k, _to_hashable(v)) for k, v in self.model_dump().items()))
+        return hash(tuple(items))
     
     @property
     def key_values(self) -> List[str]:
@@ -87,10 +85,7 @@ class Transaction(BaseModel):
             'card_id',
             'filename',
         ]
-        
-    @property
-    def key(self) -> TransactionKey:
-        return TransactionKey(**{k: getattr(self, k) for k in self.key_values})
+
         
     def dump_to_add(self) -> Dict[str, Any]:
         record = self.model_dump()
@@ -110,18 +105,18 @@ class Transaction(BaseModel):
             return True
         
         # First case: Gap between the dates is less than 3 days.
-        if relativedelta(self.date, other.date).days <= 3:
-            self_key = (self.amount, self.type, self.bank, self.statement_type)
-            other_key = (other.amount, other.type, other.bank, other.statement_type)
+        if 0 < abs((self.date - other.date).days) <= 3:
+            self_key = (self.amount, self.type, self.bank, self.card_id, self.statement_type)
+            other_key = (other.amount, other.type, other.bank, other.card_id, other.statement_type)
             
             if self_key == other_key:
                 return True
             else:
                 return False
         # Second case: Amount difference is less than $25.00
-        elif abs(self.amount - other.amount) <= Decimal('25.00'):
-            self_key = (self.date, self.type, self.bank, self.statement_type)
-            other_key = (other.date, other.type, other.bank, other.statement_type)
+        elif 0 < abs(self.amount - other.amount) <= Decimal('25.00'):
+            self_key = (self.date, self.type, self.bank, self.card_id, self.statement_type)
+            other_key = (other.date, other.type, other.bank, other.card_id, other.statement_type)
             
             if self_key == other_key:
                 return True
@@ -129,8 +124,8 @@ class Transaction(BaseModel):
                 return False
         # Third case: Banks are different.
         elif self.bank != other.bank:
-            self_key = (self.date, self.amount, self.type, self.statement_type)
-            other_key = (other.date, other.amount, other.type, other.statement_type)
+            self_key = (self.date, self.amount, self.type, self.card_id, self.statement_type)
+            other_key = (other.date, other.amount, other.type, other.card_id, other.statement_type)
             
             if self_key == other_key:
                 return True
@@ -147,8 +142,8 @@ class Transaction(BaseModel):
                 return False
         # Fifth case: Category IDs are different.
         elif self.category_id != other.category_id:
-            self_key = (self.date, self.amount, self.type, self.bank, self.statement_type)
-            other_key = (other.date, other.amount, other.type, other.bank, other.statement_type)
+            self_key = (self.date, self.amount, self.type, self.bank, self.card_id, self.statement_type)
+            other_key = (other.date, other.amount, other.type, other.bank, other.card_id, other.statement_type)
             
             if self_key == other_key:
                 return True
@@ -156,8 +151,8 @@ class Transaction(BaseModel):
                 return False
         # Sixth case: Types are different.
         elif self.type != other.type:
-            self_key = (self.date, abs(self.amount), self.bank, self.statement_type)
-            other_key = (other.date, abs(other.amount), other.bank, other.statement_type)
+            self_key = (self.date, abs(self.amount), self.bank, self.card_id, self.statement_type)
+            other_key = (other.date, abs(other.amount), other.bank, other.card_id, other.statement_type)
             
             if self_key == other_key:
                 return True
@@ -186,6 +181,10 @@ class FilteredTransactionsResult(BaseModel):
     potential_duplicates_to_upload: List[Transaction] = []
     potential_duplicates_to_modify: List[Transaction] = []
     duplicated: List[Transaction] = []
+    
+    @property
+    def potential_duplicates_to_upload_unique(self) -> List[Transaction]:
+        return list(set(self.potential_duplicates_to_upload))
     
     @property
     def clean_df(self) -> pd.DataFrame:

@@ -39,20 +39,20 @@ class UploadStatementsController(BaseController):
         all_transactions_df = pd.concat(all_transactions, ignore_index=True)
         all_transactions_df['user_id'] = self.user_session_service.current_user_id
         all_transactions_df['category_id'] = None
+        all_transactions_df['duplicate_potential_state'] = False
+        all_transactions_df['transaction_id'] = None
         
         if card:
             all_transactions_df['card_id'] = card.card_id
         else:
             all_transactions_df['card_id'] = None
-         
-        records: List[Dict[str, Any]] = all_transactions_df.to_dict(orient='records')
-        
-        return [Transaction(**r) for r in records]
+                     
+        return [Transaction(**r) for r in all_transactions_df.to_dict(orient='records')]
     
     async def filter_transactions(self, transactions: List[Transaction]) -> FilteredTransactionsResult:
         clean_transactions, duplicated_transactions = self.dt_service.eliminate_credit_and_debit_duplicates(transactions)
         
-        with self.quick_read_conn as conn:
+        with self.quick_read_conn() as conn:
             duplicates_results: List[DuplicateResult] = await self.dt_service.detect_duplicates(conn, self.user_id, clean_transactions)
             
         filtered_transactions_result = FilteredTransactionsResult(duplicated= duplicated_transactions)
@@ -73,7 +73,7 @@ class UploadStatementsController(BaseController):
             transactions_db = TransactionsDBService(conn)
             
             if len(filtered_transactions_result.potential_duplicates_to_modify) > 0:
-                transactions_db.update_transactions(list(set(filtered_transactions_result.potential_duplicates_to_modify)))
+                transactions_db.update_transactions(filtered_transactions_result.potential_duplicates_to_modify_unique)
                 
             transactions_to_upload = filtered_transactions_result.potential_duplicates_to_upload + filtered_transactions_result.clean
             

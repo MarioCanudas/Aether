@@ -1,4 +1,4 @@
-from typing import List, Dict
+from typing import List, Dict, Optional
 from models.categories import NewCategory
 from .base_db import BaseDBService
 
@@ -61,3 +61,12 @@ class CategoryDBService(BaseDBService):
                 params = new_category.model_dump() | {'user_id': user_id}
                 
                 self.execute_query(query, params= params)
+                
+    def get_category_name(self, category_id: int) -> Optional[str]:
+        query = f"""
+            SELECT {self.name} FROM {self.table_name} WHERE {self.id_col} = %(category_id)s
+        """
+        
+        result = self.execute_query(query, params= {'category_id': category_id}, fetch= 'one')
+        
+        return result[0] if result else None

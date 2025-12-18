@@ -149,7 +149,7 @@ class BaseDBService(ABC):
     def execute_query(
         self,
         query: str,
-        params: Optional[Dict[str, Any]] = None,
+        params: Optional[Dict[str, Any] | List[Dict[str, Any]]] = None,
         fetch: Optional[Literal['all', 'one']] = None,
         dict_cursor: bool = False,
         batch: Optional[bool] = False,

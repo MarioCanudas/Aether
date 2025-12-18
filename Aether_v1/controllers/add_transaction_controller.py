@@ -9,7 +9,7 @@ from services import (
 )
 from models.bank_properties import BankName
 from models.cards import Card
-from models.transactions import Transaction
+from models.transactions import Transaction, DuplicateResult
 from models.templates import Template, TemplateType
 from .base_controller import BaseController
 
@@ -64,29 +64,30 @@ class AddTransactionController(BaseController):
             
             return result['name']
         
-    def is_exact_duplicate(self, transaction: Transaction) -> bool:
+    def get_duplicate_result(self, transaction: Transaction) -> DuplicateResult:
         dt_service = DuplicateTreatmentService()
         
         with self.quick_read_conn() as conn:
             duplicate_result = asyncio.run(dt_service.detect_duplicates(conn, self.user_id, transaction))
             
-            return duplicate_result.has_exact_duplicates
+            return duplicate_result
+        
+    def modify_potential_duplicate_transactions(self, transactions: List[Transaction]) -> None:
+        transactions_to_modify = []
+        
+        for t in transactions:
+            if not t.duplicate_potential_state:
+                t.duplicate_potential_state = True
+                transactions_to_modify.append(t)
+        
+        with self.batch_conn() as conn:
+            transactions_db = TransactionsDBService(conn)
+            
+            transactions_db.update_transactions(transactions_to_modify)
     
     def add_transaction(self, transaction: Transaction) -> None:
-        dt_service = DuplicateTreatmentService()
-
         with self.session_conn() as conn:
             transactions_db = TransactionsDBService(conn)
-            duplicate_result = asyncio.run(dt_service.detect_duplicates(conn, self.user_id, transaction))
-            
-            if duplicate_result.has_exact_duplicates:
-                raise ValueError('Transaction is an exact duplicate')
-            elif duplicate_result.has_potential_duplicates:
-                transaction.duplicate_potential_state = True
-                
-                transactions_db.update_transactions(duplicate_result.potential_duplicates)
-            else:
-                transaction.duplicate_potential_state = False
             
             transactions_db.add_records([transaction])
             

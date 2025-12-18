@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 from models.cards import Card
 from .base_db import BaseDBService
 
@@ -36,3 +36,10 @@ class CardsDBService(BaseDBService):
         result = self.execute_query(query, params= {'user_id': user_id, 'card_id': card_id}, fetch= 'one', dict_cursor= True)
         
         return Card(**result) if result else None
+    
+    def get_card_name(self, card_id: int) -> Optional[str]:
+        query = f"""SELECT {self.card_name} FROM cards WHERE {self.id_col} = %(card_id)s"""
+        
+        result = self.execute_query(query, params= {'card_id': card_id}, fetch= 'one')
+        
+        return result[0] if result else None
