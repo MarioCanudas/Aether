@@ -48,7 +48,7 @@ class DuplicateTreatmentService:
         # the transaction is an exact and potential duplicate, it will be added to the
         # exactly_duplicates_transactions list.
         for t, exact, potential in zip(
-            existing_transactions, exact_duplicates, potential_duplicates
+            existing_transactions, exact_duplicates, potential_duplicates, strict=True
         ):
             if exact:
                 exactly_duplicates_transactions.append(t)
@@ -117,25 +117,29 @@ class DuplicateTreatmentService:
         transactions: list[Transaction],
     ) -> tuple[list[Transaction], list[Transaction]]:
         """
-        Classificates the duplicate transactions from a financial dataset, specifically targeting credit card payments
-        (abonos) and their corresponding debit transactions (cargos) to avoid double-counting.
+        Classificates the duplicate transactions from a financial dataset, specifically targeting
+        credit card payments (abonos) and their corresponding debit transactions (cargos) to avoid
+        double-counting.
 
         The function identifies:
         1. Credit transactions that are marked as "Abono" in the credit statement.
         2. Debit transactions that are marked as "Cargo" in the debit statement.
         3. Matches debit transactions to credit transactions based on:
             - Equal transaction amounts.
-            - Debit transaction dates less than or equal to the corresponding credit transaction dates..
+            - Debit transaction dates less than or equal to the corresponding credit transaction
+            dates.
 
         Args:
-            transactions (AllTransactionsTable): A table containing financial transaction data with the following expected columns:
+            transactions (AllTransactionsTable): A table containing financial transaction data with
+            the following expected columns:
                 - 'statement_type': Type of statement ('credit' or 'debit').
                 - 'type': Type of transaction ('Abono' for payments, 'Cargo' for charges).
                 - 'amount': The transaction amount.
                 - 'date': The date of the transaction.
 
         Returns:
-            Tuple[List[Transaction], List[Transaction]]: A tuple containing the not duplicated and duplicated transactions.
+            Tuple[List[Transaction], List[Transaction]]: A tuple containing the not duplicated and
+            duplicated transactions.
         """
         transactions_cleaned = [t.model_dump() for t in transactions]
         df = pd.DataFrame(transactions_cleaned)
