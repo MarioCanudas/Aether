@@ -3,6 +3,7 @@ from datetime import date, timedelta
 
 import streamlit as st
 from components import period_select_box
+from constants.dates import MonthLabels
 from constants.views_icons import INCOME_ANALYSIS_ICON
 from controllers import AnalysisController
 from models.dates import Period
@@ -81,17 +82,27 @@ def show_income_analysis():
 
             if income_chart_type == "Daily":
                 with right_2:
-                    year = st.selectbox(
+                    left_3, right_3 = st.columns(2)
+
+                    year: int = left_3.selectbox(
                         label="Select year",
                         options=controller.get_years(),
                         key="income_year_selectbox",
                         index=0,
                     )
 
-                st.subheader("Income per Day")
-                if year:
-                    daily_bar_chart = controller.get_daily_bar_chart("Abono", year)
+                    month = right_3.selectbox(
+                        label="Select month",
+                        options=MonthLabels.get_values(),
+                        key="income_month_selectbox",
+                        index=date.today().month - 1,
+                    )
 
+                st.subheader("Income per Day")
+                if year and month:
+                    month_num = MonthLabels(month).num
+
+                    daily_bar_chart = controller.get_daily_bar_chart("Abono", year, month_num)
                     if daily_bar_chart:
                         st.altair_chart(daily_bar_chart)
                     else:

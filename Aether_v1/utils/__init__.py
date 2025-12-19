@@ -3,6 +3,7 @@ from .helper_functions import (
     clean_amount,
     eliminate_ocr_errors_for_amounts,
     get_min_month,
+    get_month_period,
     give_amount_format,
     identify_date_separator,
     is_amount,
@@ -24,4 +25,5 @@ __all__ = [
     "give_amount_format",
     "months_map",
     "modify_period",
+    "get_month_period",
 ]

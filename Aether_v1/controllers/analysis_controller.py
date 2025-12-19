@@ -16,7 +16,7 @@ from models.views_data import (
     PeriodsOptions,
 )
 from services import DataProcessingService, PlottingService, TransactionsDBService
-from utils import modify_period
+from utils import get_month_period, modify_period
 
 from .base_controller import BaseController
 
@@ -124,12 +124,12 @@ class AnalysisController(BaseController):
         )
 
     def get_daily_bar_chart(
-        self, category: Literal["Abono", "Cargo"], year: int
+        self, category: Literal["Abono", "Cargo"], year: int, month: int
     ) -> alt.Chart | None:
         with self.quick_read_conn() as conn:
             transactions_db = TransactionsDBService(conn)
 
-            period = Period(start_date=date(year, 1, 1), end_date=date(year, 12, 31))
+            period = get_month_period(year, month)
 
             transactions = transactions_db.get_transactions(
                 self.user_id, period=period, amount_types=[TransactionType(category)]

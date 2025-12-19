@@ -256,3 +256,24 @@ def modify_period(period: Period, period_options: PeriodsOptions) -> Period:
             return period
         case PeriodsOptions.SPECIFIC_PERIOD:
             return period
+
+
+def get_month_period(year: int, month: int) -> Period:
+    if month < 1 or month > 12:
+        raise ValueError("Month must be between 1 and 12.")
+
+    correct_period = False
+    last_day = 31
+
+    while not correct_period:
+        if last_day < 28:
+            raise ValueError("Invalid month provided.")
+
+        try:
+            start_date = date(year, month, 1)
+            end_date = date(year, month, last_day)
+            correct_period = True
+        except ValueError:
+            last_day -= 1
+
+    return Period(start_date=start_date, end_date=end_date)
