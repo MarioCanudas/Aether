@@ -113,37 +113,33 @@ class Transaction(BaseModel):
 
             if self_key == other_key:
                 return True
-            else:
-                return False
+
         # Second case: Amount difference is less than $25.00
-        elif 0 < abs(self.amount - other.amount) <= Decimal("25.00"):
+        if 0 < abs(self.amount - other.amount) <= Decimal("25.00"):
             self_key = (self.date, self.type, self.bank, self.card_id, self.statement_type)
             other_key = (other.date, other.type, other.bank, other.card_id, other.statement_type)
 
             if self_key == other_key:
                 return True
-            else:
-                return False
+
         # Third case: Banks are different.
-        elif self.bank != other.bank:
+        if self.bank != other.bank:
             self_key = (self.date, self.amount, self.type, self.card_id, self.statement_type)
             other_key = (other.date, other.amount, other.type, other.card_id, other.statement_type)
 
             if self_key == other_key:
                 return True
-            else:
-                return False
+
         # Fourth case: Card IDs are different.
-        elif self.card_id != other.card_id:
+        if self.card_id != other.card_id:
             self_key = (self.date, self.amount, self.type, self.bank, self.statement_type)
             other_key = (other.date, other.amount, other.type, other.bank, other.statement_type)
 
             if self_key == other_key:
                 return True
-            else:
-                return False
+
         # Fifth case: Category IDs are different.
-        elif self.category_id != other.category_id:
+        if self.category_id != other.category_id:
             self_key = (
                 self.date,
                 self.amount,
@@ -163,10 +159,9 @@ class Transaction(BaseModel):
 
             if self_key == other_key:
                 return True
-            else:
-                return False
+
         # Sixth case: Types are different.
-        elif self.type != other.type:
+        if self.type != other.type:
             self_key = (self.date, abs(self.amount), self.bank, self.card_id, self.statement_type)
             other_key = (
                 other.date,
@@ -178,10 +173,8 @@ class Transaction(BaseModel):
 
             if self_key == other_key:
                 return True
-            else:
-                return False
-        else:
-            return False
+
+        return False
 
 
 class DuplicateResult(BaseModel):
