@@ -3,6 +3,7 @@ from datetime import date, timedelta
 
 import streamlit as st
 from components import period_select_box
+from constants.dates import MonthLabels
 from constants.views_icons import EXPENSES_ANALYSIS_ICON
 from controllers import AnalysisController
 from models.dates import Period
@@ -82,17 +83,27 @@ def show_expenses_analysis():
 
             if expenses_chart_type == "Daily":
                 with right_2:
-                    year = st.selectbox(
+                    left_3, right_3 = st.columns(2)
+
+                    year: int = left_3.selectbox(
                         label="Select year",
                         options=controller.get_years(),
                         key="expenses_year_selectbox",
                         index=0,
                     )
 
+                    month = right_3.selectbox(
+                        label="Select month",
+                        options=MonthLabels.get_values(),
+                        key="expense_month_selectbox",
+                        index=date.today().month - 1,
+                    )
+
                 st.subheader("Expenses per Day")
-                st.subheader("Expenses per Day")
-                if year:
-                    daily_bar_chart = controller.get_daily_bar_chart("Cargo", year)
+                if year and month:
+                    month_num = MonthLabels(month).num
+
+                    daily_bar_chart = controller.get_daily_bar_chart("Cargo", year, month_num)
                     if daily_bar_chart:
                         st.altair_chart(daily_bar_chart)
                     else:

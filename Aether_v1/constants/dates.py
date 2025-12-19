@@ -21,6 +21,10 @@ class MonthLabels(str, Enum):
     def get_values(cls) -> list[str]:
         return [option.value for option in cls]
 
+    @property
+    def num(self) -> int:
+        return self.get_values().index(self.value) + 1
+
 
 MONTH_PATTERNS: MonthPatterns = MonthPatterns(
     num_to_abbr={

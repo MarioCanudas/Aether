@@ -80,8 +80,7 @@ def show_data():
                 filtered_amount_types,  # Fallback
             )
         finally:
-            categories_list = cast(list[str | None], controller.get_categories())
-            categories_list = categories_list.append(None)
+            categories_list = cast(list[str], controller.get_categories())
 
             edited_transactions = st.data_editor(
                 data=filtered_transactions.copy(),
