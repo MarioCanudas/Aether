@@ -43,9 +43,10 @@ class DuplicateTreatmentService:
         potential_duplicates_transactions: list[Transaction] = []
 
         # The transaction could be and exact and potential duplicate at the same time.
-        # So we need to iterate over the transaction and the boolean values to determine the type of duplicate
-        # by checking first for exact and then for potential, so if the transaction is an exact and potential duplicate,
-        # it will be added to the exactly_duplicates_transactions list.
+        # So we need to iterate over the transaction and the boolean values to determine
+        # the type of duplicate by checking first for exact and then for potential, so if
+        # the transaction is an exact and potential duplicate, it will be added to the
+        # exactly_duplicates_transactions list.
         for t, exact, potential in zip(
             existing_transactions, exact_duplicates, potential_duplicates
         ):
@@ -90,6 +91,13 @@ class DuplicateTreatmentService:
         existing_transactions = cast(list[Transaction], existing_transactions)
 
         tasks: list[asyncio.Task[DuplicateResult]] = []
+
+        for t in transactions:
+            if t.transaction_id is not None:
+                # Exclude the transaction itself from the existing transactions
+                existing_transactions = [
+                    et for et in existing_transactions if et.transaction_id != t.transaction_id
+                ]
 
         for t in transactions:
             task = asyncio.create_task(
