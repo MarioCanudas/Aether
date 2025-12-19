@@ -2,6 +2,7 @@ import asyncio
 from typing import cast
 
 import pandas as pd
+from dateutil.relativedelta import relativedelta
 from models.dates import Period
 from models.transactions import DuplicateResult, Transaction
 from psycopg2.extensions import connection
@@ -15,10 +16,16 @@ class DuplicateTreatmentService:
     """
 
     @staticmethod
-    def get_transactions_period(transactions: list[Transaction]) -> Period:
+    def get_transactions_period(transactions: list[Transaction], days_gap_range: int) -> Period:
         dates = [transaction.date for transaction in transactions]
 
-        return Period(start_date=min(dates), end_date=max(dates))
+        min_date = min(dates)
+        max_date = max(dates)
+
+        return Period(
+            start_date=min_date - relativedelta(days=days_gap_range),
+            end_date=max_date + relativedelta(days=days_gap_range),
+        )
 
     @staticmethod
     async def _determine_transaction_duplicates(
@@ -28,6 +35,7 @@ class DuplicateTreatmentService:
         potential_duplicates_task: list[asyncio.Task[bool]] = []
 
         for t in existing_transactions:
+            print(transaction, "----", t)
             exact_duplicates_task.append(asyncio.create_task(transaction.exact_duplicate(t)))
             potential_duplicates_task.append(
                 asyncio.create_task(transaction.potencial_duplicate(t))
@@ -71,7 +79,7 @@ class DuplicateTreatmentService:
             raise ValueError("No transactions provided")
 
         transactions_db = TransactionsDBService(conn)
-        period = self.get_transactions_period(transactions)
+        period = self.get_transactions_period(transactions, 3)
 
         existing_transactions = transactions_db.get_transactions(
             user_id=user_id,
@@ -89,6 +97,7 @@ class DuplicateTreatmentService:
             period=period,
         )
         existing_transactions = cast(list[Transaction], existing_transactions)
+        print("Existing transactions:", existing_transactions)
 
         tasks: list[asyncio.Task[DuplicateResult]] = []
 

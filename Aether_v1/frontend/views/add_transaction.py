@@ -31,6 +31,7 @@ def _confirm_potential_duplicate_upload(duplicate_result: DuplicateResult) -> No
         controller.add_transaction(duplicate_result.transaction)
 
         controller.modify_potential_duplicate_transactions(duplicate_result.potential_duplicates)
+        st.rerun()
 
     if right.button(label="Cancel", type="primary", width="stretch"):
         st.rerun()
