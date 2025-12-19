@@ -96,6 +96,12 @@ class AddTransactionController(BaseController):
 
             transactions_db.add_records([transaction])
 
+    def update_transaction(self, modified_transaction: Transaction) -> None:
+        with self.session_conn() as conn:
+            transactions_db = TransactionsDBService(conn)
+
+            transactions_db.update_transactions([modified_transaction])
+
     def add_template(self, template: Template) -> None:
         with self.session_conn() as conn:
             transactions_templates_db = TemplatesDBService(conn)
