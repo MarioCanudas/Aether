@@ -278,12 +278,12 @@ class TransactionsDBService(BaseDBService):
                     {self.bank} = %({self.bank})s, 
                     {self.statement_type} = %({self.statement_type})s, 
                     {self.filename} = %({self.filename})s,
-                    {self.category_id} = %({self.category_id})s
+                    {self.category_id} = %({self.category_id})s,
                     {self.duplicate_potential_state} = %({self.duplicate_potential_state})s
                 WHERE {self.id_col} = %({self.id_col})s
             """
 
-            self.execute_query(query, params=cast(list[dict[str, Any]], params), batch=True)
+            self.execute_query(query, params=params, batch=True)
 
     def delete_transactions(self, transactions_to_delete: list[Transaction]) -> None:
         if not transactions_to_delete:

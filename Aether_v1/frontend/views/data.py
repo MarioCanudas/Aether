@@ -1,11 +1,34 @@
 from typing import cast
 
+import pandas as pd
 import streamlit as st
+from components import show_edit_transaction
 from constants.views_icons import TRANSACTIONS_ICON
 from controllers import DataViewController
 from models.amounts import TransactionType
 from models.bank_properties import BankName, StatementType
 from models.dates import Period
+from models.transactions import Transaction
+
+
+@st.dialog(title="Edit Transaction", width="medium")
+def _show_edit_transaction_popup(t: Transaction) -> None:
+    show_edit_transaction(t)
+
+
+@st.dialog(title="Confirm Delete")
+def _confirm_delete_transaction(t: Transaction):
+    controller = DataViewController()
+
+    st.warning("""
+        Are you sure you want to delete this transaction?
+        This action cannot be undone.
+    """)
+
+    if st.button("Confirm Delete", key="confirm_delete_transaction", type="primary"):
+        controller.delete_transaction(t)
+        st.success("Transaction deleted successfully.")
+        st.rerun()
 
 
 def show_data():
@@ -151,11 +174,44 @@ def show_data():
                 st.toast("No changes to save", icon=":material/info:")
 
         if controller.user_have_potential_duplicates():
-            potential_dupl_trans = controller.get_potential_duplicate_transactions()
+            dupl_trans = controller.get_potential_duplicate_transactions()
+            dupl_trans_df = controller.transactions_to_df(dupl_trans, to_view=True)
 
-            potential_dupl_trans_df = controller.transactions_to_df(potential_dupl_trans)
+            dupl_trans_df = controller.add_select_widget(dupl_trans_df)
 
-            st.dataframe(potential_dupl_trans_df)
+            # Get the columns to disable editing except "To edit"
+            disabled_columns: list[str] = dupl_trans_df.columns.tolist()
+            disabled_columns.remove("To edit")
+
+            st.subheader("Potential Duplicate Transactions")
+            edited_dupl_trans = st.data_editor(
+                data=dupl_trans_df,
+                hide_index=True,
+                disabled=disabled_columns,
+            )
+
+            to_edit_col = cast(pd.Series, edited_dupl_trans["To edit"])
+            just_one_selected = to_edit_col.sum() == 1
+
+            if just_one_selected:
+                id_to_edit = to_edit_col.to_list().index(True)
+                transaction_to_edit = dupl_trans[id_to_edit]
+            else:
+                st.info("Please select exactly one transaction to treat.")
+
+            left, center, right = st.columns(3)
+
+            if left.button("Ignore", key="ignore_dupl_trans", disabled=not just_one_selected):
+                controller.ignore_duplicate_transaction(transaction_to_edit)
+                st.rerun()
+
+            if center.button("Edit", key="edit_dupl_trans", disabled=not just_one_selected):
+                _show_edit_transaction_popup(transaction_to_edit)
+
+            if right.button("Delete", key="delete_dupl_trans", disabled=not just_one_selected):
+                _confirm_delete_transaction(transaction_to_edit)
+        else:
+            st.success("No potential duplicate transactions found.")
 
     else:
         st.info("No transactions available. Please upload files or input transactions manually.")

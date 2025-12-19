@@ -2,6 +2,7 @@ import asyncio
 from typing import cast
 
 import pandas as pd
+from dateutil.relativedelta import relativedelta
 from models.dates import Period
 from models.transactions import DuplicateResult, Transaction
 from psycopg2.extensions import connection
@@ -15,10 +16,16 @@ class DuplicateTreatmentService:
     """
 
     @staticmethod
-    def get_transactions_period(transactions: list[Transaction]) -> Period:
+    def get_transactions_period(transactions: list[Transaction], days_gap_range: int) -> Period:
         dates = [transaction.date for transaction in transactions]
 
-        return Period(start_date=min(dates), end_date=max(dates))
+        min_date = min(dates)
+        max_date = max(dates)
+
+        return Period(
+            start_date=min_date - relativedelta(days=days_gap_range),
+            end_date=max_date + relativedelta(days=days_gap_range),
+        )
 
     @staticmethod
     async def _determine_transaction_duplicates(
@@ -28,6 +35,7 @@ class DuplicateTreatmentService:
         potential_duplicates_task: list[asyncio.Task[bool]] = []
 
         for t in existing_transactions:
+            print(transaction, "----", t)
             exact_duplicates_task.append(asyncio.create_task(transaction.exact_duplicate(t)))
             potential_duplicates_task.append(
                 asyncio.create_task(transaction.potencial_duplicate(t))
@@ -43,11 +51,12 @@ class DuplicateTreatmentService:
         potential_duplicates_transactions: list[Transaction] = []
 
         # The transaction could be and exact and potential duplicate at the same time.
-        # So we need to iterate over the transaction and the boolean values to determine the type of duplicate
-        # by checking first for exact and then for potential, so if the transaction is an exact and potential duplicate,
-        # it will be added to the exactly_duplicates_transactions list.
+        # So we need to iterate over the transaction and the boolean values to determine
+        # the type of duplicate by checking first for exact and then for potential, so if
+        # the transaction is an exact and potential duplicate, it will be added to the
+        # exactly_duplicates_transactions list.
         for t, exact, potential in zip(
-            existing_transactions, exact_duplicates, potential_duplicates
+            existing_transactions, exact_duplicates, potential_duplicates, strict=True
         ):
             if exact:
                 exactly_duplicates_transactions.append(t)
@@ -70,7 +79,7 @@ class DuplicateTreatmentService:
             raise ValueError("No transactions provided")
 
         transactions_db = TransactionsDBService(conn)
-        period = self.get_transactions_period(transactions)
+        period = self.get_transactions_period(transactions, 3)
 
         existing_transactions = transactions_db.get_transactions(
             user_id=user_id,
@@ -88,8 +97,16 @@ class DuplicateTreatmentService:
             period=period,
         )
         existing_transactions = cast(list[Transaction], existing_transactions)
+        print("Existing transactions:", existing_transactions)
 
         tasks: list[asyncio.Task[DuplicateResult]] = []
+
+        for t in transactions:
+            if t.transaction_id is not None:
+                # Exclude the transaction itself from the existing transactions
+                existing_transactions = [
+                    et for et in existing_transactions if et.transaction_id != t.transaction_id
+                ]
 
         for t in transactions:
             task = asyncio.create_task(
@@ -109,25 +126,29 @@ class DuplicateTreatmentService:
         transactions: list[Transaction],
     ) -> tuple[list[Transaction], list[Transaction]]:
         """
-        Classificates the duplicate transactions from a financial dataset, specifically targeting credit card payments
-        (abonos) and their corresponding debit transactions (cargos) to avoid double-counting.
+        Classificates the duplicate transactions from a financial dataset, specifically targeting
+        credit card payments (abonos) and their corresponding debit transactions (cargos) to avoid
+        double-counting.
 
         The function identifies:
         1. Credit transactions that are marked as "Abono" in the credit statement.
         2. Debit transactions that are marked as "Cargo" in the debit statement.
         3. Matches debit transactions to credit transactions based on:
             - Equal transaction amounts.
-            - Debit transaction dates less than or equal to the corresponding credit transaction dates..
+            - Debit transaction dates less than or equal to the corresponding credit transaction
+            dates.
 
         Args:
-            transactions (AllTransactionsTable): A table containing financial transaction data with the following expected columns:
+            transactions (AllTransactionsTable): A table containing financial transaction data with
+            the following expected columns:
                 - 'statement_type': Type of statement ('credit' or 'debit').
                 - 'type': Type of transaction ('Abono' for payments, 'Cargo' for charges).
                 - 'amount': The transaction amount.
                 - 'date': The date of the transaction.
 
         Returns:
-            Tuple[List[Transaction], List[Transaction]]: A tuple containing the not duplicated and duplicated transactions.
+            Tuple[List[Transaction], List[Transaction]]: A tuple containing the not duplicated and
+            duplicated transactions.
         """
         transactions_cleaned = [t.model_dump() for t in transactions]
         df = pd.DataFrame(transactions_cleaned)

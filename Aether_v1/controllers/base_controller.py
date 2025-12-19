@@ -28,6 +28,19 @@ class BaseController:
         self.connection_manager = ConnectionManagementService()
         self.user_session_service = UserSessionService()
 
+    @property
+    def formated_columns(self) -> dict[str, str]:
+        return {
+            "date": "Date",
+            "description": "Description",
+            "amount": "Amount",
+            "type": "Type",
+            "bank": "Bank",
+            "statement_type": "Statement Type",
+            "category": "Category",
+            "card": "Card",
+        }
+
     @contextmanager
     def session_conn(self) -> Generator[connection, None, None]:
         """
@@ -114,7 +127,12 @@ class BaseController:
                 del dict_to_df["duplicate_potential_state"]
                 del dict_to_df["user_id"]
                 del dict_to_df["transaction_id"]
+                del dict_to_df["filename"]
 
             dicts_to_df.append(dict_to_df)
 
-        return pd.DataFrame(dicts_to_df)
+        return (
+            pd.DataFrame(dicts_to_df).rename(columns=self.formated_columns)
+            if to_view
+            else pd.DataFrame(dicts_to_df)
+        )

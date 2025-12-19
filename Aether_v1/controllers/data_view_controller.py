@@ -195,3 +195,25 @@ class DataViewController(BaseController):
                     user_id=self.user_id, duplicate_potential_state=True
                 ),
             )
+
+    @staticmethod
+    def add_select_widget(df: pd.DataFrame) -> pd.DataFrame:
+        columns: list[str] = df.columns.tolist()
+
+        df["To edit"] = False
+
+        return cast(pd.DataFrame, df[["To edit", *columns]])
+
+    def ignore_duplicate_transaction(self, t: Transaction) -> None:
+        with self.session_conn() as conn:
+            transactions_db = TransactionsDBService(conn)
+
+            t.duplicate_potential_state = False
+
+            transactions_db.update_transactions([t])
+
+    def delete_transaction(self, t: Transaction) -> None:
+        with self.session_conn() as conn:
+            transactions_db = TransactionsDBService(conn)
+
+            transactions_db.delete_transactions([t])
