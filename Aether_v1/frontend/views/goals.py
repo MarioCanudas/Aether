@@ -22,7 +22,7 @@ def show_goals():
         type="primary",
         help="Add a new goal",
         key="new_goal_button",
-        use_container_width=True,
+        width="stretch",
     ):
         new_goal_popup()
 
@@ -92,7 +92,7 @@ def show_goals():
         st.pyplot(progress_donut_chart)
 
         progress_line_chart = controller.get_line_chart_goal_progress(goal_info)
-        st.altair_chart(progress_line_chart, use_container_width=True)
+        st.altair_chart(progress_line_chart, width="stretch")
 
         progress_score = controller.get_goal_progress_score(goal_info)
         st.markdown(
@@ -109,7 +109,7 @@ def show_goals():
         if df.empty:
             st.write("No current goals")
         else:
-            st.dataframe(df, hide_index=True, use_container_width=True)
+            st.dataframe(df, hide_index=True, width="stretch")
 
     with st.expander("Past Goals"):
         df = controller.get_past_goals()
@@ -117,4 +117,4 @@ def show_goals():
         if df.empty:
             st.write("No past goals")
         else:
-            st.dataframe(df, hide_index=True, use_container_width=True)
+            st.dataframe(df, hide_index=True, width="stretch")

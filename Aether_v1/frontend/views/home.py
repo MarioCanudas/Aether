@@ -128,7 +128,7 @@ def show_home():
                     .encode(x=alt.X("month_label:O", sort=MonthLabels.get_values()))
                     .properties(title="Income vs Expenses (last 6 months)")
                 )
-                st.altair_chart(final_chart, use_container_width=True)
+                st.altair_chart(final_chart, width="stretch")
 
         with right:
             label = home_view_data.label
