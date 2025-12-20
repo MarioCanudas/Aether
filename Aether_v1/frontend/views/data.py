@@ -156,7 +156,6 @@ def show_data():
                     "statement_type",
                     "filename",
                 ],
-                use_container_width=True,
                 hide_index=True,
                 width="stretch",
                 num_rows="dynamic",
