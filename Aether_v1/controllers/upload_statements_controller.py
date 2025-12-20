@@ -6,6 +6,7 @@ import pandas as pd
 from models.cards import Card
 from models.transactions import DuplicateResult, FilteredTransactionsResult, Transaction
 from services import (
+    AutomaticCategorizationService,
     CardsDBService,
     DataProcessingService,
     DataValidationService,
@@ -25,6 +26,7 @@ class UploadStatementsController(BaseController):
         self.data_processing_service = DataProcessingService()
         self.data_validation_service = DataValidationService()
         self.dt_service = DuplicateTreatmentService()
+        self.ac_service = AutomaticCategorizationService()
 
     def process_uploaded_files(
         self, uploaded_files: list[BytesIO], card: Card | None = None
@@ -97,6 +99,22 @@ class UploadStatementsController(BaseController):
 
         return filtered_transactions_result
 
+    def _auto_classiy_transactions(self, transactions: list[Transaction]) -> list[Transaction]:
+        categories = self.get_categories_names()
+        assert isinstance(categories, list), "Categories should be a list of strings"
+
+        categorizaded_map = self.ac_service.categorize_transactions(transactions, categories)
+
+        categories_map = self.get_categories_names(maped=True)
+        assert isinstance(categories_map, dict), "Categories map should be a dict of str to int"
+
+        for t in transactions:
+            category = categorizaded_map.get(t)
+            if category is not None:
+                t.category_id = categories_map.get(category)
+
+        return transactions
+
     def upload_transactions(self, filtered_transactions_result: FilteredTransactionsResult) -> None:
         with self.batch_conn() as conn:
             transactions_db = TransactionsDBService(conn)
@@ -112,7 +130,7 @@ class UploadStatementsController(BaseController):
                 )
                 transactions_db.update_transactions(unique_potential)
 
-            transactions_to_upload = (
+            transactions_to_upload = self._auto_classiy_transactions(
                 filtered_transactions_result.potential_duplicates_to_upload
                 + filtered_transactions_result.clean
             )

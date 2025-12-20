@@ -90,6 +90,15 @@ class BaseController:
 
             return transactions_db.exists(user_id=self.user_id, duplicate_potential_state=True)
 
+    def get_categories_names(self, maped: bool = False) -> list[str] | dict[str, int]:
+        with self.quick_read_conn() as conn:
+            category_db = CategoryDBService(conn)
+
+            if maped:
+                return category_db.get_categories_by_user_mapped(self.user_id)
+            else:
+                return category_db.get_categories_by_user(self.user_id)
+
     def get_category_name(self, category_id: int) -> str | None:
         if not category_id:
             raise ValueError("Category ID is required")
