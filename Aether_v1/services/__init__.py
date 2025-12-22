@@ -1,3 +1,4 @@
+from .automatic_categorization_service import AutomaticCategorizationService
 from .connection_management_service import ConnectionManagementService
 from .data_processing_service import DataProcessingService
 from .data_validation_service import DataValidationService
@@ -28,4 +29,5 @@ __all__ = [
     "TemplatesDBService",
     "CardsDBService",
     "DuplicateTreatmentService",
+    "AutomaticCategorizationService",
 ]

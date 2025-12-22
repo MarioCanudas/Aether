@@ -30,6 +30,8 @@ def confirm_upload_popup(transactions: list[Transaction]) -> None:
             "These transactions will be uploaded as potential duplicates. You can review them in the Transactions view."
         )
 
+    autocacategorized_transactions = st.checkbox("Autoclassify transactions with LLM", value=True)
+
     if len(filtered_transactions_result.duplicated) > 0:
         st.subheader("Duplicated transactions")
         st.dataframe(
@@ -42,6 +44,6 @@ def confirm_upload_popup(transactions: list[Transaction]) -> None:
         label="Confirm",
         help="This will update the database with the new transactions. If you are not sure just close this popup",
     ):
-        controller.upload_transactions(filtered_transactions_result)
+        controller.upload_transactions(filtered_transactions_result, autocacategorized_transactions)
         st.toast("Transactions uploaded successfully")
         st.rerun()

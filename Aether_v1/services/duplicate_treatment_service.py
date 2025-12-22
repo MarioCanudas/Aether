@@ -35,7 +35,6 @@ class DuplicateTreatmentService:
         potential_duplicates_task: list[asyncio.Task[bool]] = []
 
         for t in existing_transactions:
-            print(transaction, "----", t)
             exact_duplicates_task.append(asyncio.create_task(transaction.exact_duplicate(t)))
             potential_duplicates_task.append(
                 asyncio.create_task(transaction.potencial_duplicate(t))
@@ -97,7 +96,6 @@ class DuplicateTreatmentService:
             period=period,
         )
         existing_transactions = cast(list[Transaction], existing_transactions)
-        print("Existing transactions:", existing_transactions)
 
         tasks: list[asyncio.Task[DuplicateResult]] = []
 
