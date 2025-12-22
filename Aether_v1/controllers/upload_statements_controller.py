@@ -115,7 +115,11 @@ class UploadStatementsController(BaseController):
 
         return transactions
 
-    def upload_transactions(self, filtered_transactions_result: FilteredTransactionsResult) -> None:
+    def upload_transactions(
+        self,
+        filtered_transactions_result: FilteredTransactionsResult,
+        autocacategorized: bool,
+    ) -> None:
         with self.batch_conn() as conn:
             transactions_db = TransactionsDBService(conn)
 
@@ -130,9 +134,16 @@ class UploadStatementsController(BaseController):
                 )
                 transactions_db.update_transactions(unique_potential)
 
-            transactions_to_upload = self._auto_classiy_transactions(
-                filtered_transactions_result.potential_duplicates_to_upload
-                + filtered_transactions_result.clean
+            transactions_to_upload = (
+                self._auto_classiy_transactions(
+                    filtered_transactions_result.potential_duplicates_to_upload
+                    + filtered_transactions_result.clean
+                )
+                if autocacategorized
+                else (
+                    filtered_transactions_result.potential_duplicates_to_upload
+                    + filtered_transactions_result.clean
+                )
             )
 
             if len(transactions_to_upload) > 0:
