@@ -1,13 +1,12 @@
 import re
 from functools import cache
-from typing import cast
 
-import pandas as pd
 from constants.banks_properties import BANKS_CODES
 from models.bank_properties import BankName, BankProperties, StatementType
+from models.validators import GenericsValidator
 from utils import search_phrase_in_df
 
-from ..core import DocumentAnalyzer, Reader
+from ..core import DocumentAnalyzer
 from .bank_properties_factory import BankPropertiesFactory
 
 
@@ -19,9 +18,13 @@ class DefaultDocumentAnalyzer(DocumentAnalyzer):
         document_reader (DocumentReader): A document reader object.
     """
 
-    def __init__(self, reader: Reader):
-        super().__init__(reader)
-        self.bank_properties_factory = BankPropertiesFactory()
+    @property
+    def bank_properties_factory(self) -> BankPropertiesFactory:
+        return BankPropertiesFactory()
+
+    @property
+    def generics_validator(self) -> GenericsValidator:
+        return GenericsValidator()
 
     def detect_bank_in_footer(self) -> BankName | None:
         """
@@ -44,7 +47,7 @@ class DefaultDocumentAnalyzer(DocumentAnalyzer):
             df_footer = extracted_words.df[
                 extracted_words.df["bottom"] > document_height - footer_threshold
             ]  # Filter the rows that are in the footer
-            df_footer = cast(pd.DataFrame, df_footer)
+            df_footer = self.generics_validator.validate_dataframe(df_footer)
 
             # Convert all footer text to lowercase for case-insensitive searches
             footer_text = df_footer["text"].apply(lambda x: x.lower())

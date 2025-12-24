@@ -1,8 +1,9 @@
-from typing import Any, cast
+from typing import Any
 
 import pandas as pd
 from models.delimitations import ColumnDelimitations
 from models.tables import GroupedRows
+from models.validators import GenericsValidator
 
 from ..core import ColumnSegmenter, RowSegmenter
 
@@ -71,13 +72,18 @@ class DefaultColumnSegmenter(ColumnSegmenter):
 
 
 class DefaultRowSegmenter(RowSegmenter):
+    @property
+    def generics_validator(self) -> GenericsValidator:
+        return GenericsValidator()
+
     def get_row_threshold(self) -> float:
         df_filtered_words = self.filtered_table_words.df
 
         top_diffs = df_filtered_words.groupby("page")["top"].diff()
-        top_diffs = cast(pd.Series, top_diffs)
+        top_diffs = self.generics_validator.validate_series(top_diffs)
 
-        positive_diffs = cast(pd.Series, top_diffs[top_diffs >= 0]).dropna()
+        positive_diffs = self.generics_validator.validate_series(top_diffs[top_diffs >= 0])
+        positive_diffs = positive_diffs.dropna()
 
         q1 = positive_diffs.quantile(0.25)
         q3 = positive_diffs.quantile(0.75)
@@ -89,12 +95,15 @@ class DefaultRowSegmenter(RowSegmenter):
         filtered_diffs = positive_diffs[
             (positive_diffs >= lower_bound) & (positive_diffs <= upper_bound)
         ]
+        filtered_diffs = self.generics_validator.validate_series(filtered_diffs)
 
         min_threshold = 2
         max_threshold = 7
 
-        median: float = cast(Any, filtered_diffs).median()
-        return cast(float, min(max(median, min_threshold), max_threshold))
+        median = filtered_diffs.median()
+        if not isinstance(median, float):
+            raise ValueError("Could not compute a valid median for row threshold.")
+        return min(max(median, min_threshold), max_threshold)
 
     def group_rows(self) -> GroupedRows:
         df_filtered_words = self.filtered_table_words.df

@@ -1,10 +1,10 @@
 from logging import getLogger
-from typing import cast
 
 import numpy as np
 import pandas as pd
 from models.bank_properties import Metadata, StatementType
 from models.tables import TransactionsTable
+from models.validators import GenericsValidator
 
 logger = getLogger(__name__)
 
@@ -14,9 +14,11 @@ class DataValidationService:
     This class is used to validate the transactions data to prevent duplicates and other errors.
     """
 
-    @staticmethod
+    def __init__(self):
+        self.generics_validator = GenericsValidator()
+
     def validate_transactions(
-        transactions: TransactionsTable, metadata: Metadata
+        self, transactions: TransactionsTable, metadata: Metadata
     ) -> TransactionsTable:
         """
         Validate the transactions based on the provided metadata.
@@ -46,9 +48,8 @@ class DataValidationService:
         final_date = pd.to_datetime(metadata.period.end_date)
 
         # Filter the transactions by the period
-        # Filter the transactions by the period
         mask = (transactions_df["date"] >= initial_date) & (transactions_df["date"] <= final_date)
-        transactions_df = cast(pd.DataFrame, transactions_df[mask])
+        transactions_df = self.generics_validator.validate_dataframe(transactions_df[mask])
 
         if metadata.statement_type == StatementType.DEBIT:
             initial_balance = metadata.balances.initial

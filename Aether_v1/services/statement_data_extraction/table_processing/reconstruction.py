@@ -1,12 +1,13 @@
 import re
 from functools import cache
-from typing import Any, cast
+from typing import Any
 
 import numpy as np
 import pandas as pd
 from models.amounts import AmountColumns
 from models.delimitations import ColumnDelimitations
 from models.tables import ReconstructedTable
+from models.validators import GenericsValidator
 from sklearn.cluster import KMeans
 from utils import classify_words, identify_date_separator
 
@@ -14,6 +15,10 @@ from ..core import Reconstructor
 
 
 class TableReconstructor(Reconstructor):
+    @property
+    def generics_validator(self) -> GenericsValidator:
+        return GenericsValidator()
+
     @cache
     def get_classified_rows(self) -> pd.DataFrame:
         """Classifies each word from the grouped rows into date, description or amount columns"""
@@ -142,13 +147,11 @@ class TableReconstructor(Reconstructor):
         n_amount_columns = len(all_amount_columns)
 
         X = np.array(all_x0).reshape(-1, 1)
-        # `init` and `n_init` accept non‑string values at runtime, but some type
-        # stubs are stricter. We use `cast(Any, ...)` to document this usage
-        # without changing behavior.
+        # `init` and `n_init` accept non‑string values at runtime
         kmeans = KMeans(
             n_clusters=n_amount_columns,
-            init=cast(Any, column_centroids),
-            n_init=cast(Any, 1),
+            init=column_centroids,  # type: ignore
+            n_init=3,  # type: ignore
         )
         clusters = kmeans.fit_predict(X)
 
@@ -338,10 +341,10 @@ class TableReconstructor(Reconstructor):
             )
         ]
 
-        date_series = cast(pd.Series, df_merged["date"])
+        date_series = self.generics_validator.validate_series(df_merged["date"])
         mask = date_series.str.match(date_pattern, na=False)
 
-        df_mask = cast(pd.DataFrame, df_merged[mask])
+        df_mask = self.generics_validator.validate_dataframe(df_merged[mask])
         df_filtered = df_mask.reset_index(drop=True)
 
         return ReconstructedTable(df=df_filtered, amount_columns=amount_columns)

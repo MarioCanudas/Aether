@@ -1,6 +1,6 @@
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Any, Literal, cast
+from typing import Any, Literal
 
 from dateutil.relativedelta import relativedelta
 from models.amounts import TransactionType
@@ -211,13 +211,9 @@ class TransactionsDBService(BaseDBService):
 
         if result and isinstance(result, list):
             if transaction_model:
-                transactions = [Transaction(**r) for r in result if isinstance(r, dict)]
-
-                return cast(list[Transaction], transactions)
+                return [Transaction(**r) for r in result if isinstance(r, dict)]
             else:
-                transactions = [r for r in result if isinstance(r, dict)]
-
-                return cast(list[dict[str, Any]], transactions)
+                return [r for r in result if isinstance(r, dict)]
         return []
 
     def get_transactions_period(self, user_id: int) -> Period:
@@ -259,7 +255,7 @@ class TransactionsDBService(BaseDBService):
                 VALUES ({", ".join(f"%({col})s" for col in record_columns)})
             """
 
-            self.execute_query(query, params=cast(list[dict[str, Any]], records), batch=True)
+            self.execute_query(query, params=records, batch=True)
 
     def update_transactions(self, modified_transactions: list[Transaction]) -> None:
         if not modified_transactions:

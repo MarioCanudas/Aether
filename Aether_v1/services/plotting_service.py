@@ -12,7 +12,6 @@ from models.amounts import TransactionType
 from models.configs import DonutChartConfig
 from models.financial import FinancialStatus
 from models.goals import GoalInfo
-from pandas import DataFrame
 
 
 class PlottingService:
@@ -81,7 +80,7 @@ class PlottingService:
 
         return fig
 
-    async def get_income_vs_expenses_bar_chart(self, last_six_months: DataFrame) -> alt.Chart:
+    async def get_income_vs_expenses_bar_chart(self, last_six_months: pd.DataFrame) -> alt.Chart:
         bar_chart = (
             alt.Chart(last_six_months)
             .mark_bar()
@@ -112,7 +111,7 @@ class PlottingService:
 
         return bar_chart
 
-    async def get_balance_line_chart(self, balance_six_months: DataFrame) -> alt.Chart:
+    async def get_balance_line_chart(self, balance_six_months: pd.DataFrame) -> alt.Chart:
         line_chart = (
             alt.Chart(balance_six_months)
             .mark_line(
@@ -133,7 +132,7 @@ class PlottingService:
         return line_chart
 
     def monthly_bar_chart(
-        self, monthly_results: DataFrame, category: Literal["Abono", "Cargo"]
+        self, monthly_results: pd.DataFrame, category: Literal["Abono", "Cargo"]
     ) -> alt.Chart:
         bar_chart = (
             alt.Chart(monthly_results)
@@ -163,7 +162,7 @@ class PlottingService:
         return bar_chart
 
     def daily_bar_chart(
-        self, amounts_per_day: DataFrame, category: Literal["Abono", "Cargo"]
+        self, amounts_per_day: pd.DataFrame, category: Literal["Abono", "Cargo"]
     ) -> alt.Chart:
         bar_chart = (
             alt.Chart(amounts_per_day)
@@ -191,7 +190,7 @@ class PlottingService:
         return bar_chart
 
     def category_amount_bar_chart(
-        self, data: DataFrame, category: Literal["Abono", "Cargo"]
+        self, data: pd.DataFrame, category: Literal["Abono", "Cargo"]
     ) -> alt.Chart | alt.LayerChart:
         base = alt.Chart(data).encode(
             x=alt.X(
@@ -253,7 +252,7 @@ class PlottingService:
         return fig
 
     @staticmethod
-    def goal_transactions_line_chart(goal_info: GoalInfo, transactions: DataFrame) -> alt.Chart:
+    def goal_transactions_line_chart(goal_info: GoalInfo, transactions: pd.DataFrame) -> alt.Chart:
         target_amount = float(goal_info.amount + goal_info.added_amount)
 
         days = (goal_info.end_date - goal_info.start_date).days

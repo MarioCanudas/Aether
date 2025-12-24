@@ -8,6 +8,7 @@ from typing import Any, Literal
 
 import psycopg2
 import psycopg2.extras
+from models.validators import GenericsValidator, TransactionValidator
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +24,9 @@ class BaseDBService(ABC):
         self.cursor: psycopg2.extensions.cursor | None = None
         self._transaction_level = 0
         self._savepoints: list[str] = []
+
+        self.generics_validator = GenericsValidator()
+        self.transaction_validator = TransactionValidator()
 
     @property
     @abstractmethod
@@ -190,7 +194,6 @@ class BaseDBService(ABC):
 
         result = self.execute_query(query, params={"id": id}, fetch="one", dict_cursor=True)
 
-        # Explicitly cast or check, but since execute_query returns dict | None when dict_cursor=True and fetch='one'
         if result and isinstance(result, dict):
             return result
         return None

@@ -1,11 +1,12 @@
 import re
-from typing import Any, cast
+from typing import Any
 
 import pandas as pd
 from models.amounts import AmountColumns, AmountSigns
 from models.bank_properties import BankProperties
 from models.dates import DateGroups
 from models.tables import ReconstructedTable, TransactionsTable
+from models.validators import GenericsValidator
 from utils import clean_amount
 
 from ..core import ColumnNormalizer, TableNormalizer
@@ -121,6 +122,10 @@ class DateNormalizer(ColumnNormalizer):
 
 
 class AmountNormalizer(ColumnNormalizer):
+    @property
+    def generics_validator(self) -> GenericsValidator:
+        return GenericsValidator()
+
     @staticmethod
     def normalize_amount_for_single_column(value: str | float, amount_signs: AmountSigns) -> float:
         """
@@ -225,13 +230,9 @@ class AmountNormalizer(ColumnNormalizer):
         Routes amount normalization based on column structure.
         Uses single-column method for unified amounts or multi-column method for separate income/expense.
         """
-        # Route based on input type. We explicitly cast the result of `apply`
-        # because pandas' type stubs allow `DataFrame | Series`, but in this
-        # usage we always get a `Series`.
         if amount_columns.is_mono_column:
             column = reconstructed_table.df[amount_columns.column]
-            return cast(
-                pd.Series,
+            return self.generics_validator.validate_series(
                 column.apply(
                     lambda value: self.normalize_amount_for_single_column(
                         value,
@@ -241,8 +242,7 @@ class AmountNormalizer(ColumnNormalizer):
             )
         else:
             columns = reconstructed_table.df[amount_columns.all_list]
-            return cast(
-                pd.Series,
+            return self.generics_validator.validate_series(
                 columns.apply(
                     lambda row: self.normalize_amount_for_multiple_columns(
                         row,
@@ -254,6 +254,10 @@ class AmountNormalizer(ColumnNormalizer):
 
 
 class DefaultTableNormalizer(TableNormalizer):
+    @property
+    def generic_validator(self) -> GenericsValidator:
+        return GenericsValidator()
+
     def normalize_table(self, years: list[int], filename: str) -> TransactionsTable:
         """
         Main method that orchestrates the complete table normalization process.
@@ -277,18 +281,13 @@ class DefaultTableNormalizer(TableNormalizer):
         normalized_table = TransactionsTable(df=pd.DataFrame())
 
         # Normalize dates
-        # Casting to DateNormalizer to satisfy type checker if needed, or rely on duck typing if Python
-        # But here explicit call.
         if isinstance(date_normalizer, DateNormalizer):
             normalized_table.dates = date_normalizer.normalize_column(
                 reconstructed_table, self.bank_properties, years
             )
 
-        # Restrict descriptions to 500 characters. Cast is used to satisfy the
-        # type checker because `apply` may be typed as returning a DataFrame or
-        # Series, but here it is always a Series.
-        normalized_table.descriptions = cast(
-            pd.Series,
+        # Restrict descriptions to 500 characters
+        normalized_table.descriptions = self.generic_validator.validate_series(
             reconstructed_table.descriptions.apply(lambda x: x[:500]),
         )
 
@@ -303,8 +302,7 @@ class DefaultTableNormalizer(TableNormalizer):
 
         # Add transaction type, ensuring the result is treated as a Series for
         # static type checking purposes.
-        normalized_table.types = cast(
-            pd.Series,
+        normalized_table.types = self.generic_validator.validate_series(
             normalized_table.amounts.apply(
                 lambda amount: "Abono" if amount > 0 else "Cargo",
             ),
