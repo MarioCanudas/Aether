@@ -1,5 +1,4 @@
 from decimal import Decimal
-from typing import cast
 
 import altair as alt
 from pydantic import BaseModel, ConfigDict, field_validator
@@ -50,60 +49,41 @@ class AnalysisAmounts(BaseModel):
                 "Accumulated amount, max amount and frecuency must be AnalysisAmountsPerPeriod"
             )
 
-        # At this point, we know they are AnalysisAmountsPerPeriod, but type checker doesn't.
-        # We use cast to inform the type checker.
-        acc_amount = cast(AnalysisAmountsPerPeriod, self.accumulated_amount)
-        max_amount = cast(AnalysisAmountsPerPeriod, self.max_amount)
-        frec_amount = cast(AnalysisAmountsPerPeriod, self.frecuency)
+        acc_amount = self.accumulated_amount
+        max_amount = self.max_amount
+        frec_amount = self.frecuency
+
+        if not isinstance(acc_amount, AnalysisAmountsPerPeriod):
+            raise ValueError("accumulated_amount is not of type AnalysisAmountsPerPeriod")
+        if not isinstance(max_amount, AnalysisAmountsPerPeriod):
+            raise ValueError("max_amount is not of type AnalysisAmountsPerPeriod")
+        if not isinstance(frec_amount, AnalysisAmountsPerPeriod):
+            raise ValueError("frecuency is not of type AnalysisAmountsPerPeriod")
 
         match key:
             case PeriodsOptions.ALL_TIME:
                 return AnalysisAmounts(
-                    accumulated_amount=cast(Decimal, acc_amount.all_time)
-                    if isinstance(acc_amount.all_time, Decimal)
-                    else Decimal(acc_amount.all_time),
-                    max_amount=cast(Decimal, max_amount.all_time)
-                    if isinstance(max_amount.all_time, Decimal)
-                    else Decimal(max_amount.all_time),
-                    frecuency=cast(int, frec_amount.all_time)
-                    if isinstance(frec_amount.all_time, int)
-                    else int(frec_amount.all_time),
+                    accumulated_amount=Decimal(acc_amount.all_time),
+                    max_amount=Decimal(max_amount.all_time),
+                    frecuency=int(frec_amount.all_time),
                 )
             case PeriodsOptions.CURRENT_MONTH:
                 return AnalysisAmounts(
-                    accumulated_amount=cast(Decimal, acc_amount.current_month)
-                    if isinstance(acc_amount.current_month, Decimal)
-                    else Decimal(acc_amount.current_month),
-                    max_amount=cast(Decimal, max_amount.current_month)
-                    if isinstance(max_amount.current_month, Decimal)
-                    else Decimal(max_amount.current_month),
-                    frecuency=cast(int, frec_amount.current_month)
-                    if isinstance(frec_amount.current_month, int)
-                    else int(frec_amount.current_month),
+                    accumulated_amount=Decimal(acc_amount.current_month),
+                    max_amount=Decimal(max_amount.current_month),
+                    frecuency=int(frec_amount.current_month),
                 )
             case PeriodsOptions.LAST_MONTH:
                 return AnalysisAmounts(
-                    accumulated_amount=cast(Decimal, acc_amount.last_month)
-                    if isinstance(acc_amount.last_month, Decimal)
-                    else Decimal(acc_amount.last_month),
-                    max_amount=cast(Decimal, max_amount.last_month)
-                    if isinstance(max_amount.last_month, Decimal)
-                    else Decimal(max_amount.last_month),
-                    frecuency=cast(int, frec_amount.last_month)
-                    if isinstance(frec_amount.last_month, int)
-                    else int(frec_amount.last_month),
+                    accumulated_amount=Decimal(acc_amount.last_month),
+                    max_amount=Decimal(max_amount.last_month),
+                    frecuency=int(frec_amount.last_month),
                 )
             case PeriodsOptions.AVARAGE:
                 return AnalysisAmounts(
-                    accumulated_amount=cast(Decimal, acc_amount.avarage)
-                    if isinstance(acc_amount.avarage, Decimal)
-                    else Decimal(acc_amount.avarage),
-                    max_amount=cast(Decimal, max_amount.avarage)
-                    if isinstance(max_amount.avarage, Decimal)
-                    else Decimal(max_amount.avarage),
-                    frecuency=cast(int, frec_amount.avarage)
-                    if isinstance(frec_amount.avarage, int)
-                    else int(frec_amount.avarage),
+                    accumulated_amount=Decimal(acc_amount.avarage),
+                    max_amount=Decimal(max_amount.avarage),
+                    frecuency=int(frec_amount.avarage),
                 )
             case _:
                 raise ValueError(f"Invalid period option: {key}")

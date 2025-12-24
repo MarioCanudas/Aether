@@ -1,15 +1,18 @@
-from decimal import Decimal
-from typing import Any, Literal, cast
+import asyncio
+from typing import Any, Literal
 
 import pandas as pd
-from pydantic import BaseModel, ConfigDict, field_validator, model_validator
-from utils import to_decimal
+from pydantic import BaseModel, ConfigDict, field_validator
 
 from .amounts import AmountColumns
-from .records import MonthlyResultRecord
 from .transactions import Transaction
+from .validators.generics_validator import GenericsValidator
+from .validators.transactions_validator import TransactionValidator
 
-TABLE_CONFIG = ConfigDict(arbitrary_types_allowed=True)
+generics_validator = GenericsValidator()
+transactions_validator = TransactionValidator()
+
+TABLE_CONFIG: ConfigDict = ConfigDict(arbitrary_types_allowed=True)
 
 
 class ExtractedWords(BaseModel):
@@ -20,10 +23,7 @@ class ExtractedWords(BaseModel):
     @field_validator("df", mode="before")
     @classmethod
     def _validate_df_structure(cls, v: pd.DataFrame) -> pd.DataFrame:
-        if not isinstance(v, pd.DataFrame):
-            raise ValueError(
-                f"ExtractedWords dataframe must be a pandas DataFrame, got {type(v).__name__}"
-            )
+        v = generics_validator.validate_dataframe(v)
 
         if v.empty:
             v = pd.DataFrame({"page": [], "text": [], "x0": [], "top": [], "x1": [], "bottom": []})
@@ -44,72 +44,75 @@ class ExtractedWords(BaseModel):
 
     @property
     def records(self) -> list[dict[str, Any]]:
-        return cast(list[dict[str, Any]], self.df.to_dict(orient="records"))
+        records = self.df.to_dict(orient="records")
+        records = asyncio.run(generics_validator.validate_list_of_dicts(records))
+
+        return records
 
     @property
     def pages(self) -> pd.Series:
-        return cast(pd.Series, self.df["page"])
+        col = self.df["page"]
+        col = generics_validator.validate_series(col)
+
+        return col
 
     @pages.setter
     def pages(self, pages: pd.Series) -> None:
-        if not isinstance(pages, pd.Series):
-            raise ValueError("The pages must be a pandas series")
-
         self.df["page"] = pages
 
     @property
     def texts(self) -> pd.Series:
-        return cast(pd.Series, self.df["text"])
+        col = self.df["text"]
+        col = generics_validator.validate_series(col)
+
+        return col
 
     @texts.setter
     def texts(self, texts: pd.Series) -> None:
-        if not isinstance(texts, pd.Series):
-            raise ValueError("The texts must be a pandas series")
-
         self.df["text"] = texts
 
     @property
     def x0(self) -> pd.Series:
-        return cast(pd.Series, self.df["x0"])
+        col = self.df["x0"]
+        col = generics_validator.validate_series(col)
+
+        return col
 
     @x0.setter
     def x0(self, x0: pd.Series) -> None:
-        if not isinstance(x0, pd.Series):
-            raise ValueError("The x0 must be a pandas series")
-
         self.df["x0"] = x0
 
     @property
     def top(self) -> pd.Series:
-        return cast(pd.Series, self.df["top"])
+        col = self.df["top"]
+        col = generics_validator.validate_series(col)
+
+        return col
 
     @top.setter
     def top(self, top: pd.Series) -> None:
-        if not isinstance(top, pd.Series):
-            raise ValueError("The top must be a pandas series")
-
         self.df["top"] = top
 
     @property
     def x1(self) -> pd.Series:
-        return cast(pd.Series, self.df["x1"])
+        col = self.df["x1"]
+        col = generics_validator.validate_series(col)
+
+        return col
 
     @x1.setter
     def x1(self, x1: pd.Series) -> None:
-        if not isinstance(x1, pd.Series):
-            raise ValueError("The x1 must be a pandas series")
-
         self.df["x1"] = x1
 
     @property
     def bottom(self) -> pd.Series:
-        return cast(pd.Series, self.df["bottom"])
+        col = self.df["bottom"]
+        col = generics_validator.validate_series(col)
+
+        return col
 
     @bottom.setter
     def bottom(self, bottom: pd.Series) -> None:
-        if not isinstance(bottom, pd.Series):
-            raise ValueError("The bottom must be a pandas series")
-
         self.df["bottom"] = bottom
 
     def search_phrase(
@@ -160,24 +163,23 @@ class GroupedRows(BaseModel):
     @field_validator("df", mode="before")
     @classmethod
     def _validate_df_structure(cls, v: pd.DataFrame) -> pd.DataFrame:
-        if not isinstance(v, pd.DataFrame):
-            raise ValueError(
-                f"GroupedRows dataframe must be a pandas DataFrame, got {type(v).__name__}"
-            )
+        v = generics_validator.validate_dataframe(v)
 
         if v.empty:
             v = pd.DataFrame(
-                {"row_group": [], "text": [], "words": [], "top": [], "bottom": [], "page": []}
+                {
+                    "row_group": [],
+                    "text": [],
+                    "words": [],
+                    "top_column": [],
+                    "bottom_column": [],
+                    "page": [],
+                }
             )
 
-        if not all(
-            col in v.columns for col in ["row_group", "text", "words", "top", "bottom", "page"]
-        ):
-            missing_cols = [
-                col
-                for col in ["row_group", "text", "words", "top", "bottom", "page"]
-                if col not in v.columns
-            ]
+        required_cols = ["row_group", "text", "words", "top_column", "bottom_column", "page"]
+        if not all(col in v.columns for col in required_cols):
+            missing_cols = [col for col in required_cols if col not in v.columns]
             raise ValueError(
                 f"GroupedRows dataframe missing required columns: {missing_cols}. Available columns: {list(v.columns)}"
             )
@@ -186,69 +188,51 @@ class GroupedRows(BaseModel):
 
     @property
     def row_groups(self) -> pd.Series:
-        return cast(pd.Series, self.df["row_group"])
+        return generics_validator.validate_series(self.df["row_group"])
 
     @row_groups.setter
     def row_groups(self, row_groups: pd.Series) -> None:
-        if not isinstance(row_groups, pd.Series):
-            raise ValueError("The row groups must be a pandas series")
-        else:
-            self.df["row_group"] = row_groups
+        self.df["row_group"] = row_groups
 
     @property
     def texts(self) -> pd.Series:
-        return cast(pd.Series, self.df["text"])
+        return generics_validator.validate_series(self.df["text"])
 
     @texts.setter
     def texts(self, texts: pd.Series) -> None:
-        if not isinstance(texts, pd.Series):
-            raise ValueError("The texts must be a pandas series")
-        else:
-            self.df["text"] = texts
+        self.df["text"] = texts
 
     @property
     def words(self) -> pd.Series:
-        return cast(pd.Series, self.df["words"])
+        return generics_validator.validate_series(self.df["words"])
 
     @words.setter
     def words(self, words: pd.Series) -> None:
-        if not isinstance(words, pd.Series):
-            raise ValueError("The words must be a pandas series")
-        else:
-            self.df["words"] = words
+        self.df["words"] = words
 
     @property
     def top_column(self) -> pd.Series:
-        return cast(pd.Series, self.df["top"])
+        return generics_validator.validate_series(self.df["top_column"])
 
     @top_column.setter
     def top_column(self, top_column: pd.Series) -> None:
-        if not isinstance(top_column, pd.Series):
-            raise ValueError("The top column must be a pandas series")
-        else:
-            self.df["top"] = top_column
+        self.df["top_column"] = top_column
 
     @property
     def bottom_column(self) -> pd.Series:
-        return cast(pd.Series, self.df["bottom"])
+        return generics_validator.validate_series(self.df["bottom_column"])
 
     @bottom_column.setter
     def bottom_column(self, bottom_column: pd.Series) -> None:
-        if not isinstance(bottom_column, pd.Series):
-            raise ValueError("The bottom column must be a pandas series")
-        else:
-            self.df["bottom"] = bottom_column
+        self.df["bottom_column"] = bottom_column
 
     @property
     def pages(self) -> pd.Series:
-        return cast(pd.Series, self.df["page"])
+        return generics_validator.validate_series(self.df["page"])
 
     @pages.setter
     def pages(self, pages: pd.Series) -> None:
-        if not isinstance(pages, pd.Series):
-            raise ValueError("The pages must be a pandas series")
-        else:
-            self.df["page"] = pages
+        self.df["page"] = pages
 
 
 class ReconstructedTable(BaseModel):
@@ -257,64 +241,44 @@ class ReconstructedTable(BaseModel):
     df: pd.DataFrame
     amount_columns: AmountColumns
 
-    @field_validator("amount_columns", mode="before")
+    @field_validator("amount_columns")
     @classmethod
-    def _validate_amount_columns(cls, v: AmountColumns) -> AmountColumns:
-        if not isinstance(v, AmountColumns):
-            raise ValueError(
-                f"ReconstructedTable amount_columns must be an AmountColumns object, got {type(v).__name__}"
-            )
-
+    def _validate_amount_columns(cls, v: list[str]) -> list[str]:
+        if not all(isinstance(item, str) for item in v):
+            raise ValueError("All items in amount_columns must be strings")
         return v
 
     @field_validator("df", mode="before")
     @classmethod
     def _validate_df_structure(cls, v: pd.DataFrame) -> pd.DataFrame:
-        if not isinstance(v, pd.DataFrame):
-            raise ValueError(
-                f"ReconstructedTable dataframe must be a pandas DataFrame, got {type(v).__name__}"
-            )
+        v = generics_validator.validate_dataframe(v)
 
         if v.empty:
-            # For empty dataframes, we'll create a basic structure and let the amount_columns validation handle the rest
-            v = pd.DataFrame({"date": [], "description": []})
+            v = pd.DataFrame({"date": [], "description": [], "amount": []})
 
-        # Check for required base columns
-        required_base_cols = ["date", "description"]
-        if not all(col in v.columns for col in required_base_cols):
-            missing_cols = [col for col in required_base_cols if col not in v.columns]
+        required_cols = ["date", "description", "amount"]
+        if not all(col in v.columns for col in required_cols):
+            missing_cols = [col for col in required_cols if col not in v.columns]
             raise ValueError(
-                f"ReconstructedTable dataframe missing required base columns: {missing_cols}. Available columns: {list(v.columns)}"
+                f"ReconstructedTable dataframe missing required columns: {missing_cols}. Available columns: {list(v.columns)}"
             )
 
         return v
 
-    @model_validator(mode="after")
-    def _validate_amount_columns_after_df(self) -> "ReconstructedTable":
-        if self.amount_columns.is_mono_column:
-            if self.amount_columns.income not in self.df.columns:
-                raise ValueError(
-                    f"ReconstructedTable amount_columns.income '{self.amount_columns.income}' not found in dataframe columns: {list(self.df.columns)}"
-                )
-        else:
-            if self.amount_columns.income not in self.df.columns:
-                raise ValueError(
-                    f"ReconstructedTable amount_columns.income '{self.amount_columns.income}' not found in dataframe columns: {list(self.df.columns)}"
-                )
-            if self.amount_columns.expense not in self.df.columns:
-                raise ValueError(
-                    f"ReconstructedTable amount_columns.expense '{self.amount_columns.expense}' not found in dataframe columns: {list(self.df.columns)}"
-                )
-            if (
-                self.amount_columns.has_balance
-                and self.amount_columns.balance is not None
-                and self.amount_columns.balance not in self.df.columns
-            ):
-                raise ValueError(
-                    f"ReconstructedTable amount_columns.balance '{self.amount_columns.balance}' not found in dataframe columns: {list(self.df.columns)}"
-                )
-
-        return self
+    def _validate_amount_columns_after_df(self) -> None:
+        for col_name in self.amount_columns:
+            if col_name not in self.df.columns:
+                raise ValueError(f"Column '{col_name}' not found in the DataFrame.")
+            if not pd.api.types.is_numeric_dtype(self.df[col_name]):
+                # Attempt to convert to numeric, coercing errors
+                self.df[col_name] = pd.to_numeric(self.df[col_name], errors="coerce")
+                # Check if all values are now numeric (non-numeric are converted to NaN)
+                if bool(self.df[col_name].isnull().any()):
+                    raise ValueError(
+                        f"Column '{col_name}' contains non-numeric values that could not be converted."
+                    )
+            # Fill NaN values with 0, as they are valid for amount columns
+            self.df[col_name] = self.df[col_name].fillna(0)
 
     @property
     def empty(self) -> bool:
@@ -322,92 +286,71 @@ class ReconstructedTable(BaseModel):
 
     @property
     def records(self) -> list[dict[str, Any]]:
-        return cast(list[dict[str, Any]], self.df.to_dict(orient="records"))
+        return self.df.to_dict(orient="records")
 
     @property
     def dates(self) -> pd.Series:
-        return cast(pd.Series, self.df["date"])
+        return generics_validator.validate_series(self.df["date"])
 
     @dates.setter
     def dates(self, dates: pd.Series) -> None:
-        if not isinstance(dates, pd.Series):
-            raise ValueError("The dates must be a pandas series")
-        else:
-            self.df["date"] = dates
+        self.df["date"] = dates
 
     @property
     def descriptions(self) -> pd.Series:
-        return cast(pd.Series, self.df["description"])
+        return generics_validator.validate_series(self.df["description"])
 
     @descriptions.setter
     def descriptions(self, descriptions: pd.Series) -> None:
-        if not isinstance(descriptions, pd.Series):
-            raise ValueError("The descriptions must be a pandas series")
-        else:
-            self.df["description"] = descriptions
+        self.df["description"] = descriptions
 
     @property
-    def amount_column(self) -> pd.Series:
-        if self.amount_columns.is_mono_column:
-            return cast(pd.Series, self.df[self.amount_columns.income])
-        else:
-            raise ValueError("The amount column is not defined")
+    def amount_column(self) -> pd.Series | None:
+        if "amount" in self.df.columns:
+            return generics_validator.validate_series(self.df["amount"])
+        return None
 
     @amount_column.setter
-    def amount_column(self, amount_column: pd.Series) -> None:
-        if not isinstance(amount_column, pd.Series):
-            raise ValueError("The amount column must be a pandas series")
-        elif self.amount_columns.is_mono_column:
-            self.df[self.amount_columns.income] = amount_column
-        else:
-            raise ValueError("The amount column is not defined")
+    def amount_column(self, amount: pd.Series) -> None:
+        self.df["amount"] = amount
 
     @property
     def income_column(self) -> pd.Series:
-        return cast(pd.Series, self.df[self.amount_columns.income])
+        return generics_validator.validate_series(self.df["income"])
 
     @income_column.setter
-    def income_column(self, income_column: pd.Series) -> None:
-        if not isinstance(income_column, pd.Series):
-            raise ValueError("The income column must be a pandas series")
-        else:
-            self.df[self.amount_columns.income] = income_column
+    def income_column(self, income: pd.Series) -> None:
+        self.df["income"] = income
 
     @property
     def expense_column(self) -> pd.Series:
-        return cast(pd.Series, self.df[self.amount_columns.expense])
+        return generics_validator.validate_series(self.df["expense"])
 
     @expense_column.setter
-    def expense_column(self, expense_column: pd.Series) -> None:
-        if not isinstance(expense_column, pd.Series):
-            raise ValueError("The expense column must be a pandas series")
-        else:
-            self.df[self.amount_columns.expense] = expense_column
+    def expense_column(self, expense: pd.Series) -> None:
+        self.df["expense"] = expense
 
     @property
     def balance_column(self) -> pd.Series | None:
-        if self.amount_columns.has_balance and self.amount_columns.balance is not None:
-            return cast(pd.Series, self.df[self.amount_columns.balance])
-        else:
-            return None
+        if "balance" in self.df.columns:
+            return generics_validator.validate_series(self.df["balance"])
+        return None
 
     @balance_column.setter
-    def balance_column(self, balance_column: pd.Series) -> None:
-        if not isinstance(balance_column, pd.Series):
-            raise ValueError("The balance column must be a pandas series")
-        elif self.amount_columns.has_balance and self.amount_columns.balance is not None:
-            self.df[self.amount_columns.balance] = balance_column
-        else:
-            raise ValueError("The balance column is not defined")
+    def balance_column(self, balance: pd.Series) -> None:
+        self.df["balance"] = balance
 
 
 class TransactionsTable(BaseModel):
-    """Represents a table of transactions per individual statement with the following columns:
-    - date: The date of the transaction
-    - description: The description of the transaction
-    - amount: The amount of the transaction
-    - type: The type of the transaction
-    - bank: The bank of the transaction
+    """
+    Represents a table of transactions, typically from a single financial statement.
+    This class is initialized with a pandas DataFrame and provides methods to access
+    and manipulate the transaction data.
+
+    Attributes:
+        df (pd.DataFrame): The DataFrame holding the transaction data.
+                           Expected columns are 'date', 'description', 'amount', 'type',
+                           'bank', 'statement_type', and 'filename'.
     """
 
     model_config = TABLE_CONFIG
@@ -416,9 +359,16 @@ class TransactionsTable(BaseModel):
 
     @field_validator("df", mode="before")
     @classmethod
-    def _validate_df_structure(cls, v: pd.DataFrame) -> pd.DataFrame:
+    def _validate_df_structure(cls, v: Any) -> pd.DataFrame:
+        """
+        Validates the structure of the DataFrame upon initialization.
+        Ensures that the input is a DataFrame and contains all the required columns.
+        If the DataFrame is empty, it initializes it with the required columns.
+        """
+        v = generics_validator.validate_dataframe(v)
+
         if v.empty:
-            v = pd.DataFrame(
+            return pd.DataFrame(
                 {
                     "date": [],
                     "description": [],
@@ -430,31 +380,17 @@ class TransactionsTable(BaseModel):
                 }
             )
 
-        if not all(
-            col in v.columns
-            for col in [
-                "date",
-                "description",
-                "amount",
-                "type",
-                "bank",
-                "statement_type",
-                "filename",
-            ]
-        ):
-            missing_cols = [
-                col
-                for col in [
-                    "date",
-                    "description",
-                    "amount",
-                    "type",
-                    "bank",
-                    "statement_type",
-                    "filename",
-                ]
-                if col not in v.columns
-            ]
+        required_cols = [
+            "date",
+            "description",
+            "amount",
+            "type",
+            "bank",
+            "statement_type",
+            "filename",
+        ]
+        if not all(col in v.columns for col in required_cols):
+            missing_cols = [col for col in required_cols if col not in v.columns]
             raise ValueError(
                 f"TransactionsTable dataframe missing required columns: {missing_cols}. Available columns: {list(v.columns)}"
             )
@@ -463,72 +399,54 @@ class TransactionsTable(BaseModel):
 
     @property
     def dates(self) -> pd.Series:
-        return cast(pd.Series, self.df["date"])
+        return generics_validator.validate_series(self.df["date"])
 
     @dates.setter
     def dates(self, dates: pd.Series) -> None:
-        if not isinstance(dates, pd.Series):
-            raise ValueError("The dates must be a pandas series")
-
         self.df["date"] = dates
 
     @property
     def descriptions(self) -> pd.Series:
-        return cast(pd.Series, self.df["description"])
+        return generics_validator.validate_series(self.df["description"])
 
     @descriptions.setter
     def descriptions(self, descriptions: pd.Series) -> None:
-        if not isinstance(descriptions, pd.Series):
-            raise ValueError("The descriptions must be a pandas series")
-
         self.df["description"] = descriptions
 
     @property
     def amounts(self) -> pd.Series:
-        return cast(pd.Series, self.df["amount"])
+        return generics_validator.validate_series(self.df["amount"])
 
     @amounts.setter
     def amounts(self, amounts: pd.Series) -> None:
-        if not isinstance(amounts, pd.Series):
-            raise ValueError("The amounts must be a pandas series")
-
         self.df["amount"] = amounts
 
     @property
     def types(self) -> pd.Series:
-        return cast(pd.Series, self.df["type"])
+        return generics_validator.validate_series(self.df["type"])
 
     @types.setter
     def types(self, types: pd.Series) -> None:
-        if not isinstance(types, pd.Series):
-            raise ValueError("The types must be a pandas series")
-
         self.df["type"] = types
 
     @property
     def bank_col(self) -> pd.Series:
-        return cast(pd.Series, self.df["bank"])
+        return generics_validator.validate_series(self.df["bank"])
 
     @bank_col.setter
-    def bank_col(self, bank: str) -> None:
-        if not isinstance(bank, str):
-            raise ValueError("The bank must be a string")
-
-        self.df["bank"] = bank
+    def bank_col(self, value: Any) -> None:
+        self.df["bank"] = value
 
     @property
-    def bank(self) -> str | list[str]:
+    def bank(self) -> str:
         return self.df["bank"].iloc[0]
 
     @property
     def statement_type_col(self) -> pd.Series:
-        return cast(pd.Series, self.df["statement_type"])
+        return generics_validator.validate_series(self.df["statement_type"])
 
     @statement_type_col.setter
-    def statement_type_col(self, statement_type: str) -> None:
-        if not isinstance(statement_type, str):
-            raise ValueError("The statement type must be a string")
-
+    def statement_type_col(self, statement_type: Any) -> None:
         self.df["statement_type"] = statement_type
 
     @property
@@ -537,14 +455,11 @@ class TransactionsTable(BaseModel):
 
     @property
     def filename_col(self) -> pd.Series:
-        return cast(pd.Series, self.df["filename"])
+        return generics_validator.validate_series(self.df["filename"])
 
     @filename_col.setter
-    def filename_col(self, filename: str) -> None:
-        if not isinstance(filename, str):
-            raise ValueError("The filename must be a string")
-
-        self.df["filename"] = filename
+    def filename_col(self, value: Any) -> None:
+        self.df["filename"] = value
 
     @property
     def filename(self) -> str:
@@ -552,16 +467,12 @@ class TransactionsTable(BaseModel):
 
     @property
     def transactions(self) -> list[Transaction]:
-        return [
-            Transaction(**transaction)
-            for transaction in cast(list[dict[str, Any]], self.df.to_dict(orient="records"))
-        ]
+        transactions_list = [Transaction(**row) for row in self.df.to_dict(orient="records")]
+        return transactions_validator.validate_list_transactions(transactions_list)
 
     def add_transaction(self, transaction: Transaction) -> None:
-        record = transaction.model_dump()
-
-        record["amount"] = float(record["amount"])
-        self.df = pd.concat([self.df, pd.DataFrame([record])], ignore_index=True)
+        new_row = pd.DataFrame([transaction.model_dump()])
+        self.df = pd.concat([self.df, new_row], ignore_index=True)
 
     def get_all_incomes(self) -> float:
         return self.df[self.df["type"] == "Abono"]["amount"].sum()
@@ -574,23 +485,42 @@ class TransactionsTable(BaseModel):
 
 
 class AllTransactionsTable(TransactionsTable):
-    """Represents a table of all transactions from all statements with the following columns:
-    - date: The date of the transaction
-    - description: The description of the transaction
-    - amount: The amount of the transaction
-    - type: The type of the transaction
-    - bank: The bank of the transaction
-    - user_id: The user id of the transaction
     """
+    Represents a consolidated table of all transactions from multiple sources or statements.
+    This class extends `TransactionsTable` and is designed to handle a larger, more diverse
+    set of transaction data.
+
+    Attributes:
+        df (pd.DataFrame): The DataFrame holding all transaction data.
+                           In addition to the columns from `TransactionsTable`, it may include
+                           'user_id' and 'category_id' for more detailed analysis.
+    """
+
+    model_config = TABLE_CONFIG
 
     @field_validator("df", mode="before")
     @classmethod
-    def _validate_df_structure(cls, v: pd.DataFrame) -> pd.DataFrame:
-        v = super()._validate_df_structure(v)
+    def _validate_df_structure(cls, v: Any) -> pd.DataFrame:
+        """
+        Validates the structure of the DataFrame for all transactions.
+        Ensures it's a DataFrame and initializes it with an expanded set of columns
+        if it's empty. This includes columns for user and category identification.
+        """
+        v = generics_validator.validate_dataframe(v)
 
-        if "user_id" not in v.columns:
-            raise ValueError(
-                f"AllTransactionsTable dataframe missing required column 'user_id'. Available columns: {list(v.columns)}"
+        if v.empty:
+            return pd.DataFrame(
+                {
+                    "date": [],
+                    "description": [],
+                    "amount": [],
+                    "type": [],
+                    "bank": [],
+                    "statement_type": [],
+                    "filename": [],
+                    "user_id": [],
+                    "category_id": [],
+                }
             )
 
         if "category_id" not in v.columns:
@@ -600,11 +530,11 @@ class AllTransactionsTable(TransactionsTable):
 
     @property
     def banks(self) -> list[str]:
-        return self.df["bank"].unique().tolist()
+        return generics_validator.validate_list_str(self.df["bank"].unique().tolist())
 
     @property
     def files(self) -> list[str]:
-        return self.df["filename"].unique().tolist()
+        return generics_validator.validate_list_str(self.df["filename"].unique().tolist())
 
     @property
     def user_id(self) -> int:
@@ -612,23 +542,27 @@ class AllTransactionsTable(TransactionsTable):
 
     @property
     def category_id(self) -> pd.Series:
-        return cast(pd.Series, self.df["category_id"])
+        return generics_validator.validate_series(self.df["category_id"])
 
     @category_id.setter
     def category_id(self, category_id: pd.Series) -> None:
-        if not isinstance(category_id, pd.Series):
-            raise ValueError("The category id must be a pandas series")
-
         self.df["category_id"] = category_id
 
     def get_transactions_dicts(self) -> list[dict[str, Any]]:
-        return cast(list[dict[str, Any]], self.df.to_dict(orient="records"))
+        return asyncio.run(
+            generics_validator.validate_list_of_dicts(self.df.to_dict(orient="records"))
+        )
 
 
 class MonthlyResultsTable(BaseModel):
-    """Represents a table of monthly results with the following columns:
-    - year_month: The year and month of the result
-    - user_id: The user id of the result
+    """
+    Represents a table summarizing financial results on a monthly basis.
+    This class is used to analyze income, withdrawals, and savings over time.
+
+    Attributes:
+        df (pd.DataFrame): The DataFrame holding the monthly financial data.
+                           Expected columns include 'year_month', 'initial_balance',
+                           'total_income', 'total_withdrawal', 'saving', and 'user_id'.
     """
 
     model_config = TABLE_CONFIG
@@ -646,14 +580,17 @@ class MonthlyResultsTable(BaseModel):
 
     @field_validator("df", mode="before")
     @classmethod
-    def _validate_df_structure(cls, v: pd.DataFrame) -> pd.DataFrame:
-        if not isinstance(v, pd.DataFrame):
-            raise ValueError(
-                f"MonthlyResultsTable dataframe must be a pandas DataFrame, got {type(v).__name__}"
-            )
+    def _validate_df_structure(cls, v: Any) -> pd.DataFrame:
+        """
+        Validates the structure of the monthly results DataFrame.
+        Ensures the input is a DataFrame and contains the necessary columns for
+        monthly financial analysis. Initializes an empty DataFrame with these columns
+        if the input is empty.
+        """
+        v = generics_validator.validate_dataframe(v)
 
         if v.empty:
-            v = pd.DataFrame(
+            return pd.DataFrame(
                 {
                     "year_month": [],
                     "initial_balance": [],
@@ -698,113 +635,129 @@ class MonthlyResultsTable(BaseModel):
 
     @property
     def year_months(self) -> pd.Series:
-        return cast(pd.Series, self.df["year_month"])
+        return generics_validator.validate_series(self.df["year_month"])
 
     @year_months.setter
     def year_months(self, year_months: pd.Series) -> None:
-        if not isinstance(year_months, pd.Series):
-            raise ValueError("The year months must be a pandas series")
-
         self.df["year_month"] = year_months
 
     @property
     def initial_balances(self) -> pd.Series:
-        return cast(pd.Series, self.df["initial_balance"])
+        return generics_validator.validate_series(self.df["initial_balance"])
 
     @initial_balances.setter
     def initial_balances(self, initial_balances: pd.Series) -> None:
-        if not isinstance(initial_balances, pd.Series):
-            raise ValueError("The initial balances must be a pandas series")
-
         self.df["initial_balance"] = initial_balances
 
     @property
     def total_incomes(self) -> pd.Series:
-        return cast(pd.Series, self.df["total_income"])
+        return generics_validator.validate_series(self.df["total_income"])
 
     @total_incomes.setter
     def total_incomes(self, total_incomes: pd.Series) -> None:
-        if not isinstance(total_incomes, pd.Series):
-            raise ValueError("The total incomes must be a pandas series")
-
         self.df["total_income"] = total_incomes
 
     @property
     def total_withdrawals(self) -> pd.Series:
-        return cast(pd.Series, self.df["total_withdrawal"])
+        return generics_validator.validate_series(self.df["total_withdrawal"])
 
     @total_withdrawals.setter
     def total_withdrawals(self, total_withdrawals: pd.Series) -> None:
-        if not isinstance(total_withdrawals, pd.Series):
-            raise ValueError("The total withdrawals must be a pandas series")
-
         self.df["total_withdrawal"] = total_withdrawals
 
     @property
     def savings(self) -> pd.Series:
-        return cast(pd.Series, self.df["savings"])
+        return generics_validator.validate_series(self.df["saving"])
 
     @savings.setter
     def savings(self, savings: pd.Series) -> None:
-        if not isinstance(savings, pd.Series):
-            raise ValueError("The savings must be a pandas series")
-
-        self.df["savings"] = savings
+        self.df["saving"] = savings
 
     @property
-    def user_id(self) -> int:
-        return self.df["user_id"].iloc[0]
+    def user_id(self) -> pd.Series:
+        return generics_validator.validate_series(self.df["user_id"])
 
     @user_id.setter
-    def user_id(self, user_id: int) -> None:
-        if not isinstance(user_id, int):
-            raise ValueError("The user id must be an integer")
-
+    def user_id(self, user_id: pd.Series) -> None:
         self.df["user_id"] = user_id
 
     @property
-    def records(self) -> list[MonthlyResultRecord]:
-        return (
-            cast(list[MonthlyResultRecord], self.df.to_dict(orient="records"))
-            if not self.df.empty
-            else []
+    def records(self) -> list[dict[str, Any]]:
+        """
+        Returns the DataFrame records as a list of dictionaries.
+        """
+        return asyncio.run(
+            generics_validator.validate_list_of_dicts(self.df.to_dict(orient="records"))
         )
 
-    async def get_avg_savings_per_month(self) -> Decimal:
-        return to_decimal(cast(float, self.savings.mean()))
+    async def get_avg_savings_per_month(self) -> float:
+        avg = self.df["saving"].mean()
+        if not isinstance(avg, float):
+            raise ValueError("Average savings calculation did not return a float value.")
+        return avg
 
-    async def get_avg_income_per_month(self) -> Decimal:
-        return to_decimal(cast(float, self.total_incomes.mean()))
+    async def get_avg_income_per_month(self) -> float:
+        avg = self.df["total_income"].mean()
+        if not isinstance(avg, float):
+            raise ValueError("Average income calculation did not return a float value.")
+        return avg
 
-    async def get_avg_withdrawal_per_month(self) -> Decimal:
-        return to_decimal(cast(float, self.total_withdrawals.mean()))
+    async def get_avg_withdrawal_per_month(self) -> float:
+        avg = self.df["total_withdrawal"].mean()
+        if not isinstance(avg, float):
+            raise ValueError("Average withdrawal calculation did not return a float value.")
+        return avg
 
 
 class BudgetsTable(BaseModel):
+    """
+    Represents a table of budgets, linking users to categories with specified amounts.
+    This class is used for managing and tracking budget allocations.
+
+    Attributes:
+        df (pd.DataFrame): The DataFrame holding the budget data.
+                           Expected columns are 'user_id', 'category_id', 'amount',
+                           'name', 'created_at', 'start_date', and 'end_date'.
+    """
+
     model_config = TABLE_CONFIG
 
-    columns: list[str] = [
-        "id",
-        "user_id",
-        "category_id",
-        "amount",
-        "name",
-        "created_at",
-        "start_date",
-        "end_date",
-    ]
     df: pd.DataFrame
 
     @field_validator("df", mode="before")
     @classmethod
-    def _validate_df_structure(cls, v: pd.DataFrame) -> pd.DataFrame:
-        if not isinstance(v, pd.DataFrame):
-            raise ValueError(
-                f"BudgetsTable dataframe must be a pandas DataFrame, got {type(v).__name__}"
+    def _validate_df_structure(cls, v: Any) -> pd.DataFrame:
+        """
+        Validates the structure of the budgets DataFrame.
+        Ensures the input is a DataFrame and contains all necessary columns for
+        budget management. Initializes an empty DataFrame with these columns if needed.
+        """
+        v = generics_validator.validate_dataframe(v)
+
+        if v.empty:
+            return pd.DataFrame(
+                {
+                    "user_id": [],
+                    "category_id": [],
+                    "amount": [],
+                    "name": [],
+                    "created_at": [],
+                    "start_date": [],
+                    "end_date": [],
+                }
             )
 
-        if not all(col in v.columns for col in cls.columns):
-            missing_cols = [col for col in cls.columns if col not in v.columns]
+        required_cols = [
+            "user_id",
+            "category_id",
+            "amount",
+            "name",
+            "created_at",
+            "start_date",
+            "end_date",
+        ]
+        if not all(col in v.columns for col in required_cols):
+            missing_cols = [col for col in required_cols if col not in v.columns]
             raise ValueError(
                 f"BudgetsTable dataframe missing required columns: {missing_cols}. Available columns: {list(v.columns)}"
             )
@@ -812,31 +765,29 @@ class BudgetsTable(BaseModel):
         return v
 
     @property
-    def user_id(self) -> int:
-        return self.df["user_id"].iloc[0]
+    def user_id(self) -> pd.Series:
+        return generics_validator.validate_series(self.df["user_id"])
 
     @property
-    def categories_id(self) -> pd.Series | None:
-        if "category_id" in self.df.columns:
-            return cast(pd.Series, self.df["category_id"])
-        return None
+    def categories_id(self) -> list[int]:
+        return generics_validator.validate_list_int(self.df["category_id"].to_list())
 
     @property
     def amounts(self) -> pd.Series:
-        return cast(pd.Series, self.df["amount"])
+        return generics_validator.validate_series(self.df["amount"])
 
     @property
     def names(self) -> pd.Series:
-        return cast(pd.Series, self.df["name"])
+        return generics_validator.validate_series(self.df["name"])
 
     @property
     def created_at(self) -> pd.Series:
-        return cast(pd.Series, self.df["created_at"])
+        return generics_validator.validate_series(self.df["created_at"])
 
     @property
     def start_dates(self) -> pd.Series:
-        return cast(pd.Series, self.df["start_date"])
+        return generics_validator.validate_series(self.df["start_date"])
 
     @property
     def end_dates(self) -> pd.Series:
-        return cast(pd.Series, self.df["end_date"])
+        return generics_validator.validate_series(self.df["end_date"])
