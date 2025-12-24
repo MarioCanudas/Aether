@@ -6,7 +6,6 @@ import pandas as pd
 from dateutil.relativedelta import relativedelta
 from models.dates import Period
 from models.financial import FinancialAmountsSums
-from models.tables import AllTransactionsTable, MonthlyResultsTable
 from models.views_data import HomeViewData, PeriodsOptions
 from psycopg2.extensions import connection
 from services import (
@@ -26,38 +25,6 @@ class HomeController(BaseController):
         self.data_processing_service = DataProcessingService()
         self.financial_analysis_service = FinancialAnalysisService()
         self.plotting_service = PlottingService()
-
-    async def _get_avg_financial_sums(self, conn: connection) -> FinancialAmountsSums:
-        transactions_db = TransactionsDBService(conn)
-
-        transactions = transactions_db.get_transactions(self.user_id)
-
-        # Ensure validation if get_transactions returns mix of dict/module
-        dicts_list = []
-        for t in transactions:
-            if isinstance(t, dict):
-                dicts_list.append(t)
-            else:
-                dicts_list.append(t.model_dump())
-        all_transactions = AllTransactionsTable(df=pd.DataFrame(dicts_list))
-        monthly_results: MonthlyResultsTable = self.data_processing_service.get_monthly_results(
-            all_transactions
-        )
-
-        monthly_results.year_months = monthly_results.year_months.astype(str)
-
-        async with asyncio.TaskGroup() as tg:
-            avg_savings_per_month = tg.create_task(monthly_results.get_avg_savings_per_month())
-            avg_income_per_month = tg.create_task(monthly_results.get_avg_income_per_month())
-            avg_withdrawal_per_month = tg.create_task(
-                monthly_results.get_avg_withdrawal_per_month()
-            )
-
-        return FinancialAmountsSums(
-            income=avg_income_per_month.result(),
-            withdrawal=avg_withdrawal_per_month.result(),
-            savings=avg_savings_per_month.result(),
-        )
 
     async def _get_last_six_months_transactions(self, conn: connection) -> pd.DataFrame:
         transactions_db = TransactionsDBService(conn)
