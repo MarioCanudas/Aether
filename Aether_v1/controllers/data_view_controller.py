@@ -1,11 +1,12 @@
 import logging
-from typing import Any, cast
+from typing import Any
 
 import pandas as pd
 from models.amounts import TransactionType
 from models.bank_properties import BankName, StatementType
 from models.dates import Period
 from models.transactions import Transaction
+from models.validators import TransactionValidator
 from services import CardsDBService, CategoryDBService, TransactionsDBService
 
 from .base_controller import BaseController
@@ -14,6 +15,10 @@ logger = logging.getLogger(__name__)
 
 
 class DataViewController(BaseController):
+    def __init__(self):
+        super().__init__()
+        self.transaction_validator = TransactionValidator()
+
     def _to_transactions(self, transactions_dicts: list[dict[str, Any]]) -> list[Transaction]:
         categories = self.get_categories(mapped=True)
         cards = self.get_cards(mapped=True)
@@ -134,12 +139,16 @@ class DataViewController(BaseController):
 
         # Find deleted transactions (in original but not in edited)
         deleted_ids = original_ids - edited_ids
-        df_to_delete = cast(pd.DataFrame, df_og[df_og["transaction_id"].isin(list(deleted_ids))])
+        df_to_delete = df_og[df_og["transaction_id"].isin(list(deleted_ids))]
+        df_to_delete = self.generics_validator.validate_dataframe(df_to_delete)
+
         deleted_transactions = df_to_delete.to_dict(orient="records")
 
         # Find new transactions (in edited but not in original)
         new_ids = edited_ids - original_ids
-        df_new = cast(pd.DataFrame, df_ed[df_ed["transaction_id"].isin(list(new_ids))])
+        df_new = df_ed[df_ed["transaction_id"].isin(list(new_ids))]
+        df_new = self.generics_validator.validate_dataframe(df_new)
+
         new_transactions = df_new.to_dict(orient="records")
 
         # Find modified transactions (in both but with different content)
@@ -147,14 +156,19 @@ class DataViewController(BaseController):
         modified_transactions = []
 
         for transaction_id in common_ids:
-            original_row: pd.Series = df_og[df_og["transaction_id"] == transaction_id].iloc[0]
-            edited_row: pd.Series = df_ed[df_ed["transaction_id"] == transaction_id].iloc[0]
+            original_row = df_og[df_og["transaction_id"] == transaction_id].iloc[0]
+            original_row = self.generics_validator.validate_series(original_row)
+
+            edited_row = df_ed[df_ed["transaction_id"] == transaction_id].iloc[0]
+            edited_row = self.generics_validator.validate_series(edited_row)
 
             # Compare all columns except transaction_id
             comparison_cols = [col for col in original_row.index if col != "transaction_id"]
-            if not cast(pd.Series, original_row[comparison_cols]).equals(
-                cast(pd.Series, edited_row[comparison_cols])
-            ):
+
+            og_to_compare = self.generics_validator.validate_series(original_row[comparison_cols])
+            ed_to_compare = self.generics_validator.validate_series(edited_row[comparison_cols])
+
+            if not og_to_compare.equals(ed_to_compare):
                 modified_transactions.append(edited_row.to_dict())
 
         return {
@@ -189,20 +203,20 @@ class DataViewController(BaseController):
         with self.quick_read_conn() as conn:
             transactions_db = TransactionsDBService(conn)
 
-            return cast(
-                list[Transaction],
-                transactions_db.get_transactions(
-                    user_id=self.user_id, duplicate_potential_state=True
-                ),
+            transactions = transactions_db.get_transactions(
+                user_id=self.user_id, duplicate_potential_state=True
             )
+            transactions = self.transaction_validator.validate_list_transactions(transactions)
 
-    @staticmethod
-    def add_select_widget(df: pd.DataFrame) -> pd.DataFrame:
+            return transactions
+
+    def add_select_widget(self, df: pd.DataFrame) -> pd.DataFrame:
         columns: list[str] = df.columns.tolist()
 
         df["To edit"] = False
+        df = self.generics_validator.validate_dataframe(df[["To edit", *columns]])
 
-        return cast(pd.DataFrame, df[["To edit", *columns]])
+        return df
 
     def ignore_duplicate_transaction(self, t: Transaction) -> None:
         with self.session_conn() as conn:

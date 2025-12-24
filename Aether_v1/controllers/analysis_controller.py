@@ -1,7 +1,7 @@
 import asyncio
 import logging
 from datetime import date
-from typing import Any, Literal, cast
+from typing import Literal
 
 import altair as alt
 import pandas as pd
@@ -9,6 +9,7 @@ from models.amounts import TransactionType
 from models.dates import Period
 from models.tables import AllTransactionsTable, MonthlyResultsTable
 from models.transactions import Transaction
+from models.validators import TransactionValidator
 from models.views_data import (
     AnalysisAmounts,
     AnalysisAmountsPerPeriod,
@@ -28,6 +29,7 @@ class AnalysisController(BaseController):
         super().__init__()
         self.data_processing_service = DataProcessingService()
         self.plotting_service = PlottingService()
+        self.transaction_validator = TransactionValidator()
 
     def get_years(self) -> list[int]:
         with self.quick_read_conn() as conn:
@@ -47,11 +49,6 @@ class AnalysisController(BaseController):
             amount_types=[TransactionType(category)],
             transaction_model=False,
         )
-
-        transactions = cast(list[dict[str, Any]], transactions)
-
-        if not transactions:
-            return None
 
         transactions = pd.DataFrame(transactions)
 
@@ -80,7 +77,9 @@ class AnalysisController(BaseController):
         self, transactions_db: TransactionsDBService, category: Literal["Abono", "Cargo"]
     ) -> alt.Chart:
         transactions = transactions_db.get_transactions(self.user_id)
-        transactions = cast(list[Transaction], transactions)
+        transactions = await self.transaction_validator.validate_list_transactions_async(
+            transactions
+        )
 
         all_transactions = AllTransactionsTable(
             df=pd.DataFrame([t.model_dump() for t in transactions])
@@ -102,7 +101,9 @@ class AnalysisController(BaseController):
         self, transactions_db: TransactionsDBService, category: Literal["Abono", "Cargo"]
     ) -> alt.Chart | None:
         transactions = transactions_db.get_transactions(self.user_id)
-        transactions = cast(list[Transaction], transactions)
+        transactions = await self.transaction_validator.validate_list_transactions_async(
+            transactions
+        )
 
         if not transactions:
             return None
@@ -113,7 +114,7 @@ class AnalysisController(BaseController):
         avg_per_day = self.data_processing_service.process_avg_daily_data_by_category(
             transactions, category
         )
-        avg_per_day = avg_per_day.reset_index(drop=True).reset_index()
+        avg_per_day = avg_per_day.reset_index(drop=True)
         avg_per_day.columns = ["day", "amount"]
 
         avg_per_day["amount"] = avg_per_day["amount"].astype("float64").apply(lambda x: abs(x))
@@ -134,7 +135,7 @@ class AnalysisController(BaseController):
             transactions = transactions_db.get_transactions(
                 self.user_id, period=period, amount_types=[TransactionType(category)]
             )
-            transactions = cast(list[Transaction], transactions)
+            transactions = self.transaction_validator.validate_list_transactions(transactions)
 
             if not transactions:
                 return None
@@ -169,7 +170,7 @@ class AnalysisController(BaseController):
             transactions = transactions_db.get_transactions(
                 self.user_id, period=self._get_year_period(year), type=category
             )
-            transactions = cast(list[Transaction], transactions)
+            transactions = self.transaction_validator.validate_list_transactions(transactions)
 
             if not transactions:
                 return None

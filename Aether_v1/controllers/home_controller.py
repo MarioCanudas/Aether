@@ -1,6 +1,6 @@
 import asyncio
 from datetime import date, timedelta
-from typing import Any, cast
+from typing import Any
 
 import pandas as pd
 from dateutil.relativedelta import relativedelta
@@ -104,9 +104,9 @@ class HomeController(BaseController):
             month=("month", "first"),
         )
 
-        grouped = cast(pd.DataFrame, grouped)
+        grouped = self.generics_validator.validate_dataframe(grouped)
         grouped["amount"] = grouped["amount"].apply(lambda x: abs(x))
-        grouped["amount"] = cast(pd.Series, grouped["amount"]).astype("float64")
+        grouped["amount"] = grouped["amount"].astype("float64")
 
         return grouped
 
@@ -251,6 +251,9 @@ class HomeController(BaseController):
         )
 
         last_transactions["Amount"] = last_transactions["Amount"].apply(lambda x: f"${x:,.2f}")
+        last_transactions = self.generics_validator.validate_dataframe(
+            last_transactions[["Date", "Category", "Description", "Amount", "Type", "Bank"]]
+        )
 
         all_time_sums = all_time_sums.result()
         all_time_sums.add_to_income(
@@ -260,10 +263,7 @@ class HomeController(BaseController):
         return HomeViewData(
             label=label,
             tips=tips,
-            last_transactions=cast(
-                pd.DataFrame,
-                last_transactions[["Date", "Category", "Description", "Amount", "Type", "Bank"]],
-            ),
+            last_transactions=last_transactions,
             donut_score_chart=donut_score_chart.result(),
             income_vs_expenses_bar_chart=income_vs_expenses_bar_chart.result(),
             balance_line_chart=balance_line_chart.result(),

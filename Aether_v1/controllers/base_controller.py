@@ -4,6 +4,7 @@ from typing import Any
 
 import pandas as pd
 from models.transactions import Transaction
+from models.validators import GenericsValidator
 from psycopg2.extensions import connection
 from services import (
     CardsDBService,
@@ -27,6 +28,7 @@ class BaseController:
     def __init__(self):
         self.connection_manager = ConnectionManagementService()
         self.user_session_service = UserSessionService()
+        self.generics_validator = GenericsValidator()
 
     @property
     def formated_columns(self) -> dict[str, str]:

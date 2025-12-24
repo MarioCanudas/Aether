@@ -1,6 +1,6 @@
 import asyncio
 from datetime import date
-from typing import Any, cast
+from typing import Any
 
 import pandas as pd
 from altair import Chart
@@ -75,39 +75,31 @@ class CardsViewController(BaseController):
             else:
                 dicts_list.append(t)
 
-        df = pd.DataFrame(dicts_list)
-
-        df["date"] = pd.to_datetime(df["date"])
-
         today = date.today()
         start_date = today - relativedelta(months=6)
         end_date = today
 
-        # Casting to Any or specific pandas types to avoid type checker errors with partial pandas stubs
-        date_series: Any = df["date"]
-        df = df[date_series.between(pd.to_datetime(start_date), pd.to_datetime(end_date))]
+        df = pd.DataFrame(dicts_list)
+        df["date"] = pd.to_datetime(df["date"])
 
-        # Accessors in pandas types often cause issues in strict mode, cast to Any for pragmatism if stubs are missing
-        # Accessors in pandas types often cause issues in strict mode, cast to Any for pragmatism if stubs are missing
-        date_dt = cast(pd.Series, df["date"]).dt
-        df["month"] = date_dt.month
-        df["month-year"] = date_dt.strftime("%Y-%m")
+        filtered_df = df[df["date"].between(pd.to_datetime(start_date), pd.to_datetime(end_date))]
+        filtered_df = self.generics_validator.validate_dataframe(filtered_df)
 
-        month_series = cast(pd.Series, df["month"])
-        df["month_label"] = month_series.apply(lambda x: months_map(x))
+        filtered_df["month"] = filtered_df["date"].month
+        filtered_df["month-year"] = filtered_df["date"].strftime("%Y-%m")
+        filtered_df["month_label"] = filtered_df["month"].apply(lambda x: months_map(x))
 
-        grouped = df.groupby(["month-year", "type"], as_index=False).agg(
+        grouped = filtered_df.groupby(["month-year", "type"], as_index=False).agg(
             amount=("amount", "sum"),
             month_label=("month_label", "first"),
             month=("month", "first"),
         )
 
-        grouped = cast(pd.DataFrame, grouped)
+        grouped = self.generics_validator.validate_dataframe(grouped)
 
         # Fix assignment to new column or slice
-        amount_series = cast(pd.Series, grouped["amount"])
-        grouped["amount"] = amount_series.apply(lambda x: abs(x))
-        grouped["amount"] = cast(pd.Series, grouped["amount"]).astype("float64")
+        grouped["amount"] = grouped["amount"].apply(lambda x: abs(x))
+        grouped["amount"] = grouped["amount"].astype("float64")
 
         plotting_service = PlottingService()
 
@@ -134,18 +126,17 @@ class CardsViewController(BaseController):
                 total_income=income, total_expenses=expenses, total_balance=balance
             )
 
-            transactions = cast(
-                list[dict[str, Any]],
-                transactions_db.get_transactions(
-                    user_id=self.user_id,
-                    show_categories_names=True,
-                    card_id=card_id,
-                    order_col="date",
-                    order="desc",
-                    limit=5,
-                    transaction_model=False,
-                ),
+            transactions = transactions_db.get_transactions(
+                user_id=self.user_id,
+                show_categories_names=True,
+                card_id=card_id,
+                order_col="date",
+                order="desc",
+                limit=5,
+                transaction_model=False,
             )
+
+            transactions = await self.generics_validator.validate_list_of_dicts(transactions)
 
             return CardViewData(
                 metrics=metrics,
