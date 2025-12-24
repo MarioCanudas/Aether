@@ -1,6 +1,3 @@
-from typing import cast
-
-import pandas as pd
 import streamlit as st
 from components import show_edit_transaction
 from constants.views_icons import TRANSACTIONS_ICON
@@ -78,7 +75,6 @@ def show_data():
             period = transactions_period
 
         if banks:
-            # banks is list[Any], need manual cast logic or trust list comprehension
             banks_enum: list[BankName] = [BankName(bank) for bank in banks]
         else:
             banks_enum = []
@@ -103,7 +99,7 @@ def show_data():
                 filtered_amount_types,  # Fallback
             )
         finally:
-            categories_list = cast(list[str], controller.get_categories())
+            categories_list = controller.get_categories()
 
             edited_transactions = st.data_editor(
                 data=filtered_transactions.copy(),
@@ -189,7 +185,7 @@ def show_data():
                 disabled=disabled_columns,
             )
 
-            to_edit_col = cast(pd.Series, edited_dupl_trans["To edit"])
+            to_edit_col = edited_dupl_trans["To edit"]
             just_one_selected = to_edit_col.sum() == 1
 
             if just_one_selected:

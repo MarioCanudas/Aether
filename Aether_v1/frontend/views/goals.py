@@ -1,5 +1,3 @@
-from typing import Any, cast
-
 import streamlit as st
 from components import add_amount_popup, config_goals_templates_popup, new_goal_popup
 from constants.views_icons import GOALS_ICON
@@ -69,7 +67,7 @@ def show_goals():
             **Period:** {goal_info.start_date} - {goal_info.end_date} \n
             """
         )
-        cast(Any, right).badge(
+        right.badge(
             goal_info.status.value, icon=goal_info.status.icon, color=goal_info.status.color
         )
 

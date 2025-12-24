@@ -1,5 +1,4 @@
 from datetime import date
-from typing import cast
 
 import streamlit as st
 from components import modify_template_popup, new_transaction_template_popup
@@ -91,7 +90,11 @@ def show_add_transaction():
 
         with st.form(key="add_transaction_form", border=False, clear_on_submit=True):
             if template:
-                default_values = cast(TransactionDefaultValues, template.default_values)
+                default_values = template.default_values
+                if not isinstance(default_values, TransactionDefaultValues):
+                    raise TypeError(
+                        "Template default values are not of type TransactionDefaultValues"
+                    )
 
                 transaction_date = st.date_input(
                     label="Date",
@@ -268,60 +271,35 @@ def show_add_transaction():
                 )
 
             if st.form_submit_button(label="Sumbit", type="primary"):
-                ready_to_submit = True
+                try:
+                    if not isinstance(transaction_date, date):
+                        raise TypeError("The transaction date is not valid")
 
-                if not isinstance(transaction_date, date):
-                    st.warning(
-                        "Please, verify the given date to can update the transaction",
-                        icon=":material/warning:",
-                    )
-                    ready_to_submit = False
+                    if not isinstance(transaction_bank, BankName):
+                        raise TypeError("The transaction bank is not valid")
 
-                if not isinstance(transaction_bank, BankName):
-                    st.warning(
-                        "Please, select a valid bank to can update the transaction",
-                        icon=":material/warning:",
-                    )
-                    ready_to_submit = False
+                    if not isinstance(transaction_amount, float):
+                        raise TypeError("The transaction amount is not valid")
 
-                if not isinstance(transaction_amount, float):
-                    st.warning(
-                        "Please, enter a valid amount to can update the transaction",
-                        icon=":material/warning:",
-                    )
-                    ready_to_submit = False
-
-                if not isinstance(transaction_statement_type, StatementType):
-                    st.warning(
-                        "Please, select a valid statement type to can update the transaction",
-                        icon=":material/warning:",
-                    )
-                    ready_to_submit = False
-
-                if ready_to_submit:
-                    transaction_amount = cast(
-                        float, transaction_amount
-                    )  # The verification is done above
+                    if not isinstance(transaction_statement_type, StatementType):
+                        raise TypeError("The transaction statement type is not valid")
 
                     transaction_record = Transaction(
                         user_id=controller.user_id,
                         category_id=controller.get_category_id(category) if category else None,
-                        date=cast(date, transaction_date),  # The verification is done above
+                        date=transaction_date,  # The verification is done above
                         description=description,
                         amount=to_decimal(transaction_amount)
                         if transaction_type == "Abono"
                         else to_decimal(-1 * transaction_amount),
                         type=TransactionType(transaction_type),
-                        bank=cast(BankName, transaction_bank),  # The verification is done above
+                        bank=transaction_bank,
                         card_id=transaction_card.card_id if transaction_card else None,
-                        statement_type=cast(
-                            StatementType, transaction_statement_type
-                        ),  # The verification is done above
+                        statement_type=transaction_statement_type,
                         filename=None,
                         duplicate_potential_state=False,
                     )
 
-                if transaction_record:
                     duplicate_result = controller.get_duplicate_result(transaction_record)
 
                     if duplicate_result.has_exact_duplicates:
@@ -336,3 +314,8 @@ def show_add_transaction():
 
                         st.toast("Transaction added successfully", icon=":material/check:")
                         st.rerun()
+                except TypeError as type_err:
+                    st.warning(
+                        f"{type_err}, please, verify the given values to can add the transaction",
+                        icon=":material/error:",
+                    )

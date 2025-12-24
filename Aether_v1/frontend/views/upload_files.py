@@ -1,6 +1,3 @@
-from io import BytesIO
-from typing import cast
-
 import streamlit as st
 from components.confirm_upload import confirm_upload_popup
 from constants.views_icons import UPLOAD_STATEMENTS_ICON
@@ -41,7 +38,7 @@ def show_upload_statements():
                 # From streamlit documentation:
                 # The UploadedFile class is a subclass of BytesIO, and therefore is "file-like".
                 # This means you can pass an instance of it anywhere a file is expected.
-                uploaded_files = cast(list[BytesIO], uploaded_files)
+                uploaded_files = controller.generics_validator.validate_list_bytesio(uploaded_files)
                 transactions = controller.process_uploaded_files(uploaded_files, card)
                 confirm_upload_popup(transactions)
             else:

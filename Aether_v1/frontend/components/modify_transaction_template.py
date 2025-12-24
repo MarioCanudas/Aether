@@ -1,5 +1,3 @@
-from typing import cast
-
 import streamlit as st
 from controllers import AddTransactionController
 from models.amounts import TransactionType
@@ -14,8 +12,12 @@ controller = AddTransactionController()
 def modify_template_popup(template_id: int) -> None:
     with st.form(key="modify_template_form", border=False):
         template = controller.get_template(template_id)
-        template = cast(Template, template)
-        default_values = cast(TransactionDefaultValues, template.default_values)
+        if not isinstance(template, Template):
+            raise TypeError("template must be an instance of Template")
+
+        default_values = template.default_values
+        if not isinstance(default_values, TransactionDefaultValues):
+            raise TypeError("default_values must be an instance of TransactionDefaultValues")
 
         if template is None:
             st.error("Template not found")
