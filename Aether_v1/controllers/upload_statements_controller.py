@@ -1,10 +1,11 @@
 import logging
 from io import BytesIO
-from typing import Any, cast
+from typing import Any
 
 import pandas as pd
 from models.cards import Card
 from models.transactions import DuplicateResult, FilteredTransactionsResult, Transaction
+from models.validators import TransactionValidator
 from services import (
     AutomaticCategorizationService,
     CardsDBService,
@@ -27,6 +28,7 @@ class UploadStatementsController(BaseController):
         self.data_validation_service = DataValidationService()
         self.dt_service = DuplicateTreatmentService()
         self.ac_service = AutomaticCategorizationService()
+        self.transaction_validator = TransactionValidator()
 
     def process_uploaded_files(
         self, uploaded_files: list[BytesIO], card: Card | None = None
@@ -58,10 +60,7 @@ class UploadStatementsController(BaseController):
         else:
             all_transactions_df["card_id"] = None
 
-        return [
-            Transaction(**r)
-            for r in cast(list[dict[str, Any]], all_transactions_df.to_dict(orient="records"))
-        ]
+        return [Transaction(**r) for r in all_transactions_df.to_dict(orient="records")]
 
     async def filter_transactions(
         self, transactions: list[Transaction]
@@ -74,7 +73,9 @@ class UploadStatementsController(BaseController):
             duplicates_results = await self.dt_service.detect_duplicates(
                 conn, self.user_id, clean_transactions
             )
-            duplicates_results = cast(list[DuplicateResult], duplicates_results)
+            duplicates_results = self.transaction_validator.validate_list_duplicate_result(
+                duplicates_results
+            )
 
         filtered_transactions_result = FilteredTransactionsResult(
             duplicated=duplicated_transactions

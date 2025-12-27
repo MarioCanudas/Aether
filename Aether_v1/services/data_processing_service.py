@@ -1,7 +1,8 @@
-from typing import Literal, cast
+from typing import Literal
 
 import pandas as pd
 from models.tables import AllTransactionsTable, MonthlyResultsTable
+from models.validators import GenericsValidator
 
 
 class DataProcessingService:
@@ -22,8 +23,10 @@ class DataProcessingService:
     These objects work together to transform a raw PDF bank statement into a structured and normalized DataFrame of transactions.
     """
 
-    @staticmethod
-    def get_monthly_results(all_transactions: AllTransactionsTable) -> MonthlyResultsTable:
+    def __init__(self):
+        self.generics_validator = GenericsValidator()
+
+    def get_monthly_results(self, all_transactions: AllTransactionsTable) -> MonthlyResultsTable:
         """
         Calculates monthly savings and validates balances by ensuring the running total matches the provided balances.
 
@@ -50,11 +53,12 @@ class DataProcessingService:
 
         for year_month, group in grouped:
             # Sort by date within the group for proper calculations
-            year_month = cast(pd.Period, year_month)
             group = group.sort_values(by="date")
 
             # Extract the initial balance from "Saldo inicial"
-            initial_balance_row = cast(pd.DataFrame, group[group["type"] == "Saldo inicial"])
+            initial_balance_row = group[group["type"] == "Saldo inicial"]
+            initial_balance_row = self.generics_validator.validate_dataframe(initial_balance_row)
+
             initial_balance = (
                 initial_balance_row["amount"].values[0] if not initial_balance_row.empty else None
             )
@@ -71,7 +75,7 @@ class DataProcessingService:
             # Append results
             results.append(
                 {
-                    "year_month": year_month.to_timestamp(),
+                    "year_month": year_month.to_timestamp(),  # type: ignore
                     "initial_balance": initial_balance if initial_balance is not None else 0,
                     "total_income": total_income,
                     "total_withdrawal": total_withdrawal,
@@ -81,9 +85,8 @@ class DataProcessingService:
 
         return MonthlyResultsTable(df=pd.DataFrame(results))
 
-    @staticmethod
     def process_avg_daily_data_by_category(
-        data: pd.DataFrame, category: Literal["Abono", "Cargo"]
+        self, data: pd.DataFrame, category: Literal["Abono", "Cargo"]
     ) -> pd.DataFrame:
         """
         Process daily data by calculating the average income and expenses per day.
@@ -95,16 +98,14 @@ class DataProcessingService:
             pd.DataFrame: A DataFrame with the average income and expenses per day.
         """
         data["date"] = pd.to_datetime(data["date"])
+        filtered_data = data[data["type"] == category].copy()
+        filtered_data = self.generics_validator.validate_dataframe(filtered_data)
+        filtered_data["day"] = filtered_data["date"].dt.day
 
-        filtered_data = data[data["type"] == category]
-
-        filtered_data_days = cast(pd.Series, filtered_data["date"])
-        filtered_data["day"] = filtered_data_days.dt.day
-
-        # Average income by day of the month
-        avg_per_day = cast(
-            pd.DataFrame,
-            filtered_data.groupby("day")["amount"].mean().reindex(range(1, 32), fill_value=0),
+        avg_per_day = pd.DataFrame({"day": [], "amount": []})
+        avg_per_day["day"] = range(1, 32)  # Days from 1 to 31
+        avg_per_day["amount"] = (
+            filtered_data.groupby("day")["amount"].mean().reindex(avg_per_day["day"], fill_value=0)
         )
 
         return avg_per_day

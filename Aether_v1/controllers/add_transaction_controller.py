@@ -1,5 +1,4 @@
 import asyncio
-from typing import cast
 
 from models.bank_properties import BankName
 from models.cards import Card
@@ -75,7 +74,13 @@ class AddTransactionController(BaseController):
                 dt_service.detect_duplicates(conn, self.user_id, transaction)
             )
 
-            return cast(DuplicateResult, duplicate_result)
+            if not isinstance(duplicate_result, DuplicateResult):
+                raise TypeError(
+                    "Expected duplicate_result to be of type DuplicateResult, "
+                    f"got {type(duplicate_result)} instead."
+                )
+
+            return duplicate_result
 
     def modify_potential_duplicate_transactions(self, transactions: list[Transaction]) -> None:
         transactions_to_modify = []

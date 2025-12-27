@@ -1,10 +1,10 @@
 import asyncio
-from typing import cast
 
 import pandas as pd
 from dateutil.relativedelta import relativedelta
 from models.dates import Period
 from models.transactions import DuplicateResult, Transaction
+from models.validators import GenericsValidator, TransactionValidator
 from psycopg2.extensions import connection
 
 from .database.transactions import TransactionsDBService
@@ -14,6 +14,10 @@ class DuplicateTreatmentService:
     """
     This service is used to detect and treat duplicate transactions.
     """
+
+    def __init__(self):
+        self.generics_validator = GenericsValidator()
+        self.transaction_validator = TransactionValidator()
 
     @staticmethod
     def get_transactions_period(transactions: list[Transaction], days_gap_range: int) -> Period:
@@ -95,7 +99,9 @@ class DuplicateTreatmentService:
             ],
             period=period,
         )
-        existing_transactions = cast(list[Transaction], existing_transactions)
+        existing_transactions = self.transaction_validator.validate_list_transactions(
+            existing_transactions
+        )
 
         tasks: list[asyncio.Task[DuplicateResult]] = []
 
@@ -119,8 +125,8 @@ class DuplicateTreatmentService:
         else:
             return results
 
-    @staticmethod
     def eliminate_credit_and_debit_duplicates(
+        self,
         transactions: list[Transaction],
     ) -> tuple[list[Transaction], list[Transaction]]:
         """
@@ -162,7 +168,7 @@ class DuplicateTreatmentService:
                 & (debit_transactions["date"] <= credit["date"])
             ]
 
-            matching_debit = cast(pd.DataFrame, matching_debit)
+            matching_debit = self.generics_validator.validate_dataframe(matching_debit)
 
             if not matching_debit.empty:
                 # Find the last matching debit based on date

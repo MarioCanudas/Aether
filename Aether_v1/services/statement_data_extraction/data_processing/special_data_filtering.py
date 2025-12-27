@@ -1,15 +1,17 @@
 import re
-from typing import cast
 
-import pandas as pd
 from models.tables import TransactionsTable
+from models.validators import GenericsValidator
 
 from ..core import SpecialDataFiltering
 
 
 class NuSpecialDataFiltering(SpecialDataFiltering):
-    @staticmethod
-    def filter_special_data(normalized_table: TransactionsTable) -> TransactionsTable:
+    @property
+    def generics_validator(self) -> GenericsValidator:
+        return GenericsValidator()
+
+    def filter_special_data(self, normalized_table: TransactionsTable) -> TransactionsTable:
         key_words = ["retiro de cajita", "depósito en cajita"]
 
         pattern = "|".join(map(re.escape, key_words))
@@ -18,6 +20,6 @@ class NuSpecialDataFiltering(SpecialDataFiltering):
             pattern, case=False, regex=True
         )
 
-        result = cast(pd.DataFrame, normalized_table.df[mask])
+        result = self.generics_validator.validate_dataframe(normalized_table.df[mask])
 
         return TransactionsTable(df=result)

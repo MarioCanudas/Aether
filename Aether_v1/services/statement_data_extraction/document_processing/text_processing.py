@@ -1,13 +1,16 @@
 import re
-from typing import cast
 
-import pandas as pd
 from models.tables import ExtractedWords
+from models.validators import GenericsValidator
 
 from ..core import TextProcessor
 
 
 class DefaultTextProcessor(TextProcessor):
+    @property
+    def generics_validator(self) -> GenericsValidator:
+        return GenericsValidator()
+
     def correct_text(self) -> ExtractedWords:
         """
         Corrects the extracted words DataFrame by fixing text parsing issues.
@@ -20,8 +23,8 @@ class DefaultTextProcessor(TextProcessor):
             ExtractedWords: Corrected ExtractedWordsTable with properly separated text elements
         """
         # Get a copy of the extracted words to avoid modifying the original
-        extracted_words = self.extracted_words.df
-        corrected_extracted_words = self.extracted_words.df.copy()
+        extracted_words = self.extracted_words.df.reset_index(drop=True)
+        corrected_extracted_words = self.extracted_words.df.copy().reset_index(drop=True)
 
         # Define regex patterns for matching amounts and dates
         amount_pattern = (
@@ -32,9 +35,8 @@ class DefaultTextProcessor(TextProcessor):
         idx_to_drop = []
 
         # Iterate through each row to identify and correct parsing issues
-        for i, row in extracted_words.iterrows():
-            i = cast(int, i)
-
+        rows = extracted_words.to_dict(orient="records")
+        for i, row in enumerate(rows):
             text = str(row["text"]).strip()
             next_text = (
                 str(extracted_words.loc[i + 1, "text"]).strip()
@@ -113,5 +115,8 @@ class DefaultTextProcessor(TextProcessor):
         corrected_extracted_words = corrected_extracted_words[
             corrected_extracted_words["text"] != "$"
         ]
+        corrected_extracted_words = self.generics_validator.validate_dataframe(
+            corrected_extracted_words
+        )
 
-        return ExtractedWords(df=cast(pd.DataFrame, corrected_extracted_words))
+        return ExtractedWords(df=corrected_extracted_words)

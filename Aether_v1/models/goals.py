@@ -1,7 +1,7 @@
 from datetime import date
 from decimal import Decimal
 from enum import Enum
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, field_validator, model_validator
 
@@ -69,7 +69,7 @@ class GoalStatus(str, Enum):
                 return ":material/hourglass_pause:"
 
     @property
-    def color(self) -> str:
+    def color(self) -> Literal["green", "red", "orange", "gray"]:
         match self:
             case GoalStatus.ACHIEVED:
                 return "green"

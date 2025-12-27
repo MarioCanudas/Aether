@@ -1,4 +1,4 @@
-from typing import Any, cast
+from typing import Any
 
 from models.templates import GoalDefaultValues, Template, TemplateType, TransactionDefaultValues
 
@@ -95,9 +95,10 @@ class TemplatesDBService(BaseDBService):
                 SET {self.user_id} = %(user_id)s, {self.template_name} = %(template_name)s, {self.template_description} = %(template_description)s, {self.template_type} = %(template_type)s, {self.default_values} = %(default_values)s
                 WHERE {self.id_col} = %(template_id)s
             """
+            template_values = updated_template.to_record()
 
             params: dict[str, Any] = {
-                **cast(dict[str, Any], updated_template.to_record()),
+                **template_values,
                 "template_id": template_id,
             }
 
