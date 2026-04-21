@@ -61,6 +61,7 @@ class ConnectionManagementService:
 
         if IS_SUPABASE:
             connection_params["sslmode"] = "require"
+            connection_params["gssencmode"] = "disable"
 
         # Quick read pool - optimized for fast read operations
         try:
