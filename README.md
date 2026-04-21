@@ -264,6 +264,7 @@ The application features a sophisticated PDF processing pipeline:
 The application requires a `.env` file in the project root with the following database configuration:
 
 ```env
+IS_SUPABASE=1 or 0 depending on if you are using supabase or just a regular PostgreSQL database
 DB_HOST=your_database_host
 DB_PORT=your_database_port
 DB_NAME=your_database_name
@@ -276,6 +277,7 @@ The database can be:
 - **Local PostgreSQL instance**
 - **Cloud-hosted PostgreSQL** (AWS RDS, Google Cloud SQL, Azure Database, etc.)
 - **Containerized PostgreSQL** (Docker, etc.)
+- **Supabase** (managed PostgreSQL with additional features)
 
 Use the `init_db.sql` file to initialize the database with the required schema, including:
 

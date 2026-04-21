@@ -12,6 +12,7 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
+IS_SUPABASE = bool(os.getenv("IS_SUPABASE"))
 DB_HOST = os.getenv("DB_HOST")
 DB_PORT = os.getenv("DB_PORT")
 DB_NAME = os.getenv("DB_NAME")
@@ -51,25 +52,34 @@ class ConnectionManagementService:
 
     def _init_connection_pools(self) -> None:
         """Initialize connection pools for different operation types."""
-        connection_params = {
-            "host": os.getenv("DB_HOST"),
-            "port": os.getenv("DB_PORT"),
-            "dbname": os.getenv("DB_NAME"),
-            "user": os.getenv("DB_USER"),
-            "password": os.getenv("DB_PASSWORD"),
-            "connect_timeout": 10,
-        }
+        if IS_SUPABASE:
+            connection_params = {
+                "host": os.getenv("DB_HOST"),
+                "port": os.getenv("DB_PORT"),
+                "dbname": os.getenv("DB_NAME"),
+                "user": os.getenv("DB_USER"),
+                "password": os.getenv("DB_PASSWORD"),
+                "connect_timeout": 10,
+                "sslmode": "require",
+            }
+        else:
+            connection_params = {
+                "host": os.getenv("DB_HOST"),
+                "port": os.getenv("DB_PORT"),
+                "dbname": os.getenv("DB_NAME"),
+                "user": os.getenv("DB_USER"),
+                "password": os.getenv("DB_PASSWORD"),
+                "connect_timeout": 10,
+            }
 
         # Quick read pool - optimized for fast read operations
-        self._quick_read_pool = pool.SimpleConnectionPool(
-            minconn=2, maxconn=10, **connection_params
-        )
+        self._quick_read_pool = pool.SimpleConnectionPool(minconn=1, maxconn=5, **connection_params)
 
         # Session pool - for user interactions
-        self._session_pool = pool.SimpleConnectionPool(minconn=1, maxconn=5, **connection_params)
+        self._session_pool = pool.SimpleConnectionPool(minconn=1, maxconn=2, **connection_params)
 
         # Batch pool - for bulk operations
-        self._batch_pool = pool.SimpleConnectionPool(minconn=1, maxconn=3, **connection_params)
+        self._batch_pool = pool.SimpleConnectionPool(minconn=1, maxconn=2, **connection_params)
 
     def _configure_for_session(self, connection: extensions.connection) -> None:
         """Configure connection for session-scoped operations."""

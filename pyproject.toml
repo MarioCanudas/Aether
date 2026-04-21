@@ -5,41 +5,39 @@ description = "An application to process and analyze bank statements from PDF fi
 readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "MIT" }
-authors = [
-    { name = "Mario", email = "mario.cz24@outlook.com" },
-]
+authors = [{ name = "Mario", email = "mario.cz24@outlook.com" }]
 classifiers = [
-    "Development Status :: 3 - Alpha",
-    "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: MIT License",
-    "Operating System :: OS Independent",
-    "Framework :: Streamlit",
-    "Intended Audience :: Developers",
-    "Topic :: Office/Business :: Financial",
+  "Development Status :: 3 - Alpha",
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Framework :: Streamlit",
+  "Intended Audience :: Developers",
+  "Topic :: Office/Business :: Financial",
 ]
 
 # Production dependencies: required for the application to run.
 dependencies = [
-    "streamlit==1.51.0",
-    "pandas==2.2.3",
-    "matplotlib==3.10.1",
-    "pdfplumber==0.11.6",
-    "scikit-learn==1.6.1",
-    "pydantic==2.9.2",
-    "psycopg2-binary==2.9.10",
-    "python-dotenv==1.1.1",
-    "passlib[argon2] == 1.7.4",
-    "openai==2.14.0"
+  "streamlit==1.51.0",
+  "pandas==2.2.3",
+  "matplotlib==3.10.1",
+  "pdfplumber==0.11.6",
+  "scikit-learn==1.6.1",
+  "pydantic==2.9.2",
+  "psycopg2-binary==2.9.10",
+  "python-dotenv==1.1.1",
+  "passlib[argon2] == 1.7.4",
+  "openai==2.14.0",
 ]
 
-[project.optional-dependencies]
+[dependency-groups]
 dev = [
-    "poe-the-poet>=0.24.0", # Task runner
-    "basedpyright==1.36.1",
-    "ruff==0.14.9"
+  "poethepoet>=0.24.0",   # Task runner
+  "basedpyright==1.36.1",
+  "ruff==0.14.9",
 ]
 test = [
-    "pytest>=7.0.0",         # Testing framework
+  "pytest>=7.0.0", # Testing framework
 ]
 
 [tool.poe.tasks]

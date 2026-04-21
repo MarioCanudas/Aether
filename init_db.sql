@@ -1,7 +1,7 @@
 -- Definición de tipos ENUM
 CREATE TYPE transaction_type AS ENUM ('Abono', 'Cargo', 'Saldo inicial');
-CREATE TYPE bank_name AS ENUM ('amex', 'banorte', 'bbva', 'banamex', 'hsbc', 'inbursa', 'nu', 'santander', 'cash'); 
-CREATE TYPE statement_type_enum AS ENUM ('debit', 'credit'); 
+CREATE TYPE bank_name AS ENUM ('amex', 'banorte', 'bbva', 'banamex', 'hsbc', 'inbursa', 'nu', 'santander', 'cash');
+CREATE TYPE statement_type_enum AS ENUM ('debit', 'credit');
 create type category_group as enum ('Hogar', 'Transporte', 'Alimentacion', 'Ocio', 'Salud', 'Finanzas', 'Ingresos', 'Otros');
 create type goal_type as enum ('Presupuesto', 'Ahorro', 'Deuda', 'Ingresos');
 create type goal_status as enum ('Activo', 'Inactivo', 'Cumplido', 'Fallido');
@@ -15,7 +15,7 @@ CREATE table if not exists "users" (
     "username" VARCHAR(255) NOT NULL UNIQUE,
     "password_hash" VARCHAR(255),
     "created_at" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    "last_login" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP, 
+    "last_login" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP WITH TIME ZONE
 );
 
@@ -39,6 +39,7 @@ CREATE TABLE if not exists "transactions" (
     "user_id" BIGSERIAL NOT NULL,
     "date" DATE NOT NULL,
     "category_id" bigint,
+    "card_id" bigint,
     "description" VARCHAR(500),
     "amount" DECIMAL(18, 2) NOT NULL,
     "type" transaction_type NOT NULL,
@@ -71,13 +72,14 @@ CREATE TABLE if not exists "goals" (
     "status" goal_status default 'Activo'
 );
 
---- 
+---
 -- Table: templates
 ---
 
 create table if not exists "templates" (
 	"template_id" BIGSERIAL primary key,
 	"user_id" bigserial,
+  "card_id" bigint,
     "template_name" varchar(50) NOT NULL,
     "template_description" varchar(200),
     "template_type" template_type not null,
@@ -85,11 +87,11 @@ create table if not exists "templates" (
 );
 
 create table if not exists "cards" (
-	"card_id" bigserial primary key,
-    "user_id" bigint,
-    "name" varchar(50) NOT NULL,
-    "bank" bank_name NOT NULL,
-    "statement_type" statement_type_enum NOT NULL
+    "card_id" bigserial primary key,
+  "user_id" bigint,
+  "name" varchar(50) NOT NULL,
+  "bank" bank_name NOT NULL,
+  "statement_type" statement_type_enum NOT NULL
 );
 
 ---
