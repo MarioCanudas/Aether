@@ -46,6 +46,7 @@ CREATE TABLE if not exists "transactions" (
     "bank" bank_name NOT NULL,
     "statement_type" statement_type_enum NOT NULL,
     "filename" VARCHAR(255),
+    "duplicate_potential_state" boolean default false,
     PRIMARY KEY ("transaction_id", "date")
 ) PARTITION BY RANGE ("date");
 
@@ -66,10 +67,12 @@ CREATE TABLE if not exists "goals" (
     "added_amount" decimal(18, 2) default 0,
     "name" varchar NOT NULL,
     "created_at" timestamp NOT null DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP,
     "start_date" timestamp NOT NULL,
     "end_date" timestamp NOT null,
     "achieved" boolean,
-    "status" goal_status default 'Activo'
+    "status" goal_status default 'Activo',
+    "related_transaction_type" transaction_type
 );
 
 ---
@@ -89,8 +92,8 @@ create table if not exists "templates" (
 create table if not exists "cards" (
     "card_id" bigserial primary key,
   "user_id" bigint,
-  "name" varchar(50) NOT NULL,
-  "bank" bank_name NOT NULL,
+  "card_name" varchar(50) NOT NULL,
+  "card_bank" bank_name NOT NULL,
   "statement_type" statement_type_enum NOT NULL
 );
 

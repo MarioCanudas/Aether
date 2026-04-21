@@ -67,7 +67,7 @@ class TransactionsDBService(BaseDBService):
             # Check if partition exists
             check_query = """
                 SELECT EXISTS (
-                    SELECT 1 FROM pg_class 
+                    SELECT 1 FROM pg_class
                     WHERE relname = %s AND relispartition = true
                 )
             """
@@ -266,13 +266,13 @@ class TransactionsDBService(BaseDBService):
         with self.transaction():
             query = f"""
                 UPDATE {self.table_name}
-                SET 
-                    {self.date} = %({self.date})s, 
-                    {self.description} = %({self.description})s, 
-                    {self.amount} = %({self.amount})s, 
-                    {self.type} = %({self.type})s, 
-                    {self.bank} = %({self.bank})s, 
-                    {self.statement_type} = %({self.statement_type})s, 
+                SET
+                    {self.date} = %({self.date})s,
+                    {self.description} = %({self.description})s,
+                    {self.amount} = %({self.amount})s,
+                    {self.type} = %({self.type})s,
+                    {self.bank} = %({self.bank})s,
+                    {self.statement_type} = %({self.statement_type})s,
                     {self.filename} = %({self.filename})s,
                     {self.category_id} = %({self.category_id})s,
                     {self.duplicate_potential_state} = %({self.duplicate_potential_state})s
@@ -348,7 +348,7 @@ class TransactionsDBService(BaseDBService):
         start_date, end_date = specific_period.to_tuple()
 
         query = f"""
-            SELECT 
+            SELECT
                 COALESCE(SUM(CASE WHEN {self.type} = %(income_type)s THEN {self.amount} ELSE 0 END), 0) AS specific_period_income,
                 COALESCE(SUM(CASE WHEN {self.type} = %(expense_type)s THEN {self.amount} ELSE 0 END), 0) AS specific_period_withdrawal
             FROM {self.table_name}
@@ -402,28 +402,28 @@ class TransactionsDBService(BaseDBService):
         query = f"""
             SELECT
                 -- All time max/min amounts
-                MAX(CASE 
-                    WHEN {self.type} = %(income_type)s 
+                MAX(CASE
+                    WHEN {self.type} = %(income_type)s
                     THEN {self.amount} ELSE 0 END) AS max_income_all_time,
-                MIN(CASE 
-                    WHEN {self.type} = %(expense_type)s 
+                MIN(CASE
+                    WHEN {self.type} = %(expense_type)s
                     THEN {self.amount} ELSE 0 END) AS max_expense_all_time,
                 -- Current month max/min amounts
-                MAX(CASE 
-                    WHEN {self.type} = %(income_type)s 
+                MAX(CASE
+                    WHEN {self.type} = %(income_type)s
                     AND {self.date} BETWEEN %(current_month_start_date)s AND %(current_month_end_date)s
                     THEN {self.amount} ELSE 0 END) AS max_income_current_month,
-                MIN(CASE 
-                    WHEN {self.type} = %(expense_type)s 
+                MIN(CASE
+                    WHEN {self.type} = %(expense_type)s
                     AND {self.date} BETWEEN %(current_month_start_date)s AND %(current_month_end_date)s
                     THEN {self.amount} ELSE 0 END) AS max_expense_current_month,
                 -- Last month max/min amounts
-                MAX(CASE 
-                    WHEN {self.type} = %(income_type)s 
+                MAX(CASE
+                    WHEN {self.type} = %(income_type)s
                     AND {self.date} BETWEEN %(last_month_start_date)s AND %(last_month_end_date)s
                     THEN {self.amount} ELSE 0 END) AS max_income_last_month,
-                MIN(CASE 
-                    WHEN {self.type} = %(expense_type)s 
+                MIN(CASE
+                    WHEN {self.type} = %(expense_type)s
                     AND {self.date} BETWEEN %(last_month_start_date)s AND %(last_month_end_date)s
                     THEN {self.amount} ELSE 0 END) AS max_expense_last_month
             FROM {self.table_name}
@@ -470,12 +470,12 @@ class TransactionsDBService(BaseDBService):
     ) -> dict[str, Decimal]:
         query = f"""
             SELECT
-                MAX(CASE 
-                    WHEN {self.type} = %(income_type)s 
+                MAX(CASE
+                    WHEN {self.type} = %(income_type)s
                     AND {self.date} BETWEEN %(specific_period_start_date)s AND %(specific_period_end_date)s
                     THEN {self.amount} ELSE 0 END) AS max_income_specific_period,
-                MIN(CASE 
-                    WHEN {self.type} = %(expense_type)s 
+                MIN(CASE
+                    WHEN {self.type} = %(expense_type)s
                     AND {self.date} BETWEEN %(specific_period_start_date)s AND %(specific_period_end_date)s
                     THEN {self.amount} ELSE 0 END) AS max_expense_specific_period
             FROM {self.table_name}
@@ -506,21 +506,21 @@ class TransactionsDBService(BaseDBService):
                 COUNT(CASE WHEN {self.type} = %(income_type)s THEN 1 END) AS freq_income_all_time,
                 COUNT(CASE WHEN {self.type} = %(expense_type)s THEN 1 END) AS freq_expense_all_time,
                 -- Current month frequency
-                COUNT(CASE 
-                    WHEN {self.type} = %(income_type)s 
+                COUNT(CASE
+                    WHEN {self.type} = %(income_type)s
                     AND {self.date} BETWEEN %(current_month_start_date)s AND %(current_month_end_date)s
                 THEN 1 END) AS freq_income_current_month,
-                COUNT(CASE 
-                    WHEN {self.type} = %(expense_type)s 
+                COUNT(CASE
+                    WHEN {self.type} = %(expense_type)s
                     AND {self.date} BETWEEN %(current_month_start_date)s AND %(current_month_end_date)s
                 THEN 1 END) AS freq_expense_current_month,
                 -- Last month frequency
-                COUNT(CASE 
-                    WHEN {self.type} = %(income_type)s 
+                COUNT(CASE
+                    WHEN {self.type} = %(income_type)s
                     AND {self.date} BETWEEN %(last_month_start_date)s AND %(last_month_end_date)s
                 THEN 1 END) AS freq_income_last_month,
-                COUNT(CASE 
-                    WHEN {self.type} = %(expense_type)s 
+                COUNT(CASE
+                    WHEN {self.type} = %(expense_type)s
                     AND {self.date} BETWEEN %(last_month_start_date)s AND %(last_month_end_date)s
                 THEN 1 END) AS freq_expense_last_month
             FROM {self.table_name}
@@ -566,12 +566,12 @@ class TransactionsDBService(BaseDBService):
     ) -> dict[str, int]:
         query = f"""
             SELECT
-                COUNT(CASE 
-                    WHEN {self.type} = %(income_type)s 
+                COUNT(CASE
+                    WHEN {self.type} = %(income_type)s
                     AND {self.date} BETWEEN %(specific_period_start_date)s AND %(specific_period_end_date)s
                 THEN 1 END) AS freq_income_specific_period,
-                COUNT(CASE 
-                    WHEN {self.type} = %(expense_type)s 
+                COUNT(CASE
+                    WHEN {self.type} = %(expense_type)s
                     AND {self.date} BETWEEN %(specific_period_start_date)s AND %(specific_period_end_date)s
                 THEN 1 END) AS freq_expense_specific_period
             FROM {self.table_name}
