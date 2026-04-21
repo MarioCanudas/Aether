@@ -10,12 +10,12 @@ from streamlit import secrets
 
 logger = logging.getLogger(__name__)
 
-IS_SUPABASE = bool(secrets["IS_SUPABASE"])
-DB_HOST = secrets["DB_HOST"]
-DB_PORT = secrets["DB_PORT"]
-DB_NAME = secrets["DB_NAME"]
-DB_USER = secrets["DB_USER"]
-DB_PASSWORD = secrets["DB_PASSWORD"]
+IS_SUPABASE = bool(secrets.get("IS_SUPABASE", False))
+DB_HOST = secrets.get("DB_HOST")
+DB_PORT = secrets.get("DB_PORT")
+DB_NAME = secrets.get("DB_NAME")
+DB_USER = secrets.get("DB_USER")
+DB_PASSWORD = secrets.get("DB_PASSWORD")
 
 
 class ConnectionManagementService:
@@ -50,34 +50,34 @@ class ConnectionManagementService:
 
     def _init_connection_pools(self) -> None:
         """Initialize connection pools for different operation types."""
+        connection_params = {
+            "host": DB_HOST,
+            "port": DB_PORT,
+            "dbname": DB_NAME,
+            "user": DB_USER,
+            "password": DB_PASSWORD,
+            "connect_timeout": 10,
+        }
+
         if IS_SUPABASE:
-            connection_params = {
-                "host": os.getenv("DB_HOST"),
-                "port": os.getenv("DB_PORT"),
-                "dbname": os.getenv("DB_NAME"),
-                "user": os.getenv("DB_USER"),
-                "password": os.getenv("DB_PASSWORD"),
-                "connect_timeout": 10,
-                "sslmode": "require",
-            }
-        else:
-            connection_params = {
-                "host": os.getenv("DB_HOST"),
-                "port": os.getenv("DB_PORT"),
-                "dbname": os.getenv("DB_NAME"),
-                "user": os.getenv("DB_USER"),
-                "password": os.getenv("DB_PASSWORD"),
-                "connect_timeout": 10,
-            }
+            connection_params["sslmode"] = "require"
 
         # Quick read pool - optimized for fast read operations
-        self._quick_read_pool = pool.SimpleConnectionPool(minconn=1, maxconn=5, **connection_params)
+        try:
+            self._quick_read_pool = pool.SimpleConnectionPool(
+                minconn=1, maxconn=5, **connection_params
+            )
 
-        # Session pool - for user interactions
-        self._session_pool = pool.SimpleConnectionPool(minconn=1, maxconn=2, **connection_params)
+            # Session pool - for user interactions
+            self._session_pool = pool.SimpleConnectionPool(
+                minconn=1, maxconn=2, **connection_params
+            )
 
-        # Batch pool - for bulk operations
-        self._batch_pool = pool.SimpleConnectionPool(minconn=1, maxconn=2, **connection_params)
+            # Batch pool - for bulk operations
+            self._batch_pool = pool.SimpleConnectionPool(minconn=1, maxconn=2, **connection_params)
+        except Exception as e:
+            logger.error(f"Failed to initialize connection pools: {e}")
+            raise
 
     def _configure_for_session(self, connection: extensions.connection) -> None:
         """Configure connection for session-scoped operations."""
