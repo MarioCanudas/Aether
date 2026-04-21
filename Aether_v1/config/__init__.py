@@ -2,6 +2,7 @@
 
 from .settings import (
     DOCUMENTS_FOLDER,
+    FRONTEND_FOLDER,
     INPUTS_FOLDER,
     OUTPUTS_FOLDER,
     PROJECT_ROOT,
@@ -12,4 +13,5 @@ __all__ = [
     "DOCUMENTS_FOLDER",
     "INPUTS_FOLDER",
     "OUTPUTS_FOLDER",
+    "FRONTEND_FOLDER",
 ]

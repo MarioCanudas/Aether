@@ -19,6 +19,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 # Import viewr
 from components import new_category_popup
+from config import FRONTEND_FOLDER
 from constants.views_icons import (
     ADD_TRANSACTION_ICON,
     CARDS_ICON,
@@ -50,10 +51,12 @@ if "logged_in" not in st.session_state:
 if "user_id" not in st.session_state:
     st.session_state.user_id = None
 
+LOGO: str = os.path.join(FRONTEND_FOLDER, "assets", "eli-logo.png")
+
 st.logo(
-    "frontend/assets/eli-logo.png",
+    LOGO,
     size="large",
-    icon_image="frontend/assets/eli-logo.png",
+    icon_image=LOGO,
 )
 
 # -- Page Navigation --
