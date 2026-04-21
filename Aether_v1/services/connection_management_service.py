@@ -5,19 +5,17 @@ from collections.abc import Generator
 from contextlib import contextmanager
 from typing import Any
 
-from dotenv import load_dotenv
 from psycopg2 import extensions, pool
-
-load_dotenv()
+from streamlit import secrets
 
 logger = logging.getLogger(__name__)
 
-IS_SUPABASE = bool(os.getenv("IS_SUPABASE"))
-DB_HOST = os.getenv("DB_HOST")
-DB_PORT = os.getenv("DB_PORT")
-DB_NAME = os.getenv("DB_NAME")
-DB_USER = os.getenv("DB_USER")
-DB_PASSWORD = os.getenv("DB_PASSWORD")
+IS_SUPABASE = bool(secrets["IS_SUPABASE"])
+DB_HOST = secrets["DB_HOST"]
+DB_PORT = secrets["DB_PORT"]
+DB_NAME = secrets["DB_NAME"]
+DB_USER = secrets["DB_USER"]
+DB_PASSWORD = secrets["DB_PASSWORD"]
 
 
 class ConnectionManagementService:

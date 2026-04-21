@@ -1,15 +1,13 @@
 import json
-import os
 
-from dotenv import load_dotenv
 from models.transactions import Transaction
 from openai import OpenAI
+from streamlit import secrets
 
 
 class AutomaticCategorizationService:
     def __init__(self):
-        load_dotenv()
-        api_key = os.getenv("OPENAI_KEY")
+        api_key = secrets["OPENAI_API_KEY"]
         self.client = OpenAI(api_key=api_key, base_url="https://api.deepseek.com")
 
     def _prompt(self, content: str) -> str:
@@ -47,8 +45,8 @@ class AutomaticCategorizationService:
             "Given the following categories:\n{categories_list}\n\n
             Categorize the following transactions:\n{transactions_data}\n\n
             Return a single JSON object with a key 'categories' which is a list of strings.
-            Each string in the list should be the category for the corresponding transaction in the 
-            same order. If you cannot determine a category for a transaction, use the JSON null 
+            Each string in the list should be the category for the corresponding transaction in the
+            same order. If you cannot determine a category for a transaction, use the JSON null
             value for that entry.
         """
         response_str = self._prompt(prompt)

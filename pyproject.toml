@@ -25,7 +25,6 @@ dependencies = [
   "scikit-learn==1.6.1",
   "pydantic==2.9.2",
   "psycopg2-binary==2.9.10",
-  "python-dotenv==1.1.1",
   "passlib[argon2] == 1.7.4",
   "openai==2.14.0",
 ]

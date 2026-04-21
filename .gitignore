@@ -181,3 +181,6 @@ test/
 # Code editors
 .vscode/
 .zed/
+
+# Streamlit
+.streamlit/
