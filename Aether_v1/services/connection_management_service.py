@@ -27,9 +27,9 @@ class ConnectionManagementService:
     _lock = threading.Lock()
     _initialized: bool = False
     _connection_stats: dict[str, int]
-    _quick_read_pool: pool.SimpleConnectionPool
-    _session_pool: pool.SimpleConnectionPool
-    _batch_pool: pool.SimpleConnectionPool
+    _quick_read_pool: pool.ThreadedConnectionPool
+    _session_pool: pool.ThreadedConnectionPool
+    _batch_pool: pool.ThreadedConnectionPool
 
     def __new__(cls) -> "ConnectionManagementService":
         if cls._instance is None:
@@ -64,17 +64,19 @@ class ConnectionManagementService:
 
         # Quick read pool - optimized for fast read operations
         try:
-            self._quick_read_pool = pool.SimpleConnectionPool(
+            self._quick_read_pool = pool.ThreadedConnectionPool(
                 minconn=1, maxconn=5, **connection_params
             )
 
             # Session pool - for user interactions
-            self._session_pool = pool.SimpleConnectionPool(
+            self._session_pool = pool.ThreadedConnectionPool(
                 minconn=1, maxconn=2, **connection_params
             )
 
             # Batch pool - for bulk operations
-            self._batch_pool = pool.SimpleConnectionPool(minconn=1, maxconn=2, **connection_params)
+            self._batch_pool = pool.ThreadedConnectionPool(
+                minconn=1, maxconn=2, **connection_params
+            )
         except Exception as e:
             logger.error(f"Failed to initialize connection pools: {e}")
             raise
