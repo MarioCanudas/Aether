@@ -21,23 +21,13 @@ def new_card_popup():
             key="new_card_statement_type",
         )
 
-        card_expiration_date = st.date_input(
-            "Expiration Date", value=None, key="new_card_expiration_date"
-        )
-
         if st.form_submit_button("Add Card", type="primary"):
-            if (
-                not card_name
-                or not card_bank
-                or not card_statement_type
-                or not card_expiration_date
-            ):
+            if not card_name or not card_bank or not card_statement_type:
                 st.error("All fields are required")
             else:
                 controller.add_card(
                     card_name,
                     BankName(card_bank),
                     StatementType(card_statement_type),
-                    card_expiration_date,
                 )
                 st.rerun()

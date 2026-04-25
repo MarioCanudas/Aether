@@ -22,7 +22,7 @@ class CardsViewController(BaseController):
         card_name: str,
         card_bank: BankName,
         statement_type: StatementType,
-        expiration_date: date,
+        expiration_date: date | None = None,
     ) -> None:
         card = Card(
             user_id=self.user_id,
