@@ -17,7 +17,7 @@ class CardsDBService(BaseDBService):
 
     def add_card(self, card: Card) -> None:
         with self.transaction():
-            query = """
+            query = f"""
                 INSERT INTO cards ({self.user_id}, {self.card_name}, {self.card_bank}, {self.statement_type})
                 VALUES (%(user_id)s, %(card_name)s, %(card_bank)s, %(statement_type)s)
             """
