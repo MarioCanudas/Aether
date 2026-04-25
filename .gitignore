@@ -183,4 +183,4 @@ test/
 .zed/
 
 # Streamlit
-.streamlit/
+Aether_v1/.streamlit/secrets.toml
