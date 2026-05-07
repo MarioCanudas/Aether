@@ -129,6 +129,7 @@ class DefaultRowSegmenter(RowSegmenter):
                 }
             )
             .reset_index()
+            .rename(columns={"top": "top_column", "bottom": "bottom_column"})
         )
 
         return GroupedRows(df=grouped_rows)

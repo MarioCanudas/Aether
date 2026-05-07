@@ -14,3 +14,6 @@ class TransactionValidator(BaseValidator):
 
     def validate_list_duplicate_result(self, data: Any) -> list[DuplicateResult]:
         return asyncio.run(self.validate_list_of(data, DuplicateResult))
+
+    async def validate_list_duplicate_result_async(self, data: Any) -> list[DuplicateResult]:
+        return await self.validate_list_of(data, DuplicateResult)

@@ -30,7 +30,9 @@ def confirm_upload_popup(transactions: list[Transaction]) -> None:
             "These transactions will be uploaded as potential duplicates. You can review them in the Transactions view."
         )
 
-    autocacategorized_transactions = st.checkbox("Autoclassify transactions with LLM", value=True)
+    autocacategorized_transactions = st.checkbox(
+        "Autoclassify transactions with AI (Isn't perfects, you must check it!)", value= False
+    )
 
     if len(filtered_transactions_result.duplicated) > 0:
         st.subheader("Duplicated transactions")

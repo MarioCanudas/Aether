@@ -99,7 +99,7 @@ class DuplicateTreatmentService:
             ],
             period=period,
         )
-        existing_transactions = self.transaction_validator.validate_list_transactions(
+        existing_transactions = await self.transaction_validator.validate_list_transactions_async(
             existing_transactions
         )
 

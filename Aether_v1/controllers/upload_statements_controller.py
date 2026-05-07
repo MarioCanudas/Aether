@@ -73,7 +73,7 @@ class UploadStatementsController(BaseController):
             duplicates_results = await self.dt_service.detect_duplicates(
                 conn, self.user_id, clean_transactions
             )
-            duplicates_results = self.transaction_validator.validate_list_duplicate_result(
+            duplicates_results = await self.transaction_validator.validate_list_duplicate_result_async(
                 duplicates_results
             )
 

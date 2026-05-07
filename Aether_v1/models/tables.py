@@ -241,22 +241,12 @@ class ReconstructedTable(BaseModel):
     df: pd.DataFrame
     amount_columns: AmountColumns
 
-    @field_validator("amount_columns")
-    @classmethod
-    def _validate_amount_columns(cls, v: list[str]) -> list[str]:
-        if not all(isinstance(item, str) for item in v):
-            raise ValueError("All items in amount_columns must be strings")
-        return v
-
     @field_validator("df", mode="before")
     @classmethod
     def _validate_df_structure(cls, v: pd.DataFrame) -> pd.DataFrame:
         v = generics_validator.validate_dataframe(v)
 
-        if v.empty:
-            v = pd.DataFrame({"date": [], "description": [], "amount": []})
-
-        required_cols = ["date", "description", "amount"]
+        required_cols = ["date", "description"]
         if not all(col in v.columns for col in required_cols):
             missing_cols = [col for col in required_cols if col not in v.columns]
             raise ValueError(
@@ -266,7 +256,7 @@ class ReconstructedTable(BaseModel):
         return v
 
     def _validate_amount_columns_after_df(self) -> None:
-        for col_name in self.amount_columns:
+        for col_name in self.amount_columns.all_list:
             if col_name not in self.df.columns:
                 raise ValueError(f"Column '{col_name}' not found in the DataFrame.")
             if not pd.api.types.is_numeric_dtype(self.df[col_name]):
