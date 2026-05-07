@@ -1,5 +1,3 @@
-import asyncio
-
 import pandas as pd
 from dateutil.relativedelta import relativedelta
 from models.dates import Period
@@ -32,20 +30,15 @@ class DuplicateTreatmentService:
         )
 
     @staticmethod
-    async def _determine_transaction_duplicates(
+    def _determine_transaction_duplicates(
         transaction: Transaction, existing_transactions: list[Transaction]
     ) -> DuplicateResult:
-        exact_duplicates_task: list[asyncio.Task[bool]] = []
-        potential_duplicates_task: list[asyncio.Task[bool]] = []
+        exact_duplicates: list[bool] = []
+        potential_duplicates: list[bool] = []
 
         for t in existing_transactions:
-            exact_duplicates_task.append(asyncio.create_task(transaction.exact_duplicate(t)))
-            potential_duplicates_task.append(
-                asyncio.create_task(transaction.potencial_duplicate(t))
-            )
-
-        exact_duplicates: list[bool] = await asyncio.gather(*exact_duplicates_task)
-        potential_duplicates: list[bool] = await asyncio.gather(*potential_duplicates_task)
+            exact_duplicates.append(transaction.exact_duplicate(t))
+            potential_duplicates.append(transaction.potential_duplicate(t))
 
         if any(potential_duplicates):
             transaction.duplicate_potential_state = True
@@ -73,7 +66,7 @@ class DuplicateTreatmentService:
             potential_duplicates=potential_duplicates_transactions,
         )
 
-    async def detect_duplicates(
+    def detect_duplicates(
         self, conn: connection, user_id: int, transactions: list[Transaction] | Transaction
     ) -> list[DuplicateResult] | DuplicateResult:
         if isinstance(transactions, Transaction):
@@ -99,26 +92,22 @@ class DuplicateTreatmentService:
             ],
             period=period,
         )
-        existing_transactions = await self.transaction_validator.validate_list_transactions_async(
+        existing_transactions = self.transaction_validator.validate_list_transactions(
             existing_transactions
         )
 
-        tasks: list[asyncio.Task[DuplicateResult]] = []
+        results: list[DuplicateResult] = []
 
         for t in transactions:
             if t.transaction_id is not None:
                 # Exclude the transaction itself from the existing transactions
-                existing_transactions = [
+                current_existing = [
                     et for et in existing_transactions if et.transaction_id != t.transaction_id
                 ]
-
-        for t in transactions:
-            task = asyncio.create_task(
-                self._determine_transaction_duplicates(t, existing_transactions)
-            )
-            tasks.append(task)
-
-        results: list[DuplicateResult] = await asyncio.gather(*tasks)
+            else:
+                current_existing = existing_transactions
+                
+            results.append(self._determine_transaction_duplicates(t, current_existing))
 
         if len(results) == 1:
             return results[0]

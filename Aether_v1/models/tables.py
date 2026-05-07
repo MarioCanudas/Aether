@@ -1,4 +1,3 @@
-import asyncio
 from typing import Any, Literal
 
 import pandas as pd
@@ -45,7 +44,7 @@ class ExtractedWords(BaseModel):
     @property
     def records(self) -> list[dict[str, Any]]:
         records = self.df.to_dict(orient="records")
-        records = asyncio.run(generics_validator.validate_list_of_dicts(records))
+        records = generics_validator.validate_list_of_dicts(records)
 
         return records
 
@@ -539,9 +538,7 @@ class AllTransactionsTable(TransactionsTable):
         self.df["category_id"] = category_id
 
     def get_transactions_dicts(self) -> list[dict[str, Any]]:
-        return asyncio.run(
-            generics_validator.validate_list_of_dicts(self.df.to_dict(orient="records"))
-        )
+        return generics_validator.validate_list_of_dicts(self.df.to_dict(orient="records"))
 
 
 class MonthlyResultsTable(BaseModel):
@@ -676,23 +673,21 @@ class MonthlyResultsTable(BaseModel):
         """
         Returns the DataFrame records as a list of dictionaries.
         """
-        return asyncio.run(
-            generics_validator.validate_list_of_dicts(self.df.to_dict(orient="records"))
-        )
+        return generics_validator.validate_list_of_dicts(self.df.to_dict(orient="records"))
 
-    async def get_avg_savings_per_month(self) -> float:
+    def get_avg_savings_per_month(self) -> float:
         avg = self.df["saving"].mean()
         if not isinstance(avg, float):
             raise ValueError("Average savings calculation did not return a float value.")
         return avg
 
-    async def get_avg_income_per_month(self) -> float:
+    def get_avg_income_per_month(self) -> float:
         avg = self.df["total_income"].mean()
         if not isinstance(avg, float):
             raise ValueError("Average income calculation did not return a float value.")
         return avg
 
-    async def get_avg_withdrawal_per_month(self) -> float:
+    def get_avg_withdrawal_per_month(self) -> float:
         avg = self.df["total_withdrawal"].mean()
         if not isinstance(avg, float):
             raise ValueError("Average withdrawal calculation did not return a float value.")

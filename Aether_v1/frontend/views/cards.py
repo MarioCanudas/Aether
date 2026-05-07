@@ -23,7 +23,7 @@ def show_cards():
         card = controller.get_card_by_name(str(card_to_view))
 
         view_data = (
-            asyncio.run(controller.get_card_view_data(card.card_id)) if card.card_id else None
+            controller.get_card_view_data(card.card_id) if card.card_id else None
         )
 
         if view_data is None:

@@ -1,4 +1,3 @@
-import asyncio
 from io import BytesIO
 from typing import Any
 
@@ -9,7 +8,7 @@ from .base_validator import BaseValidator
 
 class GenericsValidator(BaseValidator):
     @staticmethod
-    async def validate_dict(
+    def validate_dict(
         value: Any, index: int | None = None, str_key: bool = True
     ) -> TypeError | None:
         if not isinstance(value, dict):
@@ -29,17 +28,16 @@ class GenericsValidator(BaseValidator):
         return None
 
     @staticmethod
-    async def validate_list_of_dicts(data: Any) -> list[dict[str, Any]]:
+    def validate_list_of_dicts(data: Any) -> list[dict[str, Any]]:
         if not isinstance(data, list):
             raise TypeError(f"Expected a list, got {type(data).__name__}")
 
-        errors_tasks: list[asyncio.Task[TypeError | None]] = []
+        errors: list[TypeError] = []
 
         for i, item in enumerate(data):
-            errors_tasks.append(asyncio.create_task(GenericsValidator.validate_dict(item, i)))
-
-        errors_results: list[TypeError | None] = await asyncio.gather(*errors_tasks)
-        errors = [e for e in errors_results if e is not None]
+            err = GenericsValidator.validate_dict(item, i)
+            if err is not None:
+                errors.append(err)
 
         if errors:
             raise ExceptionGroup(f"It was obtained {len(errors)} TypeErrors: ", errors)
@@ -59,10 +57,10 @@ class GenericsValidator(BaseValidator):
         return data
 
     def validate_list_bytesio(self, data: Any) -> list[BytesIO]:
-        return asyncio.run(self.validate_list_of(data, BytesIO))
+        return self.validate_list_of(data, BytesIO)
 
     def validate_list_str(self, data: Any) -> list[str]:
-        return asyncio.run(self.validate_list_of(data, str))
+        return self.validate_list_of(data, str)
 
     def validate_list_int(self, data: Any) -> list[int]:
-        return asyncio.run(self.validate_list_of(data, int))
+        return self.validate_list_of(data, int)

@@ -55,7 +55,7 @@ class ProfileConfigController(BaseController):
             else:
                 return f"{years} year{'s' if years > 1 else ''}"
 
-    async def get_profile_view_data(self) -> ProfileConfigViewData:
+    def get_profile_view_data(self) -> ProfileConfigViewData:
         """
         Gather all profile data asynchronously and return a ProfileConfigViewData model.
 

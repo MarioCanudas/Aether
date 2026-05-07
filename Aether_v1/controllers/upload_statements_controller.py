@@ -62,7 +62,7 @@ class UploadStatementsController(BaseController):
 
         return [Transaction(**r) for r in all_transactions_df.to_dict(orient="records")]
 
-    async def filter_transactions(
+    def filter_transactions(
         self, transactions: list[Transaction]
     ) -> FilteredTransactionsResult:
         clean_transactions, duplicated_transactions = (
@@ -70,10 +70,10 @@ class UploadStatementsController(BaseController):
         )
 
         with self.quick_read_conn() as conn:
-            duplicates_results = await self.dt_service.detect_duplicates(
+            duplicates_results = self.dt_service.detect_duplicates(
                 conn, self.user_id, clean_transactions
             )
-            duplicates_results = await self.transaction_validator.validate_list_duplicate_result_async(
+            duplicates_results = self.transaction_validator.validate_list_duplicate_result(
                 duplicates_results
             )
 
@@ -100,7 +100,7 @@ class UploadStatementsController(BaseController):
 
         return filtered_transactions_result
 
-    def _auto_classiy_transactions(self, transactions: list[Transaction]) -> list[Transaction]:
+    def _auto_classify_transactions(self, transactions: list[Transaction]) -> list[Transaction]:
         categories = self.get_categories_names()
         assert isinstance(categories, list), "Categories should be a list of strings"
 
@@ -119,28 +119,20 @@ class UploadStatementsController(BaseController):
     def upload_transactions(
         self,
         filtered_transactions_result: FilteredTransactionsResult,
-        autocacategorized: bool,
+        autocategorized: bool,
     ) -> None:
         with self.batch_conn() as conn:
             transactions_db = TransactionsDBService(conn)
 
             if len(filtered_transactions_result.potential_duplicates_to_modify) > 0:
-                # Basedpyright error: attribute potential_duplicates_to_modify_unique is unknown.
-                # Assuming intention was to unique-ify the list.
-                unique_potential = list(
-                    {
-                        t.transaction_id: t
-                        for t in filtered_transactions_result.potential_duplicates_to_modify
-                    }.values()
-                )
-                transactions_db.update_transactions(unique_potential)
+                transactions_db.update_transactions(filtered_transactions_result.potential_duplicates_to_modify_unique)
 
             transactions_to_upload = (
-                self._auto_classiy_transactions(
+                self._auto_classify_transactions(
                     filtered_transactions_result.potential_duplicates_to_upload
                     + filtered_transactions_result.clean
                 )
-                if autocacategorized
+                if autocategorized
                 else (
                     filtered_transactions_result.potential_duplicates_to_upload
                     + filtered_transactions_result.clean

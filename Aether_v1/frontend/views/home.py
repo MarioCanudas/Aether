@@ -71,7 +71,7 @@ def show_home():
         )
 
     if controller.user_have_transactions():
-        home_view_data = asyncio.run(controller.get_home_view_data())
+        home_view_data = controller.get_home_view_data()
         left, right = st.columns([3, 1.5])
 
         with left:

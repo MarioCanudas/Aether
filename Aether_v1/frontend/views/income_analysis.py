@@ -21,7 +21,7 @@ def show_income_analysis():
 
     # Check if monthly results are available
     if controller.user_have_transactions():
-        view_data = asyncio.run(controller.get_analysis_view_data("Abono"))
+        view_data = controller.get_analysis_view_data("Abono")
 
         with st.container(border=True):
             selected_period = period_select_box(key="period_selectbox_income")
@@ -46,9 +46,7 @@ def show_income_analysis():
             analysis_amounts: AnalysisAmounts
 
             if selected_period == PeriodsOptions.SPECIFIC_PERIOD:
-                analysis_amounts = asyncio.run(
-                    controller.get_amounts_in_specific_period("Abono", period)
-                )
+                analysis_amounts = controller.get_amounts_in_specific_period("Abono", period)
             else:
                 analysis_amounts = view_data.analysis_amounts[PeriodsOptions(selected_period)]
 

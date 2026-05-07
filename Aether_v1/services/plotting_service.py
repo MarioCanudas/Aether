@@ -42,7 +42,7 @@ class PlottingService:
             raise ValueError(f"Invalid label: {label}")
 
     @staticmethod
-    async def get_plot_savings_donut_chart(donut_chart_config: DonutChartConfig) -> Figure:
+    def get_plot_savings_donut_chart(donut_chart_config: DonutChartConfig) -> Figure:
         """
         Plots a donut chart based on the savings compared to the average income.
 
@@ -80,7 +80,7 @@ class PlottingService:
 
         return fig
 
-    async def get_income_vs_expenses_bar_chart(self, last_six_months: pd.DataFrame) -> alt.Chart:
+    def get_income_vs_expenses_bar_chart(self, last_six_months: pd.DataFrame) -> alt.Chart:
         bar_chart = (
             alt.Chart(last_six_months)
             .mark_bar()
@@ -111,7 +111,7 @@ class PlottingService:
 
         return bar_chart
 
-    async def get_balance_line_chart(self, balance_six_months: pd.DataFrame) -> alt.Chart:
+    def get_balance_line_chart(self, balance_six_months: pd.DataFrame) -> alt.Chart:
         line_chart = (
             alt.Chart(balance_six_months)
             .mark_line(

@@ -1,5 +1,3 @@
-import asyncio
-
 from models.bank_properties import BankName
 from models.cards import Card
 from models.templates import Template, TemplateType
@@ -70,9 +68,7 @@ class AddTransactionController(BaseController):
         dt_service = DuplicateTreatmentService()
 
         with self.quick_read_conn() as conn:
-            duplicate_result = asyncio.run(
-                dt_service.detect_duplicates(conn, self.user_id, transaction)
-            )
+            duplicate_result = dt_service.detect_duplicates(conn, self.user_id, transaction)
 
             if not isinstance(duplicate_result, DuplicateResult):
                 raise TypeError(

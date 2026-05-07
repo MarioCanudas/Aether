@@ -1,5 +1,3 @@
-import asyncio
-
 import streamlit as st
 from controllers import UploadStatementsController
 from models.transactions import Transaction
@@ -10,7 +8,7 @@ controller = UploadStatementsController()
 @st.dialog("Confirm Upload", width="medium")
 def confirm_upload_popup(transactions: list[Transaction]) -> None:
     st.header("Transactions to be uploaded")
-    filtered_transactions_result = asyncio.run(controller.filter_transactions(transactions))
+    filtered_transactions_result = controller.filter_transactions(transactions)
 
     if len(filtered_transactions_result.clean) > 0:
         st.subheader("Transactions to be uploaded")
@@ -30,7 +28,7 @@ def confirm_upload_popup(transactions: list[Transaction]) -> None:
             "These transactions will be uploaded as potential duplicates. You can review them in the Transactions view."
         )
 
-    autocacategorized_transactions = st.checkbox(
+    autocategorized_transactions = st.checkbox(
         "Autoclassify transactions with AI (It's not perfect, you need to check it!)", value= False
     )
 
@@ -46,6 +44,6 @@ def confirm_upload_popup(transactions: list[Transaction]) -> None:
         label="Confirm",
         help="This will update the database with the new transactions. If you are not sure just close this popup",
     ):
-        controller.upload_transactions(filtered_transactions_result, autocacategorized_transactions)
+        controller.upload_transactions(filtered_transactions_result, autocategorized_transactions)
         st.toast("Transactions uploaded successfully")
         st.rerun()

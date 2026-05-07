@@ -26,7 +26,7 @@ class HomeController(BaseController):
         self.financial_analysis_service = FinancialAnalysisService()
         self.plotting_service = PlottingService()
 
-    async def _get_last_six_months_transactions(self, conn: connection) -> pd.DataFrame:
+    def _get_last_six_months_transactions(self, conn: connection) -> pd.DataFrame:
         transactions_db = TransactionsDBService(conn)
 
         period = transactions_db.get_transactions_period(self.user_id)
@@ -77,7 +77,7 @@ class HomeController(BaseController):
 
         return grouped
 
-    async def _get_last_six_months_balance(self, conn: connection) -> pd.DataFrame:
+    def _get_last_six_months_balance(self, conn: connection) -> pd.DataFrame:
         transactions_db = TransactionsDBService(conn)
 
         period = transactions_db.get_transactions_period(self.user_id)
@@ -145,49 +145,33 @@ class HomeController(BaseController):
             case PeriodsOptions.SPECIFIC_PERIOD:
                 return period
 
-    async def get_home_view_data(self) -> HomeViewData:
+    def get_home_view_data(self) -> HomeViewData:
         with self.quick_read_conn() as conn:
             transactions_db = TransactionsDBService(conn)
 
             period = transactions_db.get_transactions_period(self.user_id)
             first_initial_balance = transactions_db.get_first_initial_balance(self.user_id)
 
-            async with asyncio.TaskGroup() as tg:
-                avg_financial_sums = tg.create_task(
-                    transactions_db.get_avg_all_time_sums(self.user_id)
-                )
-                last_six_months = tg.create_task(self._get_last_six_months_transactions(conn))
-                last_six_months_balance = tg.create_task(self._get_last_six_months_balance(conn))
+            avg_financial_sums = transactions_db.get_avg_all_time_sums(self.user_id)
+            last_six_months = self._get_last_six_months_transactions(conn)
+            last_six_months_balance = self._get_last_six_months_balance(conn)
 
             label = self.financial_analysis_service.get_financial_status_label(
-                avg_financial_sums.result()
+                avg_financial_sums
             )
             tips = self.financial_analysis_service.get_financial_tips(label)
             donut_config = self.plotting_service.get_savings_donut_chart_config(label)
 
-            async with asyncio.TaskGroup() as tg:
-                all_time_sums = tg.create_task(
-                    transactions_db.get_specific_period_sums(self.user_id, period)
-                )
-                current_month_sums = tg.create_task(
-                    transactions_db.get_specific_period_sums(
-                        self.user_id, self._modify_period(period, PeriodsOptions.CURRENT_MONTH)
-                    )
-                )
-                last_month_sums = tg.create_task(
-                    transactions_db.get_specific_period_sums(
-                        self.user_id, self._modify_period(period, PeriodsOptions.LAST_MONTH)
-                    )
-                )
-                income_vs_expenses_bar_chart = tg.create_task(
-                    self.plotting_service.get_income_vs_expenses_bar_chart(last_six_months.result())
-                )
-                balance_line_chart = tg.create_task(
-                    self.plotting_service.get_balance_line_chart(last_six_months_balance.result())
-                )
-                donut_score_chart = tg.create_task(
-                    self.plotting_service.get_plot_savings_donut_chart(donut_config)
-                )
+            all_time_sums = transactions_db.get_specific_period_sums(self.user_id, period)
+            current_month_sums = transactions_db.get_specific_period_sums(
+                self.user_id, self._modify_period(period, PeriodsOptions.CURRENT_MONTH)
+            )
+            last_month_sums = transactions_db.get_specific_period_sums(
+                self.user_id, self._modify_period(period, PeriodsOptions.LAST_MONTH)
+            )
+            income_vs_expenses_bar_chart = self.plotting_service.get_income_vs_expenses_bar_chart(last_six_months)
+            balance_line_chart = self.plotting_service.get_balance_line_chart(last_six_months_balance)
+            donut_score_chart = self.plotting_service.get_plot_savings_donut_chart(donut_config)
 
         last_transactions = transactions_db.get_transactions(
             self.user_id,
@@ -222,7 +206,6 @@ class HomeController(BaseController):
             last_transactions[["Date", "Category", "Description", "Amount", "Type", "Bank"]]
         )
 
-        all_time_sums = all_time_sums.result()
         all_time_sums.add_to_income(
             first_initial_balance["amount"]
         ) if first_initial_balance else None
@@ -231,19 +214,17 @@ class HomeController(BaseController):
             label=label,
             tips=tips,
             last_transactions=last_transactions,
-            donut_score_chart=donut_score_chart.result(),
-            income_vs_expenses_bar_chart=income_vs_expenses_bar_chart.result(),
-            balance_line_chart=balance_line_chart.result(),
+            donut_score_chart=donut_score_chart,
+            income_vs_expenses_bar_chart=income_vs_expenses_bar_chart,
+            balance_line_chart=balance_line_chart,
             all_time_sums=all_time_sums,
-            current_month_sums=current_month_sums.result(),
-            last_month_sums=last_month_sums.result(),
-            avarage_sums=avg_financial_sums.result(),
+            current_month_sums=current_month_sums,
+            last_month_sums=last_month_sums,
+            avarage_sums=avg_financial_sums,
         )
 
     def get_specific_period_sums(self, specific_period: Period) -> FinancialAmountsSums:
         with self.quick_read_conn() as conn:
             transactions_db = TransactionsDBService(conn)
 
-            return asyncio.run(
-                transactions_db.get_specific_period_sums(self.user_id, specific_period)
-            )
+            return transactions_db.get_specific_period_sums(self.user_id, specific_period)

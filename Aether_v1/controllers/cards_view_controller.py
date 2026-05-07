@@ -61,7 +61,7 @@ class CardsViewController(BaseController):
                 raise ValueError(f"Card with id {card_id} not found")
             return card
 
-    async def get_income_vs_expenses_chart(
+    def get_income_vs_expenses_chart(
         self, transactions: list[dict[str, Any]] | list[Transaction]
     ) -> Chart | None:
         if not transactions:
@@ -103,14 +103,11 @@ class CardsViewController(BaseController):
 
         plotting_service = PlottingService()
 
-        async with asyncio.TaskGroup() as tg:
-            income_vs_expenses_chart = tg.create_task(
-                plotting_service.get_income_vs_expenses_bar_chart(grouped)
-            )
+        income_vs_expenses_chart = plotting_service.get_income_vs_expenses_bar_chart(grouped)
 
-        return income_vs_expenses_chart.result()
+        return income_vs_expenses_chart
 
-    async def get_card_view_data(self, card_id: int) -> CardViewData:
+    def get_card_view_data(self, card_id: int) -> CardViewData:
         with self.quick_read_conn() as conn:
             transactions_db = TransactionsDBService(conn)
 
@@ -136,10 +133,10 @@ class CardsViewController(BaseController):
                 transaction_model=False,
             )
 
-            transactions = await self.generics_validator.validate_list_of_dicts(transactions)
+            transactions = self.generics_validator.validate_list_of_dicts(transactions)
 
             return CardViewData(
                 metrics=metrics,
                 transactions=transactions,
-                income_vs_expenses_chart=await self.get_income_vs_expenses_chart(transactions),
+                income_vs_expenses_chart=self.get_income_vs_expenses_chart(transactions),
             )

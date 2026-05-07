@@ -15,7 +15,7 @@ def show_profile() -> None:
     st.set_page_config(page_title="Profile", page_icon=PROFILE_ICON, layout="centered")
 
     controller = ProfileConfigController()
-    view_data = asyncio.run(controller.get_profile_view_data())
+    view_data = controller.get_profile_view_data()
 
     # Header section
     st.title("👤 Profile")

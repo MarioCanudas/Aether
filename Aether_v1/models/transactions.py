@@ -96,12 +96,12 @@ class Transaction(BaseModel):
 
         return record
 
-    async def exact_duplicate(self, other: "Transaction") -> bool:
+    def exact_duplicate(self, other: "Transaction") -> bool:
         return all(getattr(self, k) == getattr(other, k) for k in self.key_values)
 
-    async def potencial_duplicate(self, other: "Transaction") -> bool:
+    def potential_duplicate(self, other: "Transaction") -> bool:
         # If the transactions are exact duplicates, they are also potential duplicates.
-        is_exact_duplicate = await self.exact_duplicate(other)
+        is_exact_duplicate = self.exact_duplicate(other)
 
         if is_exact_duplicate:
             return True
@@ -200,6 +200,11 @@ class FilteredTransactionsResult(BaseModel):
     @property
     def potential_duplicates_to_upload_unique(self) -> list[Transaction]:
         return list(set(self.potential_duplicates_to_upload))
+
+    @property
+    def potential_duplicates_to_modify_unique(self) -> list[Transaction]:
+        # Using a dictionary keyed by transaction_id to deduplicate
+        return list({t.transaction_id: t for t in self.potential_duplicates_to_modify if t.transaction_id is not None}.values())
 
     @property
     def clean_df(self) -> pd.DataFrame:

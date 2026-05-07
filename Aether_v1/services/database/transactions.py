@@ -299,7 +299,7 @@ class TransactionsDBService(BaseDBService):
 
             self.execute_query(query, params=params)
 
-    async def get_avg_all_time_sums(self, user_id: int) -> FinancialAmountsSums:
+    def get_avg_all_time_sums(self, user_id: int) -> FinancialAmountsSums:
         query = f"""
             WITH base AS (
                 SELECT
@@ -342,7 +342,7 @@ class TransactionsDBService(BaseDBService):
             income=Decimal("0.00"), withdrawal=Decimal("0.00"), savings=Decimal("0.00")
         )
 
-    async def get_specific_period_sums(
+    def get_specific_period_sums(
         self, user_id: int, specific_period: Period
     ) -> FinancialAmountsSums:
         start_date, end_date = specific_period.to_tuple()
@@ -398,7 +398,7 @@ class TransactionsDBService(BaseDBService):
         else:
             return None
 
-    async def get_max_amounts(self, user_id: int) -> dict[str, AnalysisAmountsPerPeriod]:
+    def get_max_amounts(self, user_id: int) -> dict[str, AnalysisAmountsPerPeriod]:
         query = f"""
             SELECT
                 -- All time max/min amounts
@@ -465,7 +465,7 @@ class TransactionsDBService(BaseDBService):
             }
         return {}  # Or raise
 
-    async def get_max_amount_in_specific_period(
+    def get_max_amount_in_specific_period(
         self, user_id: int, specific_period: Period
     ) -> dict[str, Decimal]:
         query = f"""
@@ -499,7 +499,7 @@ class TransactionsDBService(BaseDBService):
             }
         return {"Abono": Decimal("0.00"), "Cargo": Decimal("0.00")}
 
-    async def get_frecuencys(self, user_id: int) -> dict[str, AnalysisAmountsPerPeriod]:
+    def get_frecuencys(self, user_id: int) -> dict[str, AnalysisAmountsPerPeriod]:
         query = f"""
             SELECT
                 -- All-time frequency
@@ -561,7 +561,7 @@ class TransactionsDBService(BaseDBService):
             }
         return {}  # Or raise
 
-    async def get_frecuency_in_specific_period(
+    def get_frecuency_in_specific_period(
         self, user_id: int, specific_period: Period
     ) -> dict[str, int]:
         query = f"""
