@@ -31,7 +31,7 @@ def confirm_upload_popup(transactions: list[Transaction]) -> None:
         )
 
     autocacategorized_transactions = st.checkbox(
-        "Autoclassify transactions with AI (Isn't perfects, you must check it!)", value= False
+        "Autoclassify transactions with AI (It's not perfect, you need to check it!)", value= False
     )
 
     if len(filtered_transactions_result.duplicated) > 0:
