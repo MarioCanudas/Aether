@@ -184,3 +184,6 @@ test/
 
 # Streamlit
 Aether_v1/.streamlit/secrets.toml
+
+# Ai agents
+.ai/
